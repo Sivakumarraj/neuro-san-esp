@@ -1,0 +1,33 @@
+$ python scripts/serve_champion.py
+champion: designer_shaped (459ac1a66d925b0c)
+  accuracy 0.82   tokens 278,532   agents 4   fitness +0.7868
+  wrote registries/champion.hocon
+
+$ python -m neuro_san.service.main_loop.server_main_loop
+2026-08-22T17:59:46  Added agent champion to allowed http service list
+2026-08-22T17:59:46  ADDED network for agent champion (11872 bytes): 139762466391440
+2026-08-22T17:59:46  HTTP server is running 1 instances on port 8080 with backlog 128
+2026-08-22T18:00:42  Received a champion.StreamingChat request for 'Who is the depot manager of Meridian Logistics depot 
+2026-08-22T18:05:40  Received a champion.StreamingChat request for 'Who is the depot manager of Meridian Logistics depot 
+
+$ curl -s localhost:8080/api/v1/list                        -> http 200
+$ curl -s localhost:5001/            (web client)           -> http 200
+
+A question typed into the browser reached the server, and a request over
+HTTP routed through the measured topology agent by agent:
+
+    origin: [{"tool": "Coordinator"}, {"tool": "IncidentSpecialist"}]
+
+which is designer_shaped as measured -- the front man delegating to the
+specialist for an incident lookup.
+
+It did not return an answer. The measured model's free-tier daily cap was
+spent, and the daily reset is midnight Pacific:
+
+    429 RESOURCE_EXHAUSTED   quotaId GenerateRequestsPerDayPerProjectPerModel
+    limit 500   model gemini-3.1-flash-lite
+
+So what is verified here is the serving path: the winner of the search is
+served as an ordinary agent, a browser reaches it, and a request travels
+through the real agents in the real topology. The final answer needs budget
+that today did not have, and that is stated rather than left out.
