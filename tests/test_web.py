@@ -120,7 +120,40 @@ def test_health_says_whether_it_is_serving_a_measured_champion(client):
 
 def test_the_page_states_what_has_not_been_achieved(client):
     """The same admissions as the PDFs. A public page that quietly drops them
-    is where an overstatement would actually reach somebody."""
+    is where an overstatement would actually reach somebody.
+
+    The wording is derived from state, so this checks that a caveat is present
+    and substantive rather than pinning a sentence that goes stale the moment
+    the measurements change.
+    """
     text = client.get("/").text
-    assert "has beaten" in text or "beaten this baseline" in text
-    assert "surrogate has not trained" in text
+    assert "What it is not." in text
+    caveat = serve.caveat()
+    assert len(caveat) > 40, caveat
+    assert caveat.rstrip().endswith("rather than left out.")
+    assert "Stated in the repository" in text
+
+
+def test_the_caveat_never_contradicts_the_champion(client):
+    """The page states what it has not shown, derived from state.
+
+    Written as prose in the template it went stale the moment an evolved
+    candidate won: the page denied that any mutant had beaten the baselines
+    directly beneath a header naming one as the best-measured topology.
+    """
+    body = client.get("/").text
+    if serve.RECORD is not None and serve.RECORD.origin.startswith("mut:"):
+        assert "no evolved candidate has beaten" not in body.lower()
+
+
+def test_the_caveat_reports_the_real_measurement_count(client):
+    """A stated shortfall has to match what is actually on disk."""
+    from esp.surrogate.predictor import MIN_SAMPLES
+
+    measured = serve.measurement_count()
+    body = client.get("/").text
+    if measured < MIN_SAMPLES:
+        assert f"there are {measured}" in body
+        assert f"needs {MIN_SAMPLES} measurements" in body
+    else:
+        assert "has not trained" not in body
