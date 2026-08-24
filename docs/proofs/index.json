@@ -1,0 +1,50 @@
+[
+  {
+    "name": "tree",
+    "command": "git ls-files",
+    "exit_code": 0,
+    "captured_at": "2026-08-24T03:31:41.296237+00:00",
+    "lines": 112
+  },
+  {
+    "name": "log",
+    "command": "git log --oneline -15",
+    "exit_code": 0,
+    "captured_at": "2026-08-24T03:31:41.298568+00:00",
+    "lines": 2
+  },
+  {
+    "name": "tests",
+    "command": "/home/user/neuro-san-esp/.venv/bin/python -m pytest tests -q",
+    "exit_code": 0,
+    "captured_at": "2026-08-24T03:31:41.301166+00:00",
+    "lines": 5
+  },
+  {
+    "name": "lint",
+    "command": "/home/user/neuro-san-esp/.venv/bin/python -m ruff check esp tests scripts apps",
+    "exit_code": 0,
+    "captured_at": "2026-08-24T03:31:57.171480+00:00",
+    "lines": 1
+  },
+  {
+    "name": "offline_search",
+    "command": "/home/user/neuro-san-esp/.venv/bin/python scripts/offline_search.py --pool 2000",
+    "exit_code": 0,
+    "captured_at": "2026-08-24T03:31:57.206397+00:00",
+    "lines": 22
+  },
+  {
+    "name": "periodic_server",
+    "command": "/home/user/neuro-san-esp/.venv/bin/python scripts/verify_periodic.py",
+    "exit_code": 0,
+    "captured_at": "2026-08-24T03:31:58.397042+00:00",
+    "lines": 8
+  },
+  {
+    "name": "serving_champion",
+    "command": "(assembled by hand from one live session: serve_champion.py, a real neuro-san server, curl, and a browser)",
+    "attested": "assembled by hand from one live session: serve_champion.py, a real neuro-san server, curl, and a browser",
+    "lines": 33
+  }
+]
