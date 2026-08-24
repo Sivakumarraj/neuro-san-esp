@@ -1,0 +1,63 @@
+services:
+  # The service. An event-invoked agent on an hourly cron inside neuro-san's
+  # own server -- no user, no client, no request. See SERVING.md.
+  optimizer:
+    build: .
+    restart: unless-stopped
+    environment:
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:?set GOOGLE_API_KEY to run the service}
+      ESP_OPTIMIZER_CRON: ${ESP_OPTIMIZER_CRON:-0 * * * *}
+    volumes:
+      # The population is the expensive thing here, not the compute. The free
+      # tier buys about three real evaluations a day, so this volume holds
+      # weeks of budget. A container that loses it starts again from the seeds.
+      - esp-state:/app/state
+      - ./results:/app/results
+    command: python -m neuro_san.service.main_loop.server_main_loop
+
+  # One wake, then exit. For cron, a Kubernetes CronJob, or by hand -- anywhere
+  # the scheduler lives outside the container rather than inside it.
+  wake:
+    build: .
+    profiles: ["tools"]
+    environment:
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:?set GOOGLE_API_KEY to run a wake}
+    volumes:
+      - esp-state:/app/state
+    command: python apps/optimizer/run_optimizer.py
+
+  # Phase B and C. No key, no network, no budget -- and deterministic, so this
+  # either reproduces the published numbers or it does not.
+  offline:
+    build: .
+    profiles: ["tools"]
+    command: python scripts/offline_search.py --pool 2000
+
+  # Everything CI enforces, in the same image that ships.
+  check:
+    build: .
+    profiles: ["tools"]
+    command: sh -c "ruff check esp tests scripts apps && python -m pytest tests -q"
+
+  # The batch loop. Needs real budget: a candidate costs about 165 provider
+  # requests and the free tier caps them per day, per model. Run probe first.
+  search:
+    build: .
+    profiles: ["tools"]
+    environment:
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:?set GOOGLE_API_KEY to run a real search}
+    volumes:
+      - ./results:/app/results
+      - ./.esp-cache:/app/.esp-cache
+    command: python scripts/run_esp.py --generations 3 --elite 3 --out results
+
+  # Which models are usable and what daily budget is left.
+  probe:
+    build: .
+    profiles: ["tools"]
+    environment:
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:?set GOOGLE_API_KEY to probe models}
+    command: python scripts/probe_models.py
+
+volumes:
+  esp-state:

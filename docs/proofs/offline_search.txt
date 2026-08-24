@@ -1,0 +1,22 @@
+No local measurements in .esp-cache -- falling back to the committed ones in tests/fixtures/cache.
+Run `make baseline` with a key to train on your own instead.
+
+Phase B -- training the Predictor on 3 real evaluations from tests/fixtures/cache
+  surrogate on 3 samples: rank quality NOT MEASURED -- cross-validation needs 8. The predictor is untrained and returns a constant.
+
+Phase C -- evolving 2000 candidates against it
+  2000 viable, 822 rejected as invalid
+  scored in 0.12s with zero provider calls
+  ~0.058 ms per candidate
+
+  !! The surrogate is UNTRAINED on 3 samples (needs 8). Every prediction below is the same constant, so this is NOT a ranking -- it is the first 5 candidates in generation order. Phase C's cost claim holds; its selection claim does not, until there are more real evaluations.
+
+First 5 in generation order -- all tied, see above:
+  +0.7842  915e149aed588d57  agents=5 depth=2  via split_agent
+  +0.7842  0334802d6e9b1376  agents=2 depth=2  via merge_agents
+  +0.7842  7edd0c338d311ac0  agents=5 depth=3  via add_agent
+  +0.7842  9f1d2fa76d71da2e  agents=4 depth=2  via split_agent
+  +0.7842  0334802d6e9b1376  agents=2 depth=2  via merge_agents
+
+Phase C scored 2000 candidates in 0.1s. The same number evaluated for real, at roughly 8 minutes each, would take about 267 hours.
+Phase C generated and scored them for nothing, which is the cost claim. It did not rank them, and it never measures -- only Phase D does.

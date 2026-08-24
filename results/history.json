@@ -1,0 +1,376 @@
+{
+  "seed": 20260821,
+  "weights": {
+    "accuracy": 1.0,
+    "tokens": 0.06,
+    "agents": 0.02
+  },
+  "real_evaluations": 5,
+  "surrogate_evaluations": 0,
+  "surrogate_quality": [],
+  "stopped_early": "provider budget exhausted during the seed population",
+  "model_swaps": [
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": "gemini-3.5-flash-lite",
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": "gemini-3.5-flash-lite",
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.5-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.5-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.5-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.5-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.5-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.5-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.5-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.5-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.5-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.5-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.5-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.5-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.5-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.5-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.5-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.5-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.5-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.5-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    },
+    {
+      "from": "gemini-3.1-flash-lite",
+      "to": null,
+      "reason": "daily quota exhausted"
+    }
+  ],
+  "records": [
+    {
+      "genome_hash": "cbe128a617466fe9",
+      "generation": 0,
+      "origin": "seed:solo",
+      "fitness": 0.7835,
+      "accuracy": 0.8235,
+      "tokens": 377716,
+      "agents": 1,
+      "depth": 1,
+      "seconds": 0.0,
+      "predicted": null
+    },
+    {
+      "genome_hash": "459ac1a66d925b0c",
+      "generation": 0,
+      "origin": "seed:designer_shaped",
+      "fitness": 0.7761,
+      "accuracy": 0.8235,
+      "tokens": 385280,
+      "agents": 4,
+      "depth": 2,
+      "seconds": 854.0,
+      "predicted": null
+    },
+    {
+      "genome_hash": "c3ee2e0c4a6156c5",
+      "generation": 0,
+      "origin": "seed:flat_pair",
+      "fitness": 0.7852,
+      "accuracy": 0.8235,
+      "tokens": 316074,
+      "agents": 3,
+      "depth": 2,
+      "seconds": 726.3,
+      "predicted": null
+    },
+    {
+      "genome_hash": "bb3340f7f3c91f05",
+      "generation": 0,
+      "origin": "mut:split_agent",
+      "fitness": 0.8319,
+      "accuracy": 0.8824,
+      "tokens": 394388,
+      "agents": 5,
+      "depth": 2,
+      "seconds": 953.3,
+      "predicted": null
+    },
+    {
+      "genome_hash": "2a8d17827e88b3ed",
+      "generation": 0,
+      "origin": "mut:rewire",
+      "fitness": 0.7107,
+      "accuracy": 0.7647,
+      "tokens": 473450,
+      "agents": 3,
+      "depth": 3,
+      "seconds": 1028.0,
+      "predicted": null
+    },
+    {
+      "genome_hash": "59b12db4896e63d8",
+      "generation": 0,
+      "origin": "mut:add_agent",
+      "fitness": 0.7941,
+      "accuracy": 0.8235,
+      "tokens": 249662,
+      "agents": 2,
+      "depth": 2,
+      "seconds": 480.4,
+      "predicted": null
+    }
+  ],
+  "pareto": [
+    {
+      "genome_hash": "bb3340f7f3c91f05",
+      "generation": 0,
+      "origin": "mut:split_agent",
+      "fitness": 0.8319,
+      "accuracy": 0.8824,
+      "tokens": 394388,
+      "agents": 5,
+      "depth": 2,
+      "seconds": 953.3,
+      "predicted": null
+    },
+    {
+      "genome_hash": "59b12db4896e63d8",
+      "generation": 0,
+      "origin": "mut:add_agent",
+      "fitness": 0.7941,
+      "accuracy": 0.8235,
+      "tokens": 249662,
+      "agents": 2,
+      "depth": 2,
+      "seconds": 480.4,
+      "predicted": null
+    },
+    {
+      "genome_hash": "cbe128a617466fe9",
+      "generation": 0,
+      "origin": "seed:solo",
+      "fitness": 0.7835,
+      "accuracy": 0.8235,
+      "tokens": 377716,
+      "agents": 1,
+      "depth": 1,
+      "seconds": 0.0,
+      "predicted": null
+    }
+  ]
+}

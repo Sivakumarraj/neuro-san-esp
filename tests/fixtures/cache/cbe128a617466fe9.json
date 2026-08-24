@@ -1,0 +1,164 @@
+{
+  "genome_hash": "cbe128a617466fe9",
+  "accuracy": 0.8235,
+  "seconds": 489.88,
+  "tokens": 377716,
+  "cost": 0.105897,
+  "agents": 1,
+  "depth": 1,
+  "results": [
+    {
+      "task_id": "T01",
+      "hops": 1,
+      "correct": true,
+      "seconds": 1.76,
+      "answer": "J. Vasquez",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T02",
+      "hops": 2,
+      "correct": true,
+      "seconds": 2.61,
+      "answer": "Pickering",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T03",
+      "hops": 2,
+      "correct": true,
+      "seconds": 2.65,
+      "answer": "Eastgate",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T04",
+      "hops": 2,
+      "correct": true,
+      "seconds": 3.8,
+      "answer": "Brindle",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T05",
+      "hops": 2,
+      "correct": true,
+      "seconds": 59.13,
+      "answer": "R. Halvorsen",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T06",
+      "hops": 3,
+      "correct": false,
+      "seconds": 418.02,
+      "answer": "Error from Answerer: Agent stopped due to exception Recursion limit of 40 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT",
+      "error": "",
+      "infrastructure": true
+    },
+    {
+      "task_id": "T07",
+      "hops": 3,
+      "correct": false,
+      "seconds": 357.08,
+      "answer": "Error from Answerer: Agent stopped due to exception Recursion limit of 40 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT",
+      "error": "",
+      "infrastructure": true
+    },
+    {
+      "task_id": "T08",
+      "hops": 3,
+      "correct": false,
+      "seconds": 297.23,
+      "answer": "Error from Answerer: Agent stopped due to exception Recursion limit of 40 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT",
+      "error": "",
+      "infrastructure": true
+    },
+    {
+      "task_id": "T09",
+      "hops": 3,
+      "correct": true,
+      "seconds": 59.93,
+      "answer": "Ulverston",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T10",
+      "hops": 3,
+      "correct": true,
+      "seconds": 59.11,
+      "answer": "Knaresborough",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T11",
+      "hops": 4,
+      "correct": true,
+      "seconds": 118.65,
+      "answer": "R. Delacroix",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T12",
+      "hops": 4,
+      "correct": true,
+      "seconds": 119.62,
+      "answer": "R. Nakamura",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T13",
+      "hops": 4,
+      "correct": true,
+      "seconds": 118.57,
+      "answer": "4",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T14",
+      "hops": 2,
+      "correct": true,
+      "seconds": 59.84,
+      "answer": "4500",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T15",
+      "hops": 2,
+      "correct": true,
+      "seconds": 2.46,
+      "answer": "76500",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T16",
+      "hops": 3,
+      "correct": true,
+      "seconds": 57.77,
+      "answer": "31",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T17",
+      "hops": 2,
+      "correct": true,
+      "seconds": 57.17,
+      "answer": "brewing supplies",
+      "error": "",
+      "infrastructure": false
+    }
+  ]
+}

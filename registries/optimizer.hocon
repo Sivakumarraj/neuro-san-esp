@@ -1,0 +1,75 @@
+{
+    "llm_config": {"model_name": "gemini-3.5-flash-lite"},
+
+    "metadata": {
+        "description": "An autonomous optimiser that keeps searching for a better agent network, a few candidates a day, forever.",
+        "tags": ["evolutionary", "autonomous", "periodic", "optimisation"],
+    },
+
+    # Bounded so one wake cannot spiral. The lease in ServiceState is longer
+    # than this, so it cannot expire while a wake is still evaluating.
+    "max_steps": 20,
+    "max_execution_seconds": 3000,
+
+    "tools": [
+        {
+            "name": "Optimizer",
+            "function": {
+                "invocation": "event",
+                "description": "Runs one wake of the evolutionary optimiser and reports only when a better topology is found.",
+            },
+            "instructions": """
+You are the optimiser for a fleet of candidate agent networks.
+
+On each wake-up:
+
+1.  Call RunWake. It takes the lease, spends what today's provider budget
+    allows, and writes the population down after every candidate it pays for.
+2.  If it reports acquired=false, another wake is still running. Stop
+    immediately and say nothing.
+3.  If it reports improved=true, call ReportFinding for a short note naming the
+    topology and what it beat.
+4.  If it reports improved=false, say nothing at all.
+
+Most wakes find nothing. That is the expected outcome, not a failure: the free
+tier buys about three candidates a day, so progress is measured in weeks. A
+service that announces every wake trains its operator to ignore it, and then
+the one wake that matters is ignored too.
+
+You have no tool that deletes anything and no tool that sends anything.
+""",
+            "tools": ["RunWake", "ReportFinding"],
+        },
+
+        {
+            "name": "RunWake",
+            "function": {
+                "description": "Run one wake of the optimiser. Returns what it evaluated and whether anything improved.",
+            },
+            "class": "esp.service.coded_tools.RunWake",
+        },
+
+        {
+            "name": "ReportFinding",
+            "function": {
+                "description": "Write a short operator-facing note about a better topology.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "summary": {"type": "string",
+                            "description": "The wake report from RunWake."},
+                    },
+                    "required": ["summary"],
+                },
+            },
+            "instructions": """
+Write three sentences for an engineer who has not looked at this in a week.
+
+Name the topology, what it scored, and what it beat. State the fitness
+difference plainly. No preamble, no speculation about why it is better -- you
+are describing a measurement, not explaining it. You are drafting only; you
+cannot send anything.
+""",
+        },
+    ]
+}
