@@ -43,6 +43,7 @@ from esp.eval.tasks import TASKS, score  # noqa: E402
 from esp.genome.definition import Genome  # noqa: E402
 from esp.genome.seeds import SEEDS  # noqa: E402
 from esp.service.state import Evaluated, ServiceState  # noqa: E402
+from esp.surrogate.predictor import MIN_SAMPLES  # noqa: E402
 
 # A visitor is not a benchmark run. One question at a time, and a hard cap on
 # how many a single deployment will answer before it stops -- the free tier is
@@ -135,9 +136,7 @@ __EXAMPLES__
 Nothing about it is in any model's training data, so the only way to answer is to go and read,
 which is what makes the score a measurement of the <i>topology</i> rather than of recall.
 <br><br>
-<b>What it is not.</b> No evolved candidate has beaten this baseline yet, and the
-surrogate has not trained — it needs 8 measurements and there are fewer. Both are
-stated in the repository rather than left out.
+<b>What it is not.</b> __CAVEAT__
 </div>
 <p class=sub>Source: <a href="https://github.com/Sivakumarraj/neuro-san-esp">github.com/Sivakumarraj/neuro-san-esp</a></p>
 <script>
@@ -160,6 +159,40 @@ async function ask(){
 </script>"""
 
 
+def measurement_count() -> int:
+    """How many real evaluations this deployment can see."""
+    cache = ROOT / "tests" / "fixtures" / "cache"
+    return len(list(cache.glob("*.json"))) if cache.is_dir() else 0
+
+
+def caveat() -> str:
+    """What this deployment has *not* shown, derived rather than written down.
+
+    The previous version was prose fixed in the template, and it went stale the
+    moment an evolved candidate won: the page claimed no mutant had beaten the
+    baselines directly beneath a header naming one as the best-measured
+    topology. A caveat that contradicts the page above it is worse than none.
+    """
+    parts: list[str] = []
+    evolved = RECORD is not None and RECORD.origin.startswith("mut:")
+    if not evolved:
+        parts.append("no evolved candidate has beaten the hand-designed "
+                     "baselines yet")
+
+    measured = measurement_count()
+    if measured < MIN_SAMPLES:
+        parts.append(f"the surrogate has not trained &mdash; it needs "
+                     f"{MIN_SAMPLES} measurements and there are {measured}, so "
+                     f"the search is still exploring rather than ranking")
+
+    if not parts:
+        parts.append("the search has run few generations, so the Pareto front "
+                     "is thin")
+    body = "; ".join(parts)
+    return (body[0].upper() + body[1:] +
+            ". Stated in the repository rather than left out.")
+
+
 def page() -> str:
     if RECORD is not None:
         sub = (f"<b>{NAME}</b> &mdash; the best-measured topology: "
@@ -173,7 +206,9 @@ def page() -> str:
     examples = "".join(
         f'<a onclick="fill(this.textContent)">{t.question}</a>'
         for t in (TASKS[0], TASKS[1], TASKS[10]))
-    return PAGE.replace("__SUB__", sub).replace("__EXAMPLES__", examples)
+    return (PAGE.replace("__SUB__", sub)
+                .replace("__EXAMPLES__", examples)
+                .replace("__CAVEAT__", caveat()))
 
 
 def build_app():
