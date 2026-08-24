@@ -5,273 +5,40 @@
     "tokens": 0.06,
     "agents": 0.02
   },
-  "real_evaluations": 5,
-  "surrogate_evaluations": 0,
-  "surrogate_quality": [],
-  "stopped_early": "provider budget exhausted during the seed population",
-  "model_swaps": [
+  "real_evaluations": 11,
+  "surrogate_evaluations": 118,
+  "surrogate_quality": [
     {
-      "from": "gemini-3.1-flash-lite",
-      "to": "gemini-3.5-flash-lite",
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": "gemini-3.5-flash-lite",
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.5-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.5-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.5-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.5-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.5-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.5-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.5-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.5-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.5-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.5-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.5-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.5-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.5-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.5-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.5-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.5-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.5-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.5-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
-    },
-    {
-      "from": "gemini-3.1-flash-lite",
-      "to": null,
-      "reason": "daily quota exhausted"
+      "generation": 1,
+      "samples": 9,
+      "spearman": -0.33333333333333337,
+      "mae": 0.04915885888048007,
+      "beats_random": false
     }
   ],
   "records": [
     {
-      "genome_hash": "cbe128a617466fe9",
+      "genome_hash": "2a8d17827e88b3ed",
       "generation": 0,
-      "origin": "seed:solo",
-      "fitness": 0.7835,
+      "origin": "mut:rewire",
+      "fitness": 0.7107,
+      "accuracy": 0.7647,
+      "tokens": 473450,
+      "agents": 3,
+      "depth": 3,
+      "seconds": 1028.0,
+      "predicted": null
+    },
+    {
+      "genome_hash": "39fd57c6e575c298",
+      "generation": 0,
+      "origin": "mut:merge_agents",
+      "fitness": 0.7926,
       "accuracy": 0.8235,
-      "tokens": 377716,
-      "agents": 1,
-      "depth": 1,
-      "seconds": 0.0,
+      "tokens": 242670,
+      "agents": 3,
+      "depth": 2,
+      "seconds": 1158.2,
       "predicted": null
     },
     {
@@ -287,6 +54,54 @@
       "predicted": null
     },
     {
+      "genome_hash": "4c20dbbed359ab7a",
+      "generation": 0,
+      "origin": "mut:merge_agents",
+      "fitness": 0.8376,
+      "accuracy": 0.8824,
+      "tokens": 381778,
+      "agents": 3,
+      "depth": 2,
+      "seconds": 788.2,
+      "predicted": null
+    },
+    {
+      "genome_hash": "59b12db4896e63d8",
+      "generation": 0,
+      "origin": "mut:add_agent",
+      "fitness": 0.7941,
+      "accuracy": 0.8235,
+      "tokens": 249662,
+      "agents": 2,
+      "depth": 2,
+      "seconds": 480.4,
+      "predicted": null
+    },
+    {
+      "genome_hash": "6859dda0dfabcf2d",
+      "generation": 1,
+      "origin": "mut:reassign_model",
+      "fitness": 0.8453,
+      "accuracy": 0.8824,
+      "tokens": 260052,
+      "agents": 5,
+      "depth": 2,
+      "seconds": 854.2,
+      "predicted": null
+    },
+    {
+      "genome_hash": "bb3340f7f3c91f05",
+      "generation": 0,
+      "origin": "mut:split_agent",
+      "fitness": 0.8319,
+      "accuracy": 0.8824,
+      "tokens": 394388,
+      "agents": 5,
+      "depth": 2,
+      "seconds": 953.3,
+      "predicted": null
+    },
+    {
       "genome_hash": "c3ee2e0c4a6156c5",
       "generation": 0,
       "origin": "seed:flat_pair",
@@ -299,53 +114,65 @@
       "predicted": null
     },
     {
-      "genome_hash": "bb3340f7f3c91f05",
+      "genome_hash": "cbe128a617466fe9",
       "generation": 0,
-      "origin": "mut:split_agent",
-      "fitness": 0.8319,
+      "origin": "seed:solo",
+      "fitness": 0.7835,
+      "accuracy": 0.8235,
+      "tokens": 377716,
+      "agents": 1,
+      "depth": 1,
+      "seconds": 489.9,
+      "predicted": null
+    },
+    {
+      "genome_hash": "cd06778520823bc3",
+      "generation": 1,
+      "origin": "mut:toggle_search",
+      "fitness": 0.8368,
       "accuracy": 0.8824,
-      "tokens": 394388,
+      "tokens": 345226,
       "agents": 5,
       "depth": 2,
-      "seconds": 953.3,
+      "seconds": 866.6,
       "predicted": null
     },
     {
-      "genome_hash": "2a8d17827e88b3ed",
+      "genome_hash": "deca12e87a49c1c5",
       "generation": 0,
-      "origin": "mut:rewire",
-      "fitness": 0.7107,
-      "accuracy": 0.7647,
-      "tokens": 473450,
-      "agents": 3,
-      "depth": 3,
-      "seconds": 1028.0,
-      "predicted": null
-    },
-    {
-      "genome_hash": "59b12db4896e63d8",
-      "generation": 0,
-      "origin": "mut:add_agent",
-      "fitness": 0.7941,
-      "accuracy": 0.8235,
-      "tokens": 249662,
-      "agents": 2,
+      "origin": "mut:split_agent",
+      "fitness": 0.8441,
+      "accuracy": 0.8824,
+      "tokens": 272068,
+      "agents": 5,
       "depth": 2,
-      "seconds": 480.4,
+      "seconds": 732.0,
       "predicted": null
     }
   ],
   "pareto": [
     {
-      "genome_hash": "bb3340f7f3c91f05",
+      "genome_hash": "39fd57c6e575c298",
       "generation": 0,
-      "origin": "mut:split_agent",
-      "fitness": 0.8319,
-      "accuracy": 0.8824,
-      "tokens": 394388,
-      "agents": 5,
+      "origin": "mut:merge_agents",
+      "fitness": 0.7926,
+      "accuracy": 0.8235,
+      "tokens": 242670,
+      "agents": 3,
       "depth": 2,
-      "seconds": 953.3,
+      "seconds": 1158.2,
+      "predicted": null
+    },
+    {
+      "genome_hash": "4c20dbbed359ab7a",
+      "generation": 0,
+      "origin": "mut:merge_agents",
+      "fitness": 0.8376,
+      "accuracy": 0.8824,
+      "tokens": 381778,
+      "agents": 3,
+      "depth": 2,
+      "seconds": 788.2,
       "predicted": null
     },
     {
@@ -358,6 +185,18 @@
       "agents": 2,
       "depth": 2,
       "seconds": 480.4,
+      "predicted": null
+    },
+    {
+      "genome_hash": "6859dda0dfabcf2d",
+      "generation": 1,
+      "origin": "mut:reassign_model",
+      "fitness": 0.8453,
+      "accuracy": 0.8824,
+      "tokens": 260052,
+      "agents": 5,
+      "depth": 2,
+      "seconds": 854.2,
       "predicted": null
     },
     {
@@ -369,7 +208,7 @@
       "tokens": 377716,
       "agents": 1,
       "depth": 1,
-      "seconds": 0.0,
+      "seconds": 489.9,
       "predicted": null
     }
   ]

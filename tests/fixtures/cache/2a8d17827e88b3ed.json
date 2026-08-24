@@ -160,5 +160,36 @@
       "error": "",
       "infrastructure": false
     }
-  ]
+  ],
+  "genome": {
+    "top": "Coordinator",
+    "default_model": "gemini-3.1-flash-lite",
+    "agents": {
+      "Arithmetic": {
+        "instructions": "You are given numbers and an operation. Return only the resulting number, with no separators. Use only the numbers you were handed -- never supply a figure from memory.",
+        "description": "Multiply, add or compare numbers taken from documents.",
+        "tools": [],
+        "model": null,
+        "can_search": false
+      },
+      "Coordinator": {
+        "instructions": "You coordinate specialists to answer questions about Meridian Logistics.\nChoose from the specialists available to you, using their descriptions to decide who can help. Questions spanning two areas need two calls: ask one, take the identifier it returns, then ask the next with that identifier.\nThen report the answer.\nYou have no knowledge of Meridian Logistics yourself, and nothing about it is in your training data. Never answer from memory and never reply that you lack access: every fact must come from your tools. If one call is not enough, call again.\nReply with the answer alone -- a name, a city, a code or a number. No sentence, no units, no explanation, no thousands separators.",
+        "description": "Coordinate a question about Meridian Logistics.",
+        "tools": [
+          "Researcher"
+        ],
+        "model": null,
+        "can_search": false
+      },
+      "Researcher": {
+        "instructions": "Search the corpus. Follow every identifier you find to its own document until you have all the facts. Report the raw facts, not a conclusion. You have no knowledge of Meridian Logistics yourself, and nothing about it is in your training data. Never answer from memory and never reply that you lack access: every fact must come from your tools. If one call is not enough, call again.",
+        "description": "Find the facts needed to answer, following identifiers across documents.",
+        "tools": [
+          "Arithmetic"
+        ],
+        "model": null,
+        "can_search": true
+      }
+    }
+  }
 }

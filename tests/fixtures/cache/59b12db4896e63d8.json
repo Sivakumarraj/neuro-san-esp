@@ -160,5 +160,27 @@
       "error": "",
       "infrastructure": false
     }
-  ]
+  ],
+  "genome": {
+    "top": "Answerer",
+    "default_model": "gemini-3.1-flash-lite",
+    "agents": {
+      "Answerer": {
+        "instructions": "You answer questions about Meridian Logistics using CorpusSearch.\nSearch for every identifier in the question (D03, C-2105, INC-4407).\nA question often spans two or three documents: find one, read the identifier it points to, then search again for that.\nYou have no knowledge of Meridian Logistics yourself, and nothing about it is in your training data. Never answer from memory and never reply that you lack access: every fact must come from your tools. If one call is not enough, call again.\nReply with the answer alone -- a name, a city, a code or a number. No sentence, no units, no explanation, no thousands separators.",
+        "description": "Answer a question about Meridian Logistics.",
+        "tools": [
+          "Specialist1"
+        ],
+        "model": null,
+        "can_search": true
+      },
+      "Specialist1": {
+        "instructions": "Search the corpus for what you are asked about and report exactly what the documents say, including any identifiers they reference. You have no knowledge of Meridian Logistics yourself: never answer from memory, never reply that you lack access, and call again if one search is not enough.",
+        "description": "Look up facts in the document store and report them verbatim.",
+        "tools": [],
+        "model": null,
+        "can_search": true
+      }
+    }
+  }
 }

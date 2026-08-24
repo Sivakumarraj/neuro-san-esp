@@ -26,7 +26,12 @@ from pathlib import Path
 
 import pytest
 
-from esp.eval.runner import Evaluation, TaskResult, classify
+from esp.eval.runner import (
+    Evaluation,
+    TaskResult,
+    classify,
+    evaluation_from_cache,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = ROOT / "tests" / "fixtures" / "cache"
@@ -90,9 +95,8 @@ def test_answered_accuracy_is_none_when_nothing_ran():
 # ------------------------------------ the committed measurements are affected
 
 def load(name: str) -> Evaluation:
-    raw = json.loads((FIXTURES / f"{name}.json").read_text(encoding="utf-8"))
-    raw["results"] = classify([TaskResult(**r) for r in raw["results"]])
-    return Evaluation(**raw)
+    return evaluation_from_cache(
+        json.loads((FIXTURES / f"{name}.json").read_text(encoding="utf-8")))
 
 
 SEEDS = {"459ac1a66d925b0c": "designer_shaped",

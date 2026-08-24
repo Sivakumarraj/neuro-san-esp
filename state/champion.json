@@ -1,5 +1,5 @@
 {
-  "hash": "bb3340f7f3c91f05",
+  "hash": "6859dda0dfabcf2d",
   "genome": {
     "top": "Coordinator",
     "default_model": "gemini-3.1-flash-lite",
@@ -17,13 +17,20 @@
         "tools": [
           "ContractSpecialist",
           "DepotSpecialist",
-          "IncidentSpecialist",
-          "IncidentSpecialist1"
+          "DepotSpecialist1",
+          "IncidentSpecialist"
         ],
-        "model": null,
+        "model": "gemini-3.5-flash-lite",
         "can_search": false
       },
       "DepotSpecialist": {
+        "instructions": "Search the corpus for the depot asked about and report exactly what the document says. You have no knowledge of Meridian Logistics yourself, and nothing about it is in your training data. Never answer from memory and never reply that you lack access: every fact must come from your tools. If one call is not enough, call again.",
+        "description": "Look up depots: city, manager, loading bays, opening year.",
+        "tools": [],
+        "model": null,
+        "can_search": true
+      },
+      "DepotSpecialist1": {
         "instructions": "Search the corpus for the depot asked about and report exactly what the document says. You have no knowledge of Meridian Logistics yourself, and nothing about it is in your training data. Never answer from memory and never reply that you lack access: every fact must come from your tools. If one call is not enough, call again.",
         "description": "Look up depots: city, manager, loading bays, opening year.",
         "tools": [],
@@ -36,21 +43,14 @@
         "tools": [],
         "model": null,
         "can_search": true
-      },
-      "IncidentSpecialist1": {
-        "instructions": "Search the corpus for the incident asked about and report exactly what the document says, including the contract reference it affected. You have no knowledge of Meridian Logistics yourself, and nothing about it is in your training data. Never answer from memory and never reply that you lack access: every fact must come from your tools. If one call is not enough, call again.",
-        "description": "Look up incidents: affected contract, hours late, year, cause.",
-        "tools": [],
-        "model": null,
-        "can_search": true
       }
     }
   },
-  "origin": "mut:split_agent",
+  "origin": "mut:reassign_model",
   "measured": {
     "accuracy": 0.8824,
-    "tokens": 394388,
+    "tokens": 260052,
     "agents": 5,
-    "fitness": 0.8319
+    "fitness": 0.8453
   }
 }

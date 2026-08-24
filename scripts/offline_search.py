@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from esp.eval.runner import CACHE_DIR as DEFAULT_CACHE_DIR
 from esp.evolve.loop import fitness
+from esp.genome.definition import Genome
 from esp.genome.mutations import InvalidMutant, mutate
 from esp.genome.seeds import SEEDS
 from esp.surrogate.predictor import MIN_SAMPLES, Surrogate
@@ -48,10 +49,10 @@ def _shown(path: Path) -> str:
 def _cached_measurements(cache_dir: Path) -> tuple[list, list[float]]:
     """Real evaluations already paid for, matched back to their genomes.
 
-    Only seeds can be recovered: a mutant's genome is not stored beside its
-    score, and reconstructing one from a hash is not possible. That bounds how
-    much training data this mode can ever have, which is worth being explicit
-    about rather than quietly training on three points.
+    Preference is the genome stored beside the score, which lets any measured
+    candidate be replayed. Entries written before that was stored fall back to
+    matching against the seeds, the only genomes rebuildable from source -- so
+    an older cache still loads, just with less of it.
     """
     by_hash = {}
     for build in SEEDS.values():
@@ -61,7 +62,8 @@ def _cached_measurements(cache_dir: Path) -> tuple[list, list[float]]:
     genomes, values = [], []
     for path in sorted(cache_dir.glob("*.json")):
         raw = json.loads(path.read_text())
-        genome = by_hash.get(raw["genome_hash"])
+        stored = raw.get("genome")
+        genome = Genome.from_canonical(stored) if stored else by_hash.get(raw["genome_hash"])
         if genome is None:
             continue
 
