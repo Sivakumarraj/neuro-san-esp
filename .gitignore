@@ -1,0 +1,33 @@
+.esp-cache/
+.esp-networks/
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+results/*
+# ...except the measurements themselves. These cost real provider budget and
+# real hours; they are the evidence the report is built from, and a reader who
+# clones this repository should be able to rebuild that report without paying
+# for them again.
+!results/history.json
+!results/figures/
+!results/figures/*.png
+
+# The live cache is machine-local and quota-dependent. The committed
+# measurements live in tests/fixtures/cache instead, so CI can reproduce them.
+.esp-cache/
+
+# The periodic verification writes a server log and a throwaway state dir.
+.esp-verify.log
+.esp-verify-state/
+
+# A pasted API key. Never committed.
+.env
+
+# Generated from the service's state by scripts/serve_champion.py. Committing it
+# would let a hand-edited copy drift from the genome that earned the score.
+registries/champion.hocon
+registries/champion_manifest.hocon
+logs/
+state/champion.hocon

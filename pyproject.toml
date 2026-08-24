@@ -1,0 +1,64 @@
+[project]
+name = "neuro-san-esp"
+version = "0.1.0"
+description = "Evolutionary Surrogate-assisted Prescription for neuro-san agent networks"
+requires-python = ">=3.12"
+# reportlab and pillow are runtime dependencies of esp/report, not extras. They
+# were undeclared for a while and nothing noticed locally, because a developer
+# venv had them from something else -- CI is the only place that installs from
+# this list alone, and it went red the moment a test imported the report.
+dependencies = [
+    "neuro-san>=0.6.95",
+    # neuro-san lazily imports the provider driver, so a clean install had no
+    # way to call Google at all: every model in `make probe` reported BROKEN
+    # with "No fully-specified LLM found in llm_config", which reads as ten
+    # broken models rather than one missing package. Same shape as the
+    # undeclared reportlab -- it works forever on a machine that happens to
+    # have it, and only a fresh environment can notice.
+    "langchain-google-genai>=2.0",
+    "scikit-learn>=1.5",
+    "numpy>=1.26",
+    "matplotlib>=3.8",
+    # apps/web serves the measured champion behind a URL. Runtime, not an
+    # extra: the shipped container's whole job is to run it.
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "reportlab>=4.0",
+    "pillow>=10.0",
+    # ratelimit steers the Google client's API key at runtime by writing a
+    # SecretStr onto its google_api_key field -- multi-key rotation depends on
+    # it. langchain pulls pydantic transitively, but the ratelimit import is
+    # direct and a clean install without it fails on the first key swap.
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+# neuro-san ships an OpenRouter policy but lazily imports its driver, so the
+# package is only needed by somebody actually running on OpenRouter. Declared
+# rather than left to the lazy install, because a dependency nobody declared is
+# exactly the bug that broke CI when reportlab turned out to be undeclared.
+openrouter = ["langchain-openrouter>=0.1"]
+# pypdf is a test dependency, not a runtime one: the report tests read the
+# rendered PDF back to prove a claim reached the page, rather than trusting that
+# the data structure behind it was right.
+dev = ["pytest>=8.0", "ruff>=0.6", "pypdf>=4.0"]
+
+[tool.setuptools.packages.find]
+include = ["esp*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+# Pinned explicitly. ruff's default set widens between releases, so leaving it
+# implicit means CI can turn red on a day nobody touched the code. ASYNC is kept
+# deliberately: ASYNC251 caught a `time.sleep` inside an async call site that was
+# stalling neuro-san's whole event loop.
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "ASYNC", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# The long lines here are HOCON template content -- tool descriptions the model
+# actually reads to decide how to call CorpusSearch. Reflowing them would change
+# agent behaviour, and therefore fitness, so the line limit yields to them.
+"esp/genome/definition.py" = ["E501"]
