@@ -1,0 +1,38 @@
+{
+    # The optimiser wakes itself. There is no user on the other end of this and
+    # no request to answer -- neuro-san fires it on the schedule below.
+    #
+    # Hourly, not every fifteen minutes. A wake evaluates up to three candidates
+    # and the free tier buys about three a day, so a faster schedule would only
+    # produce wakes that find the budget already spent and decline. The cadence
+    # is set by what the provider allows, not by how often we would like news.
+    "optimizer.hocon": {
+        "serve": true,
+
+        # Not reachable from a browser or any client by default. This agent
+        # spends real provider budget when it is asked to run, and the day's
+        # budget is about three evaluations -- an endpoint anyone can poke is
+        # an endpoint that can empty it before the scheduler gets a turn.
+        #
+        # Set ESP_OPTIMIZER_PUBLIC=true to expose it for a local demonstration.
+        # The deployed default stays closed; this only opens it for whoever
+        # deliberately typed the variable.
+        "public": false,
+        "public": ${?ESP_OPTIMIZER_PUBLIC},
+        "periodic": {
+            "interactions": [
+                {
+                    "enable": true,
+                    "cron_schedule": "0 * * * *",
+                    "cron_schedule": ${?ESP_OPTIMIZER_CRON},
+                    "second_at_beginning": false,
+                    "text": """
+Scheduled optimisation wake. Run one wake, and report only if a better
+topology was found. Most wakes find nothing; say nothing when that happens.
+""",
+                    "metadata": {"user_id": "system"},
+                },
+            ],
+        },
+    },
+}
