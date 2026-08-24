@@ -1,0 +1,8 @@
+.git
+.esp-cache
+.esp-networks
+.pytest_cache
+.ruff_cache
+__pycache__
+*.egg-info
+results
