@@ -1,0 +1,25 @@
+{
+    "llm_config": {
+        "model_name": "gemini-3.5-flash-lite",
+    },
+
+    "metadata": {
+        "description": "Smallest possible network: one agent, one tool. Proves the in-process runner.",
+    },
+
+    "max_steps": 10,
+    "max_execution_seconds": 60,
+
+    "tools": [
+        {
+            "name": "Answerer",
+            "function": {
+                "description": "Answer a question from the shipped corpus.",
+            },
+            "instructions": """
+Answer the user's question in as few words as possible.
+Reply with the answer alone. No sentence, no punctuation, no explanation.
+""",
+        },
+    ]
+}
