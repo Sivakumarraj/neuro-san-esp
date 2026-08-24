@@ -1,0 +1,164 @@
+{
+  "genome_hash": "2a8d17827e88b3ed",
+  "accuracy": 0.7647,
+  "seconds": 1028.0,
+  "tokens": 473450,
+  "cost": 0.164384,
+  "agents": 3,
+  "depth": 3,
+  "results": [
+    {
+      "task_id": "T01",
+      "hops": 1,
+      "correct": true,
+      "seconds": 61.35,
+      "answer": "J. Vasquez",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T02",
+      "hops": 2,
+      "correct": true,
+      "seconds": 62.85,
+      "answer": "Pickering",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T03",
+      "hops": 2,
+      "correct": true,
+      "seconds": 62.4,
+      "answer": "Eastgate",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T04",
+      "hops": 2,
+      "correct": true,
+      "seconds": 242.96,
+      "answer": "Brindle",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T05",
+      "hops": 2,
+      "correct": false,
+      "seconds": 61.21,
+      "answer": "oz.subcall(default_api:Researcher,{inquiry:",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T06",
+      "hops": 3,
+      "correct": false,
+      "seconds": 600.2,
+      "answer": "Agent timed out: max_execution_seconds=600s exceeded.",
+      "error": "",
+      "infrastructure": true
+    },
+    {
+      "task_id": "T07",
+      "hops": 3,
+      "correct": false,
+      "seconds": 300.16,
+      "answer": "Anvil Brewing",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T08",
+      "hops": 3,
+      "correct": false,
+      "seconds": 600.18,
+      "answer": "Agent timed out: max_execution_seconds=600s exceeded.",
+      "error": "",
+      "infrastructure": true
+    },
+    {
+      "task_id": "T09",
+      "hops": 3,
+      "correct": true,
+      "seconds": 117.53,
+      "answer": "Ulverston",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T10",
+      "hops": 3,
+      "correct": true,
+      "seconds": 120.53,
+      "answer": "Knaresborough",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T11",
+      "hops": 4,
+      "correct": true,
+      "seconds": 598.62,
+      "answer": "R. Delacroix",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T12",
+      "hops": 4,
+      "correct": true,
+      "seconds": 177.5,
+      "answer": "R. Nakamura",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T13",
+      "hops": 4,
+      "correct": true,
+      "seconds": 361.11,
+      "answer": "4",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T14",
+      "hops": 2,
+      "correct": true,
+      "seconds": 177.03,
+      "answer": "4500",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T15",
+      "hops": 2,
+      "correct": true,
+      "seconds": 177.27,
+      "answer": "76500",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T16",
+      "hops": 3,
+      "correct": true,
+      "seconds": 120.13,
+      "answer": "31",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T17",
+      "hops": 2,
+      "correct": true,
+      "seconds": 61.2,
+      "answer": "brewing supplies",
+      "error": "",
+      "infrastructure": false
+    }
+  ]
+}
