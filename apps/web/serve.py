@@ -165,6 +165,23 @@ def measurement_count() -> int:
     return len(list(cache.glob("*.json"))) if cache.is_dir() else 0
 
 
+def surrogate_quality() -> dict | None:
+    """The most recent cross-validated quality report, if a run produced one.
+
+    Read from the run history rather than recomputed, so the page reports the
+    predictor that was actually used rather than one fitted here for display.
+    """
+    history = ROOT / "results" / "history.json"
+    if not history.exists():
+        return None
+    try:
+        entries = json.loads(history.read_text(encoding="utf-8")).get(
+            "surrogate_quality") or []
+    except (json.JSONDecodeError, OSError):
+        return None
+    return entries[-1] if entries else None
+
+
 def caveat() -> str:
     """What this deployment has *not* shown, derived rather than written down.
 
@@ -184,6 +201,17 @@ def caveat() -> str:
         parts.append(f"the surrogate has not trained &mdash; it needs "
                      f"{MIN_SAMPLES} measurements and there are {measured}, so "
                      f"the search is still exploring rather than ranking")
+    else:
+        # Having enough samples to train is not the same as training usefully.
+        # Reporting only the count would let the page imply a working predictor
+        # on the strength of a threshold it merely cleared.
+        quality = surrogate_quality()
+        if quality is not None and not quality.get("beats_random", False):
+            parts.append(
+                f"the surrogate trained on {quality.get('samples', measured)} "
+                f"samples and did not rank better than chance "
+                f"(Spearman {quality.get('spearman', float('nan')):+.3f}), so "
+                f"the free search explores rather than selects")
 
     if not parts:
         parts.append("the search has run few generations, so the Pareto front "

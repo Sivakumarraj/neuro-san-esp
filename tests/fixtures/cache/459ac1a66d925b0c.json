@@ -160,5 +160,43 @@
       "error": "",
       "infrastructure": false
     }
-  ]
+  ],
+  "genome": {
+    "top": "Coordinator",
+    "default_model": "gemini-3.1-flash-lite",
+    "agents": {
+      "ContractSpecialist": {
+        "instructions": "Search the corpus for the contract asked about and report exactly what the document says. To compare across all contracts, search for 'contract penalty annual value' and read every result. You have no knowledge of Meridian Logistics yourself, and nothing about it is in your training data. Never answer from memory and never reply that you lack access: every fact must come from your tools. If one call is not enough, call again.",
+        "description": "Look up contracts: client, depot, goods, penalty rate, annual value.",
+        "tools": [],
+        "model": null,
+        "can_search": true
+      },
+      "Coordinator": {
+        "instructions": "You coordinate specialists to answer questions about Meridian Logistics.\nChoose from the specialists available to you, using their descriptions to decide who can help. Questions spanning two areas need two calls: ask one, take the identifier it returns, then ask the next with that identifier.\nThen report the answer.\nYou have no knowledge of Meridian Logistics yourself, and nothing about it is in your training data. Never answer from memory and never reply that you lack access: every fact must come from your tools. If one call is not enough, call again.\nReply with the answer alone -- a name, a city, a code or a number. No sentence, no units, no explanation, no thousands separators.",
+        "description": "Coordinate a question about Meridian Logistics.",
+        "tools": [
+          "ContractSpecialist",
+          "DepotSpecialist",
+          "IncidentSpecialist"
+        ],
+        "model": null,
+        "can_search": false
+      },
+      "DepotSpecialist": {
+        "instructions": "Search the corpus for the depot asked about and report exactly what the document says. You have no knowledge of Meridian Logistics yourself, and nothing about it is in your training data. Never answer from memory and never reply that you lack access: every fact must come from your tools. If one call is not enough, call again.",
+        "description": "Look up depots: city, manager, loading bays, opening year.",
+        "tools": [],
+        "model": null,
+        "can_search": true
+      },
+      "IncidentSpecialist": {
+        "instructions": "Search the corpus for the incident asked about and report exactly what the document says, including the contract reference it affected. You have no knowledge of Meridian Logistics yourself, and nothing about it is in your training data. Never answer from memory and never reply that you lack access: every fact must come from your tools. If one call is not enough, call again.",
+        "description": "Look up incidents: affected contract, hours late, year, cause.",
+        "tools": [],
+        "model": null,
+        "can_search": true
+      }
+    }
+  }
 }
