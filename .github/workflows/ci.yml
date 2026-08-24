@@ -1,0 +1,26 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]" pyhocon
+      # scripts/ is linted too: probe_models.py and offline_search.py are
+      # entry points people actually run, not scratch files.
+      - run: ruff check esp tests scripts apps
+      # No API key in CI: every test here is an offline property of the
+      # genome, the scorer, the cache or the surrogate.
+      - run: python -m pytest tests -q
+      # The offline half of ESP needs no key, no budget and no network, so CI
+      # proves it still works on every push rather than taking it on trust. It
+      # runs against the committed measurements in tests/fixtures/cache, so the
+      # step can genuinely fail -- one that cannot fail proves nothing.
+      #
+      # This names --cache explicitly, so it is not the same command as
+      # `make offline`. The default path that `make offline` takes is covered
+      # by tests/test_offline_search.py, which runs above.
+      - run: PYTHONPATH=$PWD python scripts/offline_search.py --cache tests/fixtures/cache --pool 200
