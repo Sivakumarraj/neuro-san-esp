@@ -73,7 +73,27 @@ def main() -> int:
         "records": [r.__dict__ for r in records],
         "pareto": [r.__dict__ for r in pareto],
     }
-    (out / "history.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    # Refuse to overwrite a richer history. This script reconstructs a
+    # baseline-only view from cached measurements, so running it after a real
+    # search silently destroys that run's own record: the per-candidate origins
+    # collapse to "mutant", surrogate_evaluations resets to zero, and the
+    # cross-validated surrogate quality -- the one number a search exists to
+    # produce -- is replaced by an empty list.
+    destination = out / "history.json"
+    if destination.exists():
+        try:
+            existing = json.loads(destination.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            existing = {}
+        if existing.get("surrogate_quality") or existing.get("surrogate_evaluations"):
+            print(f"refusing to overwrite {destination}: it records a search "
+                  f"({existing.get('surrogate_evaluations', 0)} surrogate "
+                  f"evaluations, "
+                  f"{len(existing.get('surrogate_quality') or [])} quality "
+                  f"report(s)). Delete it first if that is really intended.")
+            return 1
+
+    destination.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
     print(f"{len(records)} measured evaluations -> {out}/history.json")
     for r in sorted(records, key=lambda r: -r.fitness):

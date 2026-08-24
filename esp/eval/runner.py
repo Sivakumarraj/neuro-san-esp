@@ -244,6 +244,22 @@ def write_network(genome: Genome) -> Path:
     return path
 
 
+def evaluation_from_cache(raw: dict) -> Evaluation:
+    """Rebuild an Evaluation from a cached payload.
+
+    Shared rather than inlined because a cache entry carries more than the
+    measurement: the genome is stored beside the score so the candidate can be
+    replayed, and it is not a field of Evaluation. Every reader has to drop it
+    the same way, and the ones that constructed Evaluation(**raw) by hand broke
+    the moment it was added.
+    """
+    raw = dict(raw)
+    raw.pop("genome", None)
+    raw.pop("from_cache", None)
+    raw["results"] = classify([TaskResult(**r) for r in raw["results"]])
+    return Evaluation(**raw)
+
+
 def evaluate(genome: Genome, tasks: list[Task] | None = None,
              use_cache: bool = True) -> Evaluation:
     tasks = tasks or TASKS
@@ -252,9 +268,7 @@ def evaluate(genome: Genome, tasks: list[Task] | None = None,
     cache_path = CACHE_DIR / f"{digest}.json"
 
     if use_cache and cache_path.exists():
-        raw = json.loads(cache_path.read_text())
-        raw["results"] = classify([TaskResult(**r) for r in raw["results"]])
-        evaluation = Evaluation(**raw)
+        evaluation = evaluation_from_cache(json.loads(cache_path.read_text()))
         evaluation.from_cache = True
         return evaluation
 
@@ -316,5 +330,10 @@ def evaluate(genome: Genome, tasks: list[Task] | None = None,
 
     payload = asdict(evaluation)
     payload.pop("from_cache", None)
+    # The genome, not just its hash. A score with no network attached can be
+    # read back but never replayed, which bounded the offline search to the
+    # seeds it could rebuild from source -- three points out of every eleven
+    # measured. A hash cannot be inverted; the canonical form can.
+    payload["genome"] = genome.canonical()
     cache_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return evaluation
