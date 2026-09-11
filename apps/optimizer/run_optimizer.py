@@ -40,7 +40,11 @@ def main() -> int:
     # crash -- it scores every candidate zero and caches the result, so the
     # search is taught that good topologies are bad. Refusing to start is the
     # cheaper failure by a wide margin.
-    checks = run_checks()
+    # The documented preflight asks the provider whether the key works. It is
+    # one free call and it is the whole point of running a preflight: the
+    # failure it prevents is an agent reporting "API key not valid" after the
+    # configuration has already been declared fine.
+    checks = run_checks(live="--offline" not in sys.argv)
     broken = failures(checks)
     if broken:
         print("refusing to start:", file=sys.stderr)
