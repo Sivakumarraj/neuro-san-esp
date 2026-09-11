@@ -17,6 +17,12 @@ dependencies = [
     # have it, and only a fresh environment can notice.
     "langchain-google-genai>=2.0",
     "scikit-learn>=1.5",
+    # Imported directly by the surrogate's rank correlation, so declared
+    # directly. It arrives anyway as a hard requirement of scikit-learn, which
+    # is exactly the reasoning that left reportlab and the Google driver
+    # undeclared: a package that happens to be present is not a package this
+    # project is entitled to import.
+    "scipy>=1.10",
     "numpy>=1.26",
     "matplotlib>=3.8",
     # apps/web serves the measured champion behind a URL. Runtime, not an

@@ -58,6 +58,16 @@ README cannot drift away from the run. Every candidate's genome is stored beside
 in `tests/fixtures/cache/`, so any of them can be rebuilt, served and talked to — `make
 studio` puts all twelve in neuro-san's own UI at once.
 
+**Read the table as a measurement, not as a ranking.** Splitting the 17 tasks in two and
+selecting on one half, the winner of that half never tops the other half and averages rank
+7.2 of 12: seventeen tasks are too few to order individual networks, and the gap between
++0.8941 and +0.8453 is inside the noise. What does survive the split is the population
+claim — the best evolved network beat the best seed on held-out tasks in **100% of 200
+splits**, and evolved networks outrank the hand-written ones by two and a half places.
+`make holdout` reproduces both halves of that from committed data, no key needed, and
+[docs/FINDINGS.md](docs/FINDINGS.md#held-out-tasks-what-this-task-set-can-and-cannot-support)
+works through it.
+
 **The Predictor has started to earn its place, and has not finished.** At the generation the
 first search used it — nine measurements — cross-validated rank correlation was **−0.333**,
 worse than chance, and `results/history.json` records that. Refitted over all twelve it is
@@ -87,7 +97,14 @@ Full numbers, the failure analysis and the prior art are in
 - **No baseline other than the seeds.** Random search and evolution-without-a-surrogate
   would each need their own budget, so the claim is that this beat three hand-written
   topologies, not that it beat the alternative search strategies.
-- **One task domain.** A topology that wins at multi-hop retrieval need not win elsewhere.
+- **Seventeen tasks cannot rank individual networks.** Selecting on half of them and
+  judging on the other half, per-network accuracy carries across the split at +0.022 — no
+  relationship. The population-level result holds out of sample; the per-network ordering
+  does not. More tasks is the only fix, and a better estimator is not one.
+- **One task domain, and the held-out test stays inside it.** Held-out questions come from
+  the same generated world, so what was measured is stability across questions rather than
+  transfer to a new domain. A topology that wins at multi-hop retrieval need not win
+  elsewhere.
 - **The surrogate idea is not novel.** AgentSquare (ICLR 2025) uses a performance predictor
   for the same purpose. What is absent from that work is neuro-san, and what is absent from
   neuro-san is any fitness function at all.
@@ -298,6 +315,7 @@ the cron in `registries/manifest.hocon` with `user_id: system`, no client attach
 make check      # ruff + the full suite, exactly what CI runs
 make verify     # start a real neuro-san server and prove it fires the optimiser
 make offline    # the free half of ESP, end to end, no key
+make holdout    # select on half the tasks, judge on the other half, no key
 ```
 
 The suite covers the genome and its validity gate, the scored tasks, outcome
