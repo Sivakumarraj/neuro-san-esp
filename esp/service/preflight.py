@@ -19,7 +19,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from esp.config import key_source, provider_keys
+from esp.config import key_source, provider_keys, unusable_keys, verify_key
 from esp.eval.failover import (
     EXCLUDED,
     LADDER,
@@ -38,7 +38,15 @@ class Check:
     fatal: bool = True
 
 
-def run_checks(root: Path | None = None) -> list[Check]:
+def run_checks(root: Path | None = None, live: bool = False) -> list[Check]:
+    """Every check that can be made before a candidate is paid for.
+
+    `live` adds one network call that asks the provider whether the key is
+    actually accepted. Off by default so the suite and a keyless clone stay
+    offline; the documented preflight turns it on, because a shape check cannot
+    tell a revoked key from a live one and "API key not valid" is not a thing
+    to discover from inside an agent.
+    """
     root = root or Path(__file__).resolve().parent.parent.parent
     checks: list[Check] = []
 
@@ -49,11 +57,31 @@ def run_checks(root: Path | None = None) -> list[Check]:
     # to somebody debugging why the key they just pasted is not the one in use.
     keys = keyring()
     ring_note = f"; {len(keys)} keys in ring" if len(keys) > 1 else ""
-    checks.append(Check(
-        "provider key", bool(present),
-        f"set, {key_source()}{ring_note}" if present
-        else "unset -- every task would fail identically. Copy .env.example to "
-             ".env and paste GOOGLE_API_KEY or OPENROUTER_API_KEY in"))
+
+    # A key that is set to something unusable is worse than no key, because it
+    # passes a check for presence. `GOOGLE_API_KEY=paste-your-key-here` used to
+    # report as set, and the first real call came back "API key not valid" --
+    # from inside an agent, eight minutes into a candidate.
+    broken = unusable_keys()
+    if present:
+        detail = f"set, {key_source()}{ring_note}"
+    elif broken:
+        detail = "; ".join(f"{name} {problem}"
+                           for name, problem in sorted(broken.items()))
+    else:
+        detail = ("unset -- every task would fail identically. Copy "
+                  ".env.example to .env and paste GOOGLE_API_KEY or "
+                  "OPENROUTER_API_KEY in")
+    checks.append(Check("provider key", bool(present), detail))
+
+    # Asked of the provider, not inferred. Free: it lists models rather than
+    # generating anything, so it spends nothing from a daily budget that buys
+    # three candidates. Non-fatal, because an unreachable provider is a
+    # different problem from a bad key and must not be reported as one.
+    if live and present:
+        accepted, verdict = verify_key(present[0])
+        checks.append(Check("provider key accepted", accepted, verdict,
+                            fatal=accepted is False))
 
     tool_path = os.environ.get("AGENT_TOOL_PATH", "")
     checks.append(Check(

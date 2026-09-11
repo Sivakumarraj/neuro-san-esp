@@ -13,7 +13,6 @@ evaluation can, and that is Phase D. This ranks; it does not measure.
 from __future__ import annotations
 
 import argparse
-import json
 import random
 import sys
 import time
@@ -21,11 +20,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from esp.eval import measurements
 from esp.eval.runner import CACHE_DIR as DEFAULT_CACHE_DIR
-from esp.evolve.loop import fitness
-from esp.genome.definition import Genome
 from esp.genome.mutations import InvalidMutant, mutate
-from esp.genome.seeds import SEEDS
 from esp.surrogate.predictor import MIN_SAMPLES, Surrogate
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -34,7 +31,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # of ESP is genuinely free to run. CI already points at these; the default path
 # did not, which is why `make offline` worked only on a machine that had
 # already spent an API budget.
-FIXTURE_CACHE = ROOT / "tests" / "fixtures" / "cache"
+FIXTURE_CACHE = measurements.FIXTURE_CACHE
 
 
 def _shown(path: Path) -> str:
@@ -49,32 +46,13 @@ def _shown(path: Path) -> str:
 def _cached_measurements(cache_dir: Path) -> tuple[list, list[float]]:
     """Real evaluations already paid for, matched back to their genomes.
 
-    Preference is the genome stored beside the score, which lets any measured
-    candidate be replayed. Entries written before that was stored fall back to
-    matching against the seeds, the only genomes rebuildable from source -- so
-    an older cache still loads, just with less of it.
+    Reads through `esp.eval.measurements`, which is also what `make champion`
+    and the web front end resolve the best network with. This held its own copy
+    of the logic, and the copies disagreed about what counted as a usable
+    measurement.
     """
-    by_hash = {}
-    for build in SEEDS.values():
-        genome = build()
-        by_hash[genome.genome_hash()] = genome
-
-    genomes, values = [], []
-    for path in sorted(cache_dir.glob("*.json")):
-        raw = json.loads(path.read_text())
-        stored = raw.get("genome")
-        genome = Genome.from_canonical(stored) if stored else by_hash.get(raw["genome_hash"])
-        if genome is None:
-            continue
-
-        class _E:
-            accuracy = raw["accuracy"]
-            tokens = raw["tokens"]
-            agents = raw["agents"]
-
-        genomes.append(genome)
-        values.append(fitness(_E()))
-    return genomes, values
+    found = measurements.load(cache_dir)
+    return [m.genome for m in found], [m.fitness for m in found]
 
 
 def main() -> int:

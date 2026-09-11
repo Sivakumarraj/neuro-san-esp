@@ -17,6 +17,7 @@ from pathlib import Path
 
 from reportlab.platypus import PageBreak, Spacer
 
+from esp.report.facts import facts, spelled
 from esp.report.layout import (
     ACCENT,
     AMBER,
@@ -197,7 +198,7 @@ class Explainer(Layout):
 
         self.callout(
             "This is the whole trick",
-            "Trying two thousand designs for real would take eleven days and a large "
+            "Trying two thousand designs for real would take months and a large "
             "bill. Trying two thousand <i>guesses</i> takes a tenth of a second and "
             "costs nothing. You then pay for only the handful the guess says are worth "
             "it.<br/><br/>"
@@ -276,27 +277,47 @@ class Explainer(Layout):
         self.h1("E. What it actually found",
                 "The finding that makes the whole thing worth doing.")
 
+        F = facts()
+        seed_right = round((F.designer.accuracy if F.designer else 0) * F.tasks)
         self.p(
-            "Three different team designs were run for real against all 17 questions. "
-            "The important column is the last one.", BIG)
+            f"{spelled(F.measured).capitalize()} different team designs were run "
+            f"for real against all {F.tasks} questions &mdash; "
+            f"{spelled(F.seeds)} written by hand, {spelled(F.evolved)} invented "
+            "by the search. The important column is the last one.", BIG)
 
         self.table(
             ["The design", "Questions right", "Cost (text processed)", "Agents"],
-            [["One agent doing everything", "high", "<b>the most expensive</b>", "1"],
-             ["A flat pair of agents", "high", "middle", "3"],
-             ["The shape neuro-san's designer produces", "high", "<b>the cheapest</b>",
-              "4"]],
-            widths=[CW * 0.42, CW * 0.18, CW * 0.26, CW * 0.14], highlight=[2])
+            [["One agent doing everything", f"{seed_right} of {F.tasks}",
+              "expensive", "1"],
+             ["A flat pair of agents", f"{seed_right} of {F.tasks}",
+              "middle", "3"],
+             ["The shape neuro-san's designer produces",
+              f"{seed_right} of {F.tasks}", "<b>the dearest</b>", "4"],
+             ["<b>The best one the search found</b>",
+              f"<b>{F.best_correct} of {F.tasks}</b>",
+              "<b>cheaper than the dearest</b>", str(F.best.agents)]],
+            widths=[CW * 0.42, CW * 0.18, CW * 0.26, CW * 0.14], highlight=[3])
 
+        gained = F.best_correct - seed_right
         self.callout(
-            "They answered about equally well. The bills were nowhere near equal.",
-            "The cheapest design costs roughly <b>half</b> what the dearest one does, "
-            "for the same work on the same questions with the same AI model.<br/><br/>"
-            "The <i>shape</i> of the team barely changed what it could do. It changed "
-            "what doing it <b>cost</b>. On a real system answering thousands of "
-            "questions a day, that is an enormous bill for nothing &mdash; and today "
-            "there is no way to see it, because the framework cannot measure any of "
-            "this.")
+            f"It answered {spelled(gained)} more question"
+            f"{'' if gained == 1 else 's'}, and cost less doing it.",
+            f"The design the search found beat all {spelled(F.seeds)} hand-written "
+            f"ones on both counts at once: {spelled(gained)} more question"
+            f"{'' if gained == 1 else 's'} right, and "
+            f"<b>{F.token_saving_percent():.0f}% less</b> text processed than the "
+            "shape neuro-san's own designer produces.<br/><br/>"
+            "What changed was not a new agent or a new tool. It was <b>which AI model "
+            "one agent inside the team uses</b> &mdash; a dial the framework already "
+            "has, which nobody turns, because until now nothing could tell you what "
+            "turning it was worth.<br/><br/>"
+            f"The {spelled(F.seeds)} hand-written designs are the same lesson in "
+            "miniature: they got <i>exactly</i> the same number right as each "
+            f"other for different money, and across all {spelled(F.measured)} "
+            f"designs the dearest cost <b>{F.cost_spread_percent():.0f}% more</b> "
+            "than the cheapest. On a real system answering thousands of questions "
+            "a day, that is a bill nobody can see, because the framework cannot "
+            "measure any of this.")
 
         self.life(
             "your electricity bill",
@@ -402,18 +423,30 @@ class Explainer(Layout):
                 "The part most documents leave out.")
 
         self.callout(
-            "The search has not yet found a better team than the starting one",
-            "Only a handful of real tests exist. Finding a better design needs a "
-            "collection of results, a collection needs allowance, and allowance arrives "
-            "at three tests a day. That is the honest state of it. If it never beats "
-            "the starting design, that will be reported as the answer.",
+            "It found a better team once, on a very small experiment",
+            f"{spelled(facts().measured).capitalize()} real tests exist and the "
+            "search is only a couple of rounds deep. A few rounds, "
+            "one throw of the dice, one kind of question, one AI model &mdash; not "
+            "repeated, and not tried on questions it had never seen before. Being "
+            "<i>sure</i> a design is better needs a collection of results, a "
+            "collection needs allowance, and allowance arrives at three tests a day. "
+            "That is the honest state of it. Had it found nothing better, that would "
+            "be reported as the answer.",
             bg=WARN_BG, bar=AMBER)
 
         self.callout(
-            "The guesser has never actually been trained",
-            "It needs eight real results before it can learn anything; there are fewer. "
-            "Below that it returns the same guess for every design, and the code now "
-            "says so instead of printing a confident-looking number.<br/><br/>"
+            "The guesser has never been shown to help",
+            "It needs eight real results before it can learn anything at all. At the "
+            "round that produced the winning design it had nine, and when tested it "
+            "guessed the order of designs <b>worse than picking at random</b>. So "
+            "that round's improvement came from the searching, not the guessing. "
+            "Given every result collected since, it does better than random, and "
+            "the latest design is the first one it actually picked &mdash; but "
+            "nothing here has yet run the search with the guesser and without it "
+            "on the same budget, which is what would settle whether the guesser "
+            "is worth its place.<br/><br/>"
+            "Below eight results it returns the same guess for every design, and the "
+            "code now says so instead of printing a confident-looking number.<br/><br/>"
             "An earlier version printed <font face='Courier' size='9'>+0.000</font> in "
             "that case, which looked exactly like a measured result of zero. It was a "
             "placeholder. That was quoted as a real measurement for a while &mdash; "

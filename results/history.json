@@ -5,7 +5,7 @@
     "tokens": 0.06,
     "agents": 0.02
   },
-  "real_evaluations": 11,
+  "real_evaluations": 12,
   "surrogate_evaluations": 118,
   "surrogate_quality": [
     {
@@ -39,6 +39,18 @@
       "agents": 3,
       "depth": 2,
       "seconds": 1158.2,
+      "predicted": null
+    },
+    {
+      "genome_hash": "3bf9c008d880c3fc",
+      "generation": 0,
+      "origin": "mut:reassign_model",
+      "fitness": 0.8941,
+      "accuracy": 0.9412,
+      "tokens": 359600,
+      "agents": 5,
+      "depth": 2,
+      "seconds": 0.0,
       "predicted": null
     },
     {
@@ -152,15 +164,27 @@
   ],
   "pareto": [
     {
-      "genome_hash": "39fd57c6e575c298",
+      "genome_hash": "3bf9c008d880c3fc",
       "generation": 0,
-      "origin": "mut:merge_agents",
-      "fitness": 0.7926,
-      "accuracy": 0.8235,
-      "tokens": 242670,
-      "agents": 3,
+      "origin": "mut:reassign_model",
+      "fitness": 0.8941,
+      "accuracy": 0.9412,
+      "tokens": 359600,
+      "agents": 5,
       "depth": 2,
-      "seconds": 1158.2,
+      "seconds": 0.0,
+      "predicted": null
+    },
+    {
+      "genome_hash": "6859dda0dfabcf2d",
+      "generation": 1,
+      "origin": "mut:reassign_model",
+      "fitness": 0.8453,
+      "accuracy": 0.8824,
+      "tokens": 260052,
+      "agents": 5,
+      "depth": 2,
+      "seconds": 854.2,
       "predicted": null
     },
     {
@@ -176,6 +200,18 @@
       "predicted": null
     },
     {
+      "genome_hash": "39fd57c6e575c298",
+      "generation": 0,
+      "origin": "mut:merge_agents",
+      "fitness": 0.7926,
+      "accuracy": 0.8235,
+      "tokens": 242670,
+      "agents": 3,
+      "depth": 2,
+      "seconds": 1158.2,
+      "predicted": null
+    },
+    {
       "genome_hash": "59b12db4896e63d8",
       "generation": 0,
       "origin": "mut:add_agent",
@@ -185,18 +221,6 @@
       "agents": 2,
       "depth": 2,
       "seconds": 480.4,
-      "predicted": null
-    },
-    {
-      "genome_hash": "6859dda0dfabcf2d",
-      "generation": 1,
-      "origin": "mut:reassign_model",
-      "fitness": 0.8453,
-      "accuracy": 0.8824,
-      "tokens": 260052,
-      "agents": 5,
-      "depth": 2,
-      "seconds": 854.2,
       "predicted": null
     },
     {

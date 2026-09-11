@@ -19,6 +19,7 @@ from pathlib import Path
 
 from reportlab.platypus import PageBreak
 
+from esp.report.facts import facts, spelled
 from esp.report.layout import (
     AMBER,
     BAD,
@@ -576,12 +577,20 @@ class Dossier(Layout):
 
         self.callout(
             "Read the surrogate line honestly",
-            "On three real samples the Predictor's rank correlation is +0.000 &mdash; "
-            "<b>no better than chance</b>, and the document says so rather than "
-            "hiding it. That is what a surrogate trained on three points is worth. The "
-            "machinery is correct and the ranking is free; the accuracy of the ranking "
-            "is a function of how many real evaluations the service has accumulated, "
-            "which is exactly why it runs every hour instead of once.",
+            "At the generation the search actually used it &mdash; nine real samples "
+            "&mdash; the Predictor's cross-validated rank correlation was "
+            "<b>&minus;0.333</b>: <b>worse than chance</b>, and recorded in "
+            "<font face='Courier' size='9'>results/history.json</font> rather than "
+            f"hidden. Refitted afterwards on all {spelled(facts().measured)} it "
+            "comes out positive on every "
+            "split tried, roughly <b>+0.24 to +0.65</b> &mdash; but that is a "
+            f"measurement taken after the fact, and at {spelled(facts().measured)} "
+            "samples the figure moves "
+            "with the cross-validation split, so no single value from it is worth "
+            "quoting. The machinery is correct and the ranking is free; whether the "
+            "ranking is any good is a function of how many real evaluations have "
+            "accumulated, which is exactly why the service runs every hour instead of "
+            "once.",
             bg=WARN_BG, bar=AMBER)
 
         self.h2("The framework really does wake it")
@@ -635,9 +644,12 @@ class Dossier(Layout):
              "Token cost was normalised by 60,000 while real candidates burned 260,000, "
              "so the term saturated and contributed nothing. The run would have "
              "reported itself as multi-objective while optimising accuracy alone. "
-             "Fixed, the three seeds show <b>identical 0.82 accuracy with a 42% cost "
-             "spread</b> &mdash; 278,532 tokens against 396,378. That spread is the "
-             "entire opportunity, and it was invisible until the scale was right."),
+             f"Fixed, the {spelled(facts().measured)} measured networks spread "
+             f"<b>from {facts().cheapest_tokens:,} tokens to "
+             f"{facts().dearest_tokens:,}</b> &mdash; a factor of two &mdash; "
+             "for accuracies far closer together than that. That spread is the "
+             "entire opportunity, and it was invisible until the scale was "
+             "right."),
             ("Rate limiting is a correctness requirement",
              "A 429 comes back through neuro-san as an agent error. The candidate "
              "scores zero and the search learns that a perfectly good topology is bad. "
@@ -768,11 +780,20 @@ class Dossier(Layout):
             "output, because the designer wires networks against its own toolbox and "
             "cannot see this corpus. The shape is what is compared, and the shape is "
             "faithful.",
-            "<b>No evolved candidate has yet beaten the baseline.</b> Three real "
-            "evaluations exist. Beating a baseline needs a population, a population "
-            "needs budget, and budget arrives at three candidates a day &mdash; which "
-            "is the reason the service exists and the reason it is measured in weeks. "
-            "If it never beats the baseline, that gets reported as the result.",
+            f"<b>{spelled(facts().measured).capitalize()} real evaluations, a "
+            "search only a couple of generations deep.</b> Evolved candidates did "
+            "beat every seed, but on one search, one random seed, one base model "
+            "and one task domain, with no repeat run and no held-out tasks. Budget "
+            "arrives at three candidates a day, which is the reason the service "
+            "exists and the reason this is measured in weeks rather than "
+            "afternoons.",
+            "<b>The surrogate has not been shown to beat picking at random.</b> "
+            "The generation that produced the first winner ranked with a Predictor "
+            "measured at &minus;0.333, worse than chance. The most recent network "
+            "is the first the Predictor actually chose, and it is the best "
+            "measured. Settling which of those the loop deserves credit for needs "
+            "a run that searches with the Predictor and without it on the same "
+            "budget, and that has not been bought.",
             "<b>Automated agent architecture search is an active field.</b> The idea "
             "is not new. What is absent from all of it is neuro-san, and what is absent "
             "from neuro-san is any fitness function at all.",

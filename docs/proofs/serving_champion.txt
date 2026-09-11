@@ -1,3 +1,27 @@
+Two captures, from different dates, because the two halves need different
+things: the first runs anywhere, the second needed a live server and provider
+budget. Both are shown as taken.
+
+--- captured 2026-09-11, on a clean clone with no key and no service state
+
+$ python scripts/serve_champion.py
+No service population yet -- serving the best committed measurement: mut:reassign_model at +0.8453.
+Run a wake with a key to serve your own.
+
+champion: mut:reassign_model (6859dda0dfabcf2d)
+  accuracy 0.88   tokens 260,052   agents 5   fitness +0.8453
+  wrote registries/champion.hocon
+  wrote registries/champion_manifest.hocon
+
+That is the winner of the search -- an evolved candidate, not a seed --
+rebuilt from the genome stored beside its score and served as an ordinary
+neuro-san agent network. The block below predates that: until every measured
+candidate carried its genome, only seeds could be resurrected, so the same
+command served designer_shaped at +0.7761 while the actual champion sat
+unreachable at +0.8453.
+
+--- captured 2026-08-22, one live session: a real server, curl, a browser
+
 $ python scripts/serve_champion.py
 champion: designer_shaped (459ac1a66d925b0c)
   accuracy 0.82   tokens 278,532   agents 4   fitness +0.7868
@@ -27,7 +51,9 @@ spent, and the daily reset is midnight Pacific:
     429 RESOURCE_EXHAUSTED   quotaId GenerateRequestsPerDayPerProjectPerModel
     limit 500   model gemini-3.1-flash-lite
 
-So what is verified here is the serving path: the winner of the search is
-served as an ordinary agent, a browser reaches it, and a request travels
-through the real agents in the real topology. The final answer needs budget
-that today did not have, and that is stated rather than left out.
+So what is verified here is the serving path: a measured topology is served as
+an ordinary agent, a browser reaches it, and a request travels through the real
+agents in the real topology. The final answer needed budget that day did not
+have, and the accuracy and token figures quoted in the older block are the ones
+that run reported at the time, superseded by the eleven-candidate population in
+results/history.json. Both are stated rather than quietly reconciled.

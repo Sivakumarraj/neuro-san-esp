@@ -1,0 +1,59 @@
+Every measured network in neuro-san's accelerator UI, captured 2026-09-11 on a
+clean clone with a live provider key.
+
+$ python scripts/serve_studio.py
+11 measured network(s) rendered into registries/:
+
+   1. evolved_reassign_model     fitness +0.8453  acc 0.8824   260,052 tokens  5 agent(s)
+   2. evolved_split_agent_deca12e8 fitness +0.8441  acc 0.8824   272,068 tokens  5 agent(s)
+   3. evolved_merge_agents_4c20dbbe fitness +0.8376  acc 0.8824   381,778 tokens  3 agent(s)
+   4. evolved_toggle_search      fitness +0.8368  acc 0.8824   345,226 tokens  5 agent(s)
+   5. evolved_split_agent_bb3340f7 fitness +0.8319  acc 0.8824   394,388 tokens  5 agent(s)
+   6. evolved_add_agent          fitness +0.7941  acc 0.8235   249,662 tokens  2 agent(s)
+   7. evolved_merge_agents_39fd57c6 fitness +0.7926  acc 0.8235   242,670 tokens  3 agent(s)
+   8. seed_flat_pair             fitness +0.7852  acc 0.8235   316,074 tokens  3 agent(s)
+   9. seed_solo                  fitness +0.7835  acc 0.8235   377,716 tokens  1 agent(s)
+  10. seed_designer_shaped       fitness +0.7761  acc 0.8235   385,280 tokens  4 agent(s)
+  11. evolved_rewire             fitness +0.7107  acc 0.7647   473,450 tokens  3 agent(s)
+
+$ python -m nsflow.run            (AGENT_MANIFEST_FILE=registries/studio_manifest.hocon)
+[Startup] Default NsConfig set to http://localhost:8080
+Serving frontend from: .../nsflow/prebuilt_frontend/dist
+Application startup complete.
+
+$ curl -s localhost:4173/                                   -> http 200
+$ curl -s localhost:8080/api/v1/list                        -> 11 agents
+
+    studio_evolved_add_agent              studio_evolved_split_agent_bb3340f7
+    studio_evolved_merge_agents_39fd57c6  studio_evolved_split_agent_deca12e8
+    studio_evolved_merge_agents_4c20dbbe  studio_evolved_toggle_search
+    studio_evolved_reassign_model         studio_seed_designer_shaped
+    studio_evolved_rewire                 studio_seed_flat_pair
+                                          studio_seed_solo
+
+Each carries its measurement in the description the UI shows, so the list is
+ranked and readable rather than a column of hashes:
+
+    studio_evolved_reassign_model
+    "Rank 1 of 11 by measured fitness (+0.8453): evolved by the reassign_model
+     operator. Scored 88.24% on 17 multi-hop questions using 260,052 tokens
+     across 5 agent(s), measured on gemini-3.1-flash-lite.
+     Genome 6859dda0dfabcf2d. Chosen by measurement, not guessing."
+
+The optimiser is served and not public, as in the deployed manifest -- it
+spends the day's whole evaluation budget when poked, and the day buys about
+three evaluations.
+
+A real question to the winning network, over HTTP, against a live key:
+
+$ curl -X POST localhost:8080/api/v1/studio_evolved_reassign_model/streaming_chat \
+      -d '{"user_message":{"type":"HUMAN",
+           "text":"Who is the depot manager of Meridian Logistics depot D08?"}}'
+
+    {"type": "AGENT_FRAMEWORK", "text": "J. Vasquez",
+     "origin": [{"tool": "Coordinator", "instantiation_index": 1}]}
+
+Correct: T01's answer is J. Vasquez. The network that answered is the genome
+that earned +0.8453, rebuilt from the measurement rather than described, and
+every other measured topology is sitting beside it in the same UI to be asked
+the same question.

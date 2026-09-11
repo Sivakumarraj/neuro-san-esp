@@ -336,3 +336,35 @@ def test_state_written_before_genomes_were_stored_still_loads(state_dir):
     best = ServiceState.load(state_dir).best()
     assert best.genome is None
     assert best.genome_hash == "a" * 16
+
+
+# ------------------------------------------- what must never be committed
+
+def test_runtime_state_is_not_committable():
+    """A deployment's population, spend ledger and lease are its own.
+
+    Committed, `state.json` would have every clone start up believing it had
+    already measured candidates on somebody else's key and already spent
+    today's budget. A committed `lease.json` is worse than clutter: the lease
+    is refused only while its timestamp is inside ESP_LEASE_SECONDS, so a
+    clone would decline to run a wake for the rest of that hour and report
+    that another optimiser holds a lease which does not exist.
+    """
+    import subprocess
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    tracked = set(subprocess.run(["git", "ls-files"], cwd=root,
+                                 capture_output=True, text=True).stdout.split())
+    for name in ("state/state.json", "state/lease.json",
+                 "state/lease.json.guard"):
+        assert name not in tracked, f"{name} is committed runtime state"
+
+    ignored = subprocess.run(
+        ["git", "check-ignore", "state/state.json", "state/lease.json",
+         "state/lease.json.guard"],
+        cwd=root, capture_output=True, text=True)
+    assert ignored.returncode == 0, (
+        "runtime state is not gitignored, so the next real wake leaves it "
+        "staged for commit")
+    assert len(ignored.stdout.split()) == 3, ignored.stdout

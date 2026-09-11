@@ -30,6 +30,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from esp.config import bootstrap
+from esp.eval import measurements
 from esp.genome.definition import DEFAULT_MODEL, Genome
 from esp.genome.seeds import SEEDS
 from esp.service.state import Evaluated, ServiceState
@@ -39,32 +40,30 @@ REGISTRY = ROOT / "registries"
 
 
 def committed_best() -> Evaluated | None:
-    """The best topology in `results/history.json`, which is committed.
+    """The best topology in the committed evaluation cache.
 
     `make champion` read only the service's own state, so on a fresh clone it
     exited with "nothing measured yet -- run a wake first" -- and a wake needs a
     key. The measurements this repository reports everywhere else were sitting
-    in `results/` the whole time, unreachable. Same shape as the bug that had
-    `make offline` demanding an API budget to run the half of ESP that is meant
-    to be free.
+    in the repository the whole time, unreachable.
+
+    Fixing that by reading `results/history.json` only went half way: that file
+    records scores and no genomes, so it could offer nothing but the seeds, and
+    a fresh clone was served `flat_pair` at +0.7852 while the actual champion
+    sat at +0.8453 in `tests/fixtures/cache/` with its genome beside its score.
+    One reader now serves this script, the web front end and the offline
+    search, so there is one answer to "what is the best measured network" rather
+    than three.
     """
-    history = ROOT / "results" / "history.json"
-    if not history.exists():
+    found = measurements.best()
+    if found is None:
         return None
-    try:
-        records = json.loads(history.read_text(encoding="utf-8"))["records"]
-    except (json.JSONDecodeError, KeyError):
-        return None
-    seeds = [r for r in records if str(r.get("origin", "")).startswith("seed:")]
-    if not seeds:
-        return None
-    best = max(seeds, key=lambda r: r["fitness"])
     return Evaluated(
-        genome_hash=best["genome_hash"], origin=best["origin"],
-        fitness=best["fitness"], accuracy=best["accuracy"],
-        tokens=best["tokens"], agents=best["agents"], depth=best["depth"],
-        generation=best.get("generation", 0), measured_at="",
-        model=best.get("model", ""))
+        genome_hash=found.genome_hash, origin=found.origin,
+        fitness=found.fitness, accuracy=found.accuracy,
+        tokens=found.tokens, agents=found.agents, depth=found.depth,
+        generation=0, measured_at="", model=found.genome.default_model,
+        genome=found.genome.canonical())
 
 
 def champion_genome(state: ServiceState):
@@ -82,13 +81,14 @@ def champion_genome(state: ServiceState):
         # would misreport what they are talking to.
         best = committed_best()
         if best is not None:
-            print("No service population yet -- serving the best topology from "
-                  "the committed measurements in results/history.json.")
+            print(f"No service population yet -- serving the best committed "
+                  f"measurement: {best.origin or best.genome_hash} at "
+                  f"{best.fitness:+.4f}.")
             print("Run a wake with a key to serve your own.\n")
     if best is None:
         raise SystemExit(
-            "nothing measured yet, and results/history.json holds no seed "
-            "measurement either -- run a wake first")
+            "nothing measured yet, and the committed evaluation cache is empty "
+            "too -- run a wake first")
 
     for name, build in SEEDS.items():
         genome = build()
@@ -202,6 +202,17 @@ def main() -> int:
     if args.model and args.model != record.model:
         print(f"  NOTE: serving on {args.model}, measured on {record.model} -- "
               "same topology, but the numbers above are not what you will get")
+    elif genome.default_model != DEFAULT_MODEL:
+        # The genome carries the model it was measured on, so this serves that
+        # model whatever the environment is configured for. Worth saying: an
+        # operator who set ESP_DEFAULT_MODEL because the measured model's quota
+        # was spent will otherwise watch the champion fail on a 429 and have no
+        # way to see why. `--model` is the lever, and the numbers stop
+        # describing what you are talking to when it is pulled.
+        print(f"  NOTE: this network is pinned to {genome.default_model}, the "
+              f"model it was measured on, so that is what it will call -- not "
+              f"the configured {DEFAULT_MODEL}. Pass --model "
+              f"{DEFAULT_MODEL} to serve the topology on that instead.")
     print("\nServe it:")
     print(f"  AGENT_MANIFEST_FILE={manifest} \\")
     print(f"  AGENT_TOOL_PATH={ROOT} PYTHONPATH={ROOT} \\")
