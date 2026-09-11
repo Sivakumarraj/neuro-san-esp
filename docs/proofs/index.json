@@ -43,8 +43,14 @@
   },
   {
     "name": "serving_champion",
-    "command": "(assembled by hand from one live session: serve_champion.py, a real neuro-san server, curl, and a browser)",
-    "attested": "assembled by hand from one live session: serve_champion.py, a real neuro-san server, curl, and a browser",
-    "lines": 33
+    "command": "(assembled by hand -- two captures: serve_champion.py re-run on a clean clone 2026-09-11, and one live 2026-08-22 session with a real neuro-san server, curl and a browser)",
+    "attested": "two captures: serve_champion.py re-run on a clean clone 2026-09-11, and one live 2026-08-22 session with a real neuro-san server, curl and a browser",
+    "lines": 59
+  },
+  {
+    "name": "studio",
+    "command": "(assembled by hand -- one live session 2026-09-11: serve_studio.py, nsflow, curl against the neuro-san server, and a real question answered by the winning network)",
+    "attested": "one live session 2026-09-11: serve_studio.py, nsflow, curl against the neuro-san server, and a real question answered by the winning network",
+    "lines": 59
   }
 ]

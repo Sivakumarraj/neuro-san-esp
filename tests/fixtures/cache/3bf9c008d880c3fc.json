@@ -1,0 +1,210 @@
+{
+  "genome_hash": "3bf9c008d880c3fc",
+  "accuracy": 0.9412,
+  "seconds": 655.03,
+  "tokens": 359600,
+  "cost": 0.181239,
+  "agents": 5,
+  "depth": 2,
+  "results": [
+    {
+      "task_id": "T01",
+      "hops": 1,
+      "correct": true,
+      "seconds": 43.05,
+      "answer": "J. Vasquez",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T02",
+      "hops": 2,
+      "correct": true,
+      "seconds": 143.46,
+      "answer": "Pickering",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T03",
+      "hops": 2,
+      "correct": true,
+      "seconds": 49.57,
+      "answer": "Eastgate",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T04",
+      "hops": 2,
+      "correct": true,
+      "seconds": 83.46,
+      "answer": "Brindle",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T05",
+      "hops": 2,
+      "correct": true,
+      "seconds": 101.56,
+      "answer": "R. Halvorsen",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T06",
+      "hops": 3,
+      "correct": true,
+      "seconds": 532.06,
+      "answer": "C-2139",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T07",
+      "hops": 3,
+      "correct": false,
+      "seconds": 61.99,
+      "answer": "Bright Circuit",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T08",
+      "hops": 3,
+      "correct": true,
+      "seconds": 219.76,
+      "answer": "C-2100",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T09",
+      "hops": 3,
+      "correct": true,
+      "seconds": 208.99,
+      "answer": "Ulverston",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T10",
+      "hops": 3,
+      "correct": true,
+      "seconds": 199.81,
+      "answer": "Knaresborough",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T11",
+      "hops": 4,
+      "correct": true,
+      "seconds": 148.24,
+      "answer": "R. Delacroix",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T12",
+      "hops": 4,
+      "correct": true,
+      "seconds": 139.19,
+      "answer": "R. Nakamura",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T13",
+      "hops": 4,
+      "correct": true,
+      "seconds": 190.67,
+      "answer": "4",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T14",
+      "hops": 2,
+      "correct": true,
+      "seconds": 86.81,
+      "answer": "4500",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T15",
+      "hops": 2,
+      "correct": true,
+      "seconds": 32.85,
+      "answer": "76500",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T16",
+      "hops": 3,
+      "correct": true,
+      "seconds": 50.89,
+      "answer": "31",
+      "error": "",
+      "infrastructure": false
+    },
+    {
+      "task_id": "T17",
+      "hops": 2,
+      "correct": true,
+      "seconds": 90.68,
+      "answer": "brewing supplies",
+      "error": "",
+      "infrastructure": false
+    }
+  ],
+  "genome": {
+    "top": "Coordinator",
+    "default_model": "gemini-3.1-flash-lite",
+    "agents": {
+      "ContractSpecialist": {
+        "instructions": "Search the corpus for the contract asked about and report exactly what the document says. To compare across all contracts, search for 'contract penalty annual value' and read every result. You have no knowledge of Meridian Logistics yourself, and nothing about it is in your training data. Never answer from memory and never reply that you lack access: every fact must come from your tools. If one call is not enough, call again.",
+        "description": "Look up contracts: client, depot, goods, penalty rate, annual value.",
+        "tools": [],
+        "model": null,
+        "can_search": true
+      },
+      "Coordinator": {
+        "instructions": "You coordinate specialists to answer questions about Meridian Logistics.\nChoose from the specialists available to you, using their descriptions to decide who can help. Questions spanning two areas need two calls: ask one, take the identifier it returns, then ask the next with that identifier.\nThen report the answer.\nYou have no knowledge of Meridian Logistics yourself, and nothing about it is in your training data. Never answer from memory and never reply that you lack access: every fact must come from your tools. If one call is not enough, call again.\nReply with the answer alone -- a name, a city, a code or a number. No sentence, no units, no explanation, no thousands separators.",
+        "description": "Coordinate a question about Meridian Logistics.",
+        "tools": [
+          "ContractSpecialist",
+          "DepotSpecialist",
+          "DepotSpecialist1",
+          "IncidentSpecialist"
+        ],
+        "model": "gemini-3.5-flash",
+        "can_search": false
+      },
+      "DepotSpecialist": {
+        "instructions": "Search the corpus for the depot asked about and report exactly what the document says. You have no knowledge of Meridian Logistics yourself, and nothing about it is in your training data. Never answer from memory and never reply that you lack access: every fact must come from your tools. If one call is not enough, call again.",
+        "description": "Look up depots: city, manager, loading bays, opening year.",
+        "tools": [],
+        "model": null,
+        "can_search": true
+      },
+      "DepotSpecialist1": {
+        "instructions": "Search the corpus for the depot asked about and report exactly what the document says. You have no knowledge of Meridian Logistics yourself, and nothing about it is in your training data. Never answer from memory and never reply that you lack access: every fact must come from your tools. If one call is not enough, call again.",
+        "description": "Look up depots: city, manager, loading bays, opening year.",
+        "tools": [],
+        "model": null,
+        "can_search": true
+      },
+      "IncidentSpecialist": {
+        "instructions": "Search the corpus for the incident asked about and report exactly what the document says, including the contract reference it affected. You have no knowledge of Meridian Logistics yourself, and nothing about it is in your training data. Never answer from memory and never reply that you lack access: every fact must come from your tools. If one call is not enough, call again.",
+        "description": "Look up incidents: affected contract, hours late, year, cause.",
+        "tools": [],
+        "model": null,
+        "can_search": true
+      }
+    }
+  }
+}

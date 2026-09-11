@@ -6,64 +6,143 @@ keeps the summary; this keeps the argument.
 
 ## What was measured
 
-Three seed topologies, same 17 tasks, same model:
+**Twelve networks, 17 tasks each, 204 real task runs on real model calls.** Three seeds
+and nine mutants, every one of them cached with its per-task outcomes and its genome in
+`tests/fixtures/cache/`, summarised in `results/history.json`.
 
-| Topology | Accuracy | Of what it answered | Never finished | Tokens | Agents |
-|---|---|---|---|---|---|
-| `designer_shaped` (the shape the designer produces) | 0.82 | 0.93 (14/15) | 2 | **278,532** | 4 |
-| `flat_pair` | 0.82 | 0.88 (14/16) | 1 | 326,364 | 3 |
-| `solo` (one agent, one tool) | 0.82 | **1.00 (14/14)** | 3 | **396,378** | 1 |
+| Origin | Accuracy | Of what it answered | Never finished | Tokens | Agents | Fitness |
+|---|---|---|---|---|---|---|
+| **`mut:reassign_model`** | **0.9412** | **0.94 (16/17)** | **0** | 359,600 | 5 | **0.8941** |
+| `mut:reassign_model` | 0.8824 | 1.00 (15/15) | 2 | **260,052** | 5 | 0.8453 |
+| `mut:split_agent` | 0.8824 | 0.94 (15/16) | 1 | 272,068 | 5 | 0.8441 |
+| `mut:merge_agents` | 0.8824 | 0.94 (15/16) | 1 | 381,778 | 3 | 0.8376 |
+| `mut:toggle_search` | 0.8824 | 0.94 (15/16) | 1 | 345,226 | 5 | 0.8368 |
+| `mut:split_agent` | 0.8824 | 0.94 (15/16) | 1 | 394,388 | 5 | 0.8319 |
+| `mut:add_agent` | 0.8235 | 0.93 (14/15) | 2 | 249,662 | 2 | 0.7941 |
+| `mut:merge_agents` | 0.8235 | 0.93 (14/15) | 2 | **242,670** | 3 | 0.7926 |
+| `seed:flat_pair` | 0.8235 | 0.88 (14/16) | 1 | 316,074 | 3 | 0.7852 |
+| `seed:solo` (one agent, one tool) | 0.8235 | 1.00 (14/14) | 3 | 377,716 | 1 | 0.7835 |
+| `seed:designer_shaped` (the designer's shape) | 0.8235 | 0.88 (14/16) | 1 | 385,280 | 4 | 0.7761 |
+| `mut:rewire` | 0.7647 | 0.87 (13/15) | 2 | 473,450 | 3 | 0.7107 |
 
-**The 42% spread in cost is real, and part of it is the cost of failing.** Topology
-changed what answering cost, and that is precisely the measurement neuro-san cannot make
-today. It is only visible because of the `TOKEN_SCALE` fix below — under the saturated
-scale all three clipped to the same penalty and scored as indistinguishable.
+**The search beat all three seeds twice, and both wins came from the same knob.** The best
+network answers 16 of 17 against `designer_shaped`'s 14, on 7% fewer tokens. A second one
+reaches 15 of 17 for 32% fewer. Six networks now sit on the Pareto front; five of the six
+are evolved, and the one seed on it is there only for being the smallest.
 
-The qualifier matters. The three tasks below are full-corpus aggregations — *"across all
-forty contracts, which has the highest…"* — and `CorpusSearch` returns three documents a
-query, so answering one means about fourteen successive searches. No topology managed it.
-They are not free to fail: they consumed **44% of `designer_shaped`'s wall-clock, 34% of
-`flat_pair`'s and 60% of `solo`'s**, on 18% of the tasks. Whatever a topology spends
-looping on a question it cannot answer is charged to it as cost, so the spread measures
-efficiency *and* failure mode together. Separating them needs a re-measurement this
-project has not been able to buy.
+**Both winners reassigned the front man's model and left every specialist alone.** The best
+puts `gemini-3.5-flash` on the Coordinator and keeps all four specialists on
+`gemini-3.1-flash-lite`; the cheaper winner does the same with `gemini-3.5-flash-lite`. The
+agent that decides *who to ask* is the one worth paying for, and the agents that do the
+looking are not. That is a per-agent setting neuro-san already supports, that nothing in
+the framework tunes, and that is invisible in the topology — two networks with an identical
+shape and a different model assignment are a 5.9-point accuracy difference apart here.
 
-**The identical accuracy is not real, and this table used to say so.** It read
-*"identical accuracy — topology did not change what these networks could answer"*, over a
-row of three 0.82s and the words *"zero errors"*. All three do score 0.8235, because all
-three failed exactly three of the seventeen tasks. They failed them for three different
-reasons:
+**The best network is the first to finish all seventeen tasks.** Every other measured
+topology lost at least one run to a timeout or a blown recursion cap. Its single miss is a
+wrong answer to T07 — it said `Bright Circuit` — which is a different and more respectable
+failure than not finishing. A better router does not merely choose better; it stops the
+network wandering until the clock runs out.
 
-- `solo` hit neuro-san's **recursion cap** on all three, and never produced an answer to
-  any of them. Its accuracy on those questions is unknown, not zero.
-- `designer_shaped` **timed out** on two at `max_execution_seconds=600` and got one
+**The cost spread across the population is 95%**, from 242,670 tokens to 473,450, for
+accuracies inside 18 points of each other. Topology and per-agent model assignment changed
+what answering cost by a factor of two, and that is precisely the measurement neuro-san
+cannot make today. It is only visible because of the `TOKEN_SCALE` fix below —
+under the saturated scale everything clipped to the same penalty and scored as
+indistinguishable.
+
+**The Predictor did not contribute to this result.** `results/history.json` records one
+cross-validated quality report, at generation 1 on nine samples: **spearman −0.333, mae
+0.049, `beats_random: false`**. That is the surrogate the search actually ranked with, and
+it ranked worse than chance.
+
+Refitting `report_quality` over all twelve committed measurements says something better,
+with a caveat attached. Across three input orderings and forty cross-validation seeds — 120
+runs — spearman came out **positive every time, +0.280 to +0.755, median +0.671**, beating
+the 0.2 threshold in all 120. At eleven measurements the same sweep gave +0.236 to +0.645,
+median +0.518: the estimate is improving and its spread is narrowing as samples accumulate,
+which is the expected shape and not yet a result.
+
+The spread is still part of the finding. At this sample size the number moves by almost 0.5
+depending on how `KFold` happens to split, so **any single figure quoted from it is an
+artefact of a seed** — which is why a range is given here and nowhere is one value.
+
+**The twelfth network is the first the Predictor actually chose.** A service wake trained on
+eleven real samples, ranked a pool of mutants, paid for the top of it, and the candidate it
+picked beat everything measured before. That is the ESP loop working end to end, once. It is
+not evidence that the surrogate beats picking at random, because nothing in this repository
+has yet run both on the same budget — and until that exists, the honest attribution for the
+improvement is the evolutionary search with the Predictor unproven alongside it.
+
+`esp/surrogate/predictor.py` reports `spearman` as `None` rather than `0.000` when there
+are too few samples to cross-validate, because a placeholder printed in a measurement's
+format is worse than an absence.
+
+### The accuracy tie among the seeds is not a finding
+
+All three seeds score 0.8235, and this table used to read *"identical accuracy — topology
+did not change what these networks could answer"*, over a row of three 0.82s and the words
+*"zero errors"*. They each failed three of the seventeen tasks, for different reasons:
+
+- `solo` hit neuro-san's **recursion cap** on all three (T06, T07, T08) and never produced
+  an answer to any of them. Its accuracy on those questions is unknown, not zero.
+- `designer_shaped` **timed out** on one at `max_execution_seconds=600` and got two
   genuinely wrong.
 - `flat_pair` timed out on one and got two genuinely wrong.
 
 neuro-san returns a timeout and a blown recursion cap as ordinary answer strings, so they
 reached the scorer, compared false against the expected answer, and were cached as wrong
-answers. The runner already refuses to cache an evaluation poisoned by a provider quota —
+answers. The runner already refused to cache an evaluation poisoned by a provider quota —
 with a comment warning about *"a plausible-looking partial score that gets cached
 forever"* — but the guard did not cover the two failures that actually happened.
 
-Split the two apart and the ordering inverts: on the questions each topology actually
-finished, `solo` got everything right and `designer_shaped` did not. What topology changed
-here was **how often the network finished at all**, which is a different and more
-interesting finding than the one this table used to report. It is also a weaker one: three
-measurements, and six of the fifty-one task runs are not measurements of anything.
+Split the two apart and the ordering among the seeds inverts: on the questions each
+actually finished, `solo` got everything right and `designer_shaped` did not. What topology
+changed there was **how often the network finished at all**.
 
 `tests/test_task_outcomes.py` pins this, including on the committed fixtures, so it cannot
 quietly stop being true.
 
-All three were measured on the same model, **`gemini-3.1-flash-lite`**. That is not
-incidental — the model is part of the genome hash, so a fitness compared across models
-would not mean anything, and the comparison above is only a comparison because one model
-produced all of it.
+### Where the unfinished runs are
 
-**No search was run.** A candidate costs about 165 provider requests across the task set,
-and the free tier caps requests *per day, per model* — 500 a day here, so one day's
-allowance buys three candidates. That is enough to measure the seed topologies against
-each other and not enough to evolve. The budget was spent before a generation completed.
+Seventeen of the 204 task runs never finished, all of them among the first eleven networks. They are not spread evenly:
+
+| Task | Shape | Networks that never finished it |
+|---|---|---|
+| T08 | 3-hop full-corpus aggregation | 9 of 12 |
+| T06 | 3-hop full-corpus aggregation | 6 of 12 |
+| T03 | 2-hop | 1 of 12 |
+| T07 | 3-hop | 1 of 12 |
+
+T06 and T08 are full-corpus aggregations — *"across all forty contracts, which has the
+highest…"* — and `CorpusSearch` returns three documents a query, so answering one means
+about fourteen successive searches. Three of the twelve managed T08. They are not free to
+fail: whatever a network spends looping on a question it cannot answer is charged to it as
+cost, so the spread above measures efficiency *and* failure mode together. Separating them
+needs a re-measurement this project has not been able to buy.
+
+The winner's two unfinished runs are worth naming precisely, because one of them is not
+its fault: T08 was the 600-second timeout every network hits, and T03 came back as a
+provider `500 INTERNAL`. It answered correctly everything it finished.
+
+All twelve were measured on the same base model, **`gemini-3.1-flash-lite`**. That is not
+incidental — the model is part of the genome hash, so a fitness compared across models
+would not mean anything, and the table above is only a comparison because one model
+produced all of it. `reassign_model` changes a *per-agent* model override inside that
+network, which is why the winner is still comparable with the rest.
+
+**The search that ran is one generation deep, and the free tier is why.** A candidate
+costs about 165 provider requests across the task set, and the tier caps requests *per
+day, per model* — 500 a day here, so one day's allowance buys three candidates. Eleven
+candidates is roughly four days of budget spent in the right order: three seeds, then six
+mutants bred from them, then a second generation of two. `results/history.json` records
+one generation-1 quality report and no generation 2, because the budget ran out rather
+than the search converging. A deeper search is a budget problem, not a code problem.
+
+The free half did work as advertised: **118 candidates were scored by the surrogate** on
+the way to those eleven real evaluations, at no provider cost. That ratio is the entire
+argument for ESP over plain evolution, and it holds here even though the Predictor's
+ranking did not.
 
 `esp/eval/failover.py` moves to another model when a daily budget runs out, retiring the
 spent one and rewriting in-flight calls. The measured caps live in `DAILY_CAPS` there, not
@@ -84,8 +163,57 @@ LADDER = [m for m in _PREFERENCE if DAILY_CAPS[m] >= REQUESTS_PER_CANDIDATE]
 A prose rule cannot be checked against a list that contradicts it. An executable one can,
 and a test now does.
 
-The report states this on its first page rather than reporting a search that lost. Those
-are different claims, and the weaker one is the true one.
+The report states the budget ceiling on its first page rather than presenting one
+generation as a converged search. Those are different claims, and the weaker one is the
+true one.
+
+## What the Predictor is, exactly
+
+Asked directly in review, and the answer was implicit in the code and nowhere in the
+documentation, so: the Predictor is a **`GradientBoostingRegressor` from scikit-learn** —
+200 trees, depth 3, learning rate 0.05, subsample 0.9 — fitted on
+`(genome, measured fitness)` pairs and returning one scalar per candidate. It lives in
+`esp/surrogate/predictor.py` and it is the only model in this repository. There is no
+neural network anywhere in it.
+
+**Its input is thirteen numbers describing the network's structure and configuration, and
+nothing that was measured:**
+
+| | |
+|---|---|
+| Shape | `agents`, `depth`, `edges`, `mean_branching`, `max_branching`, `leaves`, `top_degree` |
+| Tools | `searchers`, `searcher_fraction` |
+| Models | `mean_model_tier`, `max_model_tier` |
+| Prompts | `mean_instruction_chars`, `total_instruction_chars` |
+
+The exclusion is deliberate and it is the reason the surrogate is worth anything: a feature
+derived from a measurement would mean the Predictor needed a real evaluation in order to
+predict a real evaluation. `_tier` maps a model name to its position on the cost ladder and
+never raises on an unfamiliar one, because failover substitutes models that are not on the
+list and a genome measured under a swapped model must not take feature extraction down
+with it.
+
+A gradient-boosted tree ensemble rather than anything larger because the training set is
+**tens of samples**. Below eight it refuses to fit at all: `predict` then returns the mean
+of whatever it has seen, `ranks()` reports `False`, and both the batch loop and the service
+say out loud that the generation is a random search rather than printing a ranking over one
+repeated constant.
+
+Quality is reported as **cross-validated Spearman rank correlation**, not error, because
+the Predictor's job is ordering. It never has to price a topology correctly — it has to put
+the promising ones above the hopeless ones so that real budget goes to the top of the list.
+`report_quality` runs `KFold` over the whole scored population and publishes the number
+whatever it says, including the −0.333 above.
+
+**Where this is not canonical ESP.** In ESP as Cognizant AI Lab published it, the
+Prescriptor is *also* a learned model — a network mapping context to actions, evolved
+against the Predictor. Here there is no learned Prescriptor. The prescription step is the
+seven mutation operators plus elite selection over measured fitness, so what this
+implements is the surrogate-assisted half of ESP with an ordinary evolutionary search in
+place of an evolved prescriptor. That is a deliberate simplification for a genome that is a
+HOCON agent network rather than a fixed-length action vector, and it is a real difference
+rather than a detail: anyone comparing this against the ESP papers should expect to find
+one model here, not two.
 
 ## What measurement changed
 
