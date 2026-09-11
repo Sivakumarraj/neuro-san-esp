@@ -68,8 +68,11 @@ def main() -> int:
     for problem in found:
         print(f"  WARNING: {problem}" if args.warn else f"  {problem}")
     if args.warn:
-        print("  The UI will open and the agents will not answer. "
-              "Fix .env, then re-run.")
+        print("  The UI will open and the agents will not answer.")
+        print("  Fix .env, then stop this and start it again: the key is read "
+              "once at launch,")
+        print("  so editing .env under a running server changes nothing until "
+              "it restarts.")
     print()
     return 0 if args.warn else 1
 

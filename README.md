@@ -230,6 +230,11 @@ mistakes that otherwise surface as `API key not valid` from inside an agent:
 
 `python scripts/check_key.py` runs just that check on its own.
 
+**The key is read once, at launch.** Editing `.env` under a running server
+changes nothing until it restarts, and `.env.example` is the committed template
+— it is not read for a key, so put the key in `.env` and leave the example
+alone.
+
 Then either re-measure the seeds yourself, or adopt the measurements already paid for and
 spend your budget on new candidates instead:
 
