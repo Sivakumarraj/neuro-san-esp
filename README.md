@@ -216,6 +216,31 @@ with, so what you talk to is exactly what was scored. Questions from the graded 
 Expect **30–60 seconds** for a multi-hop question: four documents have to be found and
 chained, and anything faster would mean it did not really look.
 
+### Open every measured network in the accelerator UI
+
+```bash
+make studio       # then http://localhost:4173
+```
+
+This is the comparison, not a demo. Every measured topology is rendered as its
+own servable agent and listed by the fitness it earned, so the same question can
+be put to the shape neuro-san's designer produces, to the hand-written
+alternatives, and to the network that beat them — and the answers, the routing
+and the agent count differ in front of you. Reading that off a table is not the
+same as watching two topologies answer.
+
+```
+studio_evolved_reassign_model
+  "Rank 1 of 11 by measured fitness (+0.8453): evolved by the reassign_model
+   operator. Scored 88.24% on 17 multi-hop questions using 260,052 tokens
+   across 5 agent(s). Genome 6859dda0dfabcf2d."
+```
+
+Each agent is the genome that earned its score, rebuilt from the measurement
+rather than described, with its numbers in the description the UI shows. The
+optimiser is served and stays **private**: it spends the day's whole evaluation
+budget when poked.
+
 ### Serve the champion as an ordinary agent
 
 ```bash
@@ -251,7 +276,7 @@ the cron in `registries/manifest.hocon` with `user_id: system`, no client attach
 | `apps/web/` | The single-process browser front end |
 | `apps/optimizer/` | One wake, runnable by hand or from any scheduler |
 | `registries/` | neuro-san manifests: the optimiser agent, and the generated champion |
-| `scripts/` | Offline search, model probe, champion serving, report and proof generation |
+| `scripts/` | Offline search, model probe, champion and studio serving, report and proof generation |
 | `tests/` | The suite, plus the eleven committed measurements in `tests/fixtures/cache/` |
 | `results/` | `results/history.json` and the figures the reports read |
 

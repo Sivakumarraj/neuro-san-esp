@@ -75,6 +75,24 @@ dossier: proofs
 champion:
 	PYTHONPATH=$$PWD python scripts/serve_champion.py --state $${ESP_STATE:-state}
 
+# Every measured network at once, in neuro-san's own accelerator UI, so the
+# same question can be put to the designer's shape and to the network that beat
+# it. The UI lands on 4173 and talks to a neuro-san server on 8080; nsflow
+# starts both.
+studio:
+	PYTHONPATH=$$PWD python scripts/serve_studio.py
+	@# `python -m nsflow.run`, not the `nsflow` console script: the script
+	@# installed by nsflow 0.6.19 imports a `main` its own run module does not
+	@# define, so it fails on import. The module runs fine.
+	@#
+	@# The key is exported here because nsflow loads .env relative to its own
+	@# install directory, not the working tree, so a key in this repo's .env
+	@# never reaches the agents otherwise.
+	set -a; [ -f .env ] && . ./.env; set +a; \
+	AGENT_MANIFEST_FILE=$$PWD/registries/studio_manifest.hocon \
+	AGENT_TOOL_PATH=$$PWD PYTHONPATH=$$PWD \
+	python -m nsflow.run
+
 # Turn the service's accumulated population into the report inputs. Without
 # this the service is invisible: history.json is written by the batch run, and
 # an optimiser could accumulate for weeks while the report still showed the last
