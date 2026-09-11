@@ -165,7 +165,17 @@ def _propose(state: ServiceState, population: list[Genome], rng: random.Random,
     if not parents:
         return Proposal(samples=len(trainable))
 
+    # Two sets, not one. `seen` keeps the wake from paying twice for a genome
+    # across days; `proposed` keeps it from paying twice inside one batch,
+    # which is a different mistake and the one that actually happened: the
+    # same mutant was bred twice into a single proposal, and the wake measured
+    # it, hit its own cache, and filed it again two milliseconds later. The
+    # money was not lost -- the cache saw to that -- but a slot in a
+    # three-candidate daily elite was, and the duplicate then sat in the
+    # population weighting one measurement twice in everything the Predictor
+    # learned afterwards.
     seen = state.seen()
+    proposed: set[str] = set()
     candidates: list[tuple[Genome, str]] = []
     attempts = 0
     while len(candidates) < SURROGATE_POOL and attempts < SURROGATE_POOL * 8:
@@ -174,8 +184,10 @@ def _propose(state: ServiceState, population: list[Genome], rng: random.Random,
             child, operator = mutate(rng.choice(parents), rng)
         except InvalidMutant:
             continue
-        if child.genome_hash() in seen:
+        digest = child.genome_hash()
+        if digest in seen or digest in proposed:
             continue
+        proposed.add(digest)
         candidates.append((child, operator))
 
     if not candidates:
