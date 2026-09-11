@@ -277,26 +277,34 @@ class Explainer(Layout):
                 "The finding that makes the whole thing worth doing.")
 
         self.p(
-            "Three different team designs were run for real against all 17 questions. "
-            "The important column is the last one.", BIG)
+            "Eleven different team designs were run for real against all 17 questions "
+            "&mdash; three written by hand, eight invented by the search. The "
+            "important column is the last one.", BIG)
 
         self.table(
             ["The design", "Questions right", "Cost (text processed)", "Agents"],
-            [["One agent doing everything", "high", "<b>the most expensive</b>", "1"],
-             ["A flat pair of agents", "high", "middle", "3"],
-             ["The shape neuro-san's designer produces", "high", "<b>the cheapest</b>",
-              "4"]],
-            widths=[CW * 0.42, CW * 0.18, CW * 0.26, CW * 0.14], highlight=[2])
+            [["One agent doing everything", "14 of 17", "expensive", "1"],
+             ["A flat pair of agents", "14 of 17", "middle", "3"],
+             ["The shape neuro-san's designer produces", "14 of 17",
+              "<b>the dearest</b>", "4"],
+             ["<b>The best one the search found</b>", "<b>15 of 17</b>",
+              "<b>the cheapest of these</b>", "5"]],
+            widths=[CW * 0.42, CW * 0.18, CW * 0.26, CW * 0.14], highlight=[3])
 
         self.callout(
-            "They answered about equally well. The bills were nowhere near equal.",
-            "The cheapest design costs roughly <b>half</b> what the dearest one does, "
-            "for the same work on the same questions with the same AI model.<br/><br/>"
-            "The <i>shape</i> of the team barely changed what it could do. It changed "
-            "what doing it <b>cost</b>. On a real system answering thousands of "
-            "questions a day, that is an enormous bill for nothing &mdash; and today "
-            "there is no way to see it, because the framework cannot measure any of "
-            "this.")
+            "It answered one more question, and cost a third less doing it.",
+            "The design the search found beat all three hand-written ones on both "
+            "counts at once: one more question right, and about <b>a third less</b> "
+            "text processed than the shape neuro-san's own designer produces.<br/><br/>"
+            "What changed was not a new agent or a new tool. It was <b>which AI model "
+            "one agent inside the team uses</b> &mdash; a dial the framework already "
+            "has, which nobody turns, because until now nothing could tell you what "
+            "turning it was worth.<br/><br/>"
+            "The three hand-written designs are the same lesson in miniature: they got "
+            "<i>exactly</i> the same number right as each other, and the dearest cost "
+            "roughly a fifth more than the cheapest. On a real system answering "
+            "thousands of questions a day, that is a bill nobody can see, because the "
+            "framework cannot measure any of this.")
 
         self.life(
             "your electricity bill",
@@ -402,18 +410,26 @@ class Explainer(Layout):
                 "The part most documents leave out.")
 
         self.callout(
-            "The search has not yet found a better team than the starting one",
-            "Only a handful of real tests exist. Finding a better design needs a "
-            "collection of results, a collection needs allowance, and allowance arrives "
-            "at three tests a day. That is the honest state of it. If it never beats "
-            "the starting design, that will be reported as the answer.",
+            "It found a better team once, on a very small experiment",
+            "Eleven real tests exist and the search went one round deep. One round, "
+            "one throw of the dice, one kind of question, one AI model &mdash; not "
+            "repeated, and not tried on questions it had never seen before. Being "
+            "<i>sure</i> a design is better needs a collection of results, a "
+            "collection needs allowance, and allowance arrives at three tests a day. "
+            "That is the honest state of it. Had it found nothing better, that would "
+            "be reported as the answer.",
             bg=WARN_BG, bar=AMBER)
 
         self.callout(
-            "The guesser has never actually been trained",
-            "It needs eight real results before it can learn anything; there are fewer. "
-            "Below that it returns the same guess for every design, and the code now "
-            "says so instead of printing a confident-looking number.<br/><br/>"
+            "The guesser has never been shown to help",
+            "It needs eight real results before it can learn anything at all. At the "
+            "round that produced the winning design it had nine, and when tested it "
+            "guessed the order of designs <b>worse than picking at random</b>. So the "
+            "improvement above came from the searching, not from the guessing. Given "
+            "all eleven results it does better than random &mdash; but that was "
+            "checked afterwards, and it is not what the search ran on.<br/><br/>"
+            "Below eight results it returns the same guess for every design, and the "
+            "code now says so instead of printing a confident-looking number.<br/><br/>"
             "An earlier version printed <font face='Courier' size='9'>+0.000</font> in "
             "that case, which looked exactly like a measured result of zero. It was a "
             "placeholder. That was quoted as a real measurement for a while &mdash; "
