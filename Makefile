@@ -99,6 +99,12 @@ studio:
 	  echo ""; \
 	  exit 1; \
 	}
+	@# The key, before the UI rather than after. Without this the first failure
+	@# is an agent replying "API key not valid" in the chat panel, which is a bad
+	@# place to find out and a worse one in front of somebody. Non-fatal: twelve
+	@# topologies are worth looking at even with no key, so it warns and opens.
+	@set -a; [ -f .env ] && . ./.env; set +a; \
+	PYTHONPATH=$$PWD python scripts/check_key.py --warn --quiet-when-fine
 	@# `python -m nsflow.run`, not the `nsflow` console script: the script
 	@# installed by nsflow 0.6.19 imports a `main` its own run module does not
 	@# define, so it fails on import. The module runs fine, and 0.7 fixes the

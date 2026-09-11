@@ -25,6 +25,15 @@ def named(checks, name):
     return next(c for c in checks if c.name == name)
 
 
+# Key-shaped fixtures. These were "k1" and "solo", which were fine while the
+# preflight only asked whether a key was non-empty, and became wrong the moment
+# it started asking whether the value could be a key at all. A fixture that
+# could not survive the real check was testing something the product does not
+# do.
+FAKE_A = "AQ.EXAMPLE-not-a-real-key-0000000000000000000000000000"
+FAKE_B = "AQ.EXAMPLE-second-fake-key-00000000000000000000000000"
+
+
 def test_a_missing_key_is_fatal(clean):
     checks = preflight.run_checks()
     assert not named(checks, "provider key").ok
@@ -34,7 +43,7 @@ def test_a_missing_key_is_fatal(clean):
 def test_a_missing_agent_tool_path_is_fatal(clean):
     """The exact bug that made probe_models.py report every healthy model as
     BROKEN: without it neuro-san refuses to build a session at all."""
-    clean.setenv("GOOGLE_API_KEY", "x")
+    clean.setenv("GOOGLE_API_KEY", FAKE_A)
     checks = preflight.run_checks()
     assert not named(checks, "AGENT_TOOL_PATH").ok
     assert named(checks, "AGENT_TOOL_PATH").fatal
@@ -43,7 +52,7 @@ def test_a_missing_agent_tool_path_is_fatal(clean):
 def test_demo_mode_is_refused(clean):
     """neuro-san-studio's demo mode tells generated agents to invent a
     realistic-looking answer. Accuracy would be measuring fabrication."""
-    clean.setenv("GOOGLE_API_KEY", "x")
+    clean.setenv("GOOGLE_API_KEY", FAKE_A)
     clean.setenv("AGENT_TOOL_PATH", "/somewhere")
     clean.setenv("AGENT_NETWORK_DESIGNER_DEMO_MODE", "true")
     checks = preflight.run_checks()
@@ -53,7 +62,7 @@ def test_demo_mode_is_refused(clean):
 def test_a_missing_pythonpath_only_warns(clean):
     """It is usually already importable. Refusing to start over it would make
     the preflight the thing operators route around."""
-    clean.setenv("GOOGLE_API_KEY", "x")
+    clean.setenv("GOOGLE_API_KEY", FAKE_A)
     clean.setenv("AGENT_TOOL_PATH", "/somewhere")
     checks = preflight.run_checks()
     assert not named(checks, "PYTHONPATH").fatal
@@ -70,7 +79,7 @@ def test_an_unwritable_state_directory_is_fatal(clean, tmp_path):
 
 
 def test_a_healthy_configuration_passes(clean, tmp_path):
-    clean.setenv("GOOGLE_API_KEY", "x")
+    clean.setenv("GOOGLE_API_KEY", FAKE_A)
     clean.setenv("AGENT_TOOL_PATH", str(tmp_path))
     checks = preflight.run_checks()
     assert preflight.failures(checks) == []
@@ -104,6 +113,8 @@ def test_the_environment_beats_the_file(tmp_path, monkeypatch):
     it would be miserable to debug."""
     from esp import config
 
+    # Not key-shaped on purpose: this is about which value wins, and two
+    # readable strings say that where two long credentials would not.
     monkeypatch.setenv("GOOGLE_API_KEY", "from-the-shell")
     env = tmp_path / ".env"
     env.write_text("GOOGLE_API_KEY=from-the-file\n", encoding="utf-8")
@@ -146,8 +157,8 @@ def test_a_missing_env_file_is_not_an_error(tmp_path):
 def test_the_ring_size_is_reported_when_multiple_keys_are_set(clean):
     """A second key doubles the daily budget, so the preflight has to say so."""
     from esp.eval import ratelimit
-    clean.setenv("GOOGLE_API_KEY", "k1")
-    clean.setenv("GOOGLE_API_KEYS", "k1,k2")
+    clean.setenv("GOOGLE_API_KEY", FAKE_A)
+    clean.setenv("GOOGLE_API_KEYS", f"{FAKE_A},{FAKE_B}")
     clean.setenv("AGENT_TOOL_PATH", "/tmp")
     ratelimit.reload_keyring()
     try:
@@ -164,7 +175,7 @@ def test_the_ring_size_is_reported_when_multiple_keys_are_set(clean):
 def test_the_ring_note_is_omitted_for_a_single_key(clean):
     """The single-key case should look the same it always has -- no noise."""
     from esp.eval import ratelimit
-    clean.setenv("GOOGLE_API_KEY", "solo")
+    clean.setenv("GOOGLE_API_KEY", FAKE_A)
     clean.setenv("AGENT_TOOL_PATH", "/tmp")
     clean.delenv("GOOGLE_API_KEYS", raising=False)
     ratelimit.reload_keyring()
@@ -174,3 +185,118 @@ def test_the_ring_note_is_omitted_for_a_single_key(clean):
         assert "keys)" not in named(checks, "model ladder").detail
     finally:
         ratelimit.reload_keyring()
+
+
+# --------------------------------------------- a key that is set but unusable
+
+def test_the_placeholder_is_not_a_key(monkeypatch):
+    """`GOOGLE_API_KEY=paste-your-key-here` is a perfectly good non-empty
+    string. It reported as a key that was set, the preflight passed, and the
+    first real call came back "API key not valid" from inside an agent -- in
+    one case in front of somebody being shown the UI."""
+    from esp.config import PLACEHOLDER, provider_keys
+
+    monkeypatch.setenv("GOOGLE_API_KEY", PLACEHOLDER)
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    assert provider_keys() == []
+
+    check = next(c for c in preflight.run_checks() if c.name == "provider key")
+    assert not check.ok
+    assert check.fatal
+    assert "placeholder" in check.detail
+
+
+def test_a_key_pasted_beside_the_placeholder_is_caught(monkeypatch):
+    """What copying .env.example and pasting carelessly actually produces."""
+    from esp.config import PLACEHOLDER
+
+    monkeypatch.setenv("GOOGLE_API_KEY", PLACEHOLDER + "A" * 40)
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+
+    check = next(c for c in preflight.run_checks() if c.name == "provider key")
+    assert not check.ok
+    assert "next to it rather than over it" in check.detail
+
+
+def test_a_key_with_whitespace_in_it_is_caught(monkeypatch):
+    """A key pasted across a line break, or with a shell prompt on the end."""
+    monkeypatch.setenv("GOOGLE_API_KEY", "AQ.EXAMPLE not-a-real-key-0000000")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+
+    check = next(c for c in preflight.run_checks() if c.name == "provider key")
+    assert not check.ok
+    assert "space" in check.detail
+
+
+def test_a_plausible_key_is_accepted_by_the_shape_check(monkeypatch):
+    """The shape check must not reject real keys. Only the provider can say
+    whether a well-formed key is live, and that is a separate check."""
+    from esp.config import key_problem
+
+    monkeypatch.setenv("GOOGLE_API_KEY", "AQ.EXAMPLE-not-a-real-key-00000000000")
+    assert key_problem("AQ.EXAMPLE-not-a-real-key-00000000000") == ""
+    assert key_problem("AIza" + "b" * 35) == ""
+
+    check = next(c for c in preflight.run_checks() if c.name == "provider key")
+    assert check.ok
+
+
+def test_the_reported_detail_never_contains_the_key(monkeypatch):
+    """A message that echoed the value would put a live credential into
+    terminal scrollback, screen shares and pasted logs."""
+    from esp.config import PLACEHOLDER, key_problem
+
+    secret = "AQ.EXAMPLE-not-a-real-key-0000000000000000000000000000"
+    for value in (secret, secret + " ", PLACEHOLDER + secret, secret[:10]):
+        problem = key_problem(value)
+        if not problem:
+            continue
+        assert secret not in problem, problem
+        assert secret[:16] not in problem, problem
+
+    monkeypatch.setenv("GOOGLE_API_KEY", PLACEHOLDER + secret)
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    text = preflight.report(preflight.run_checks())
+    assert secret not in text
+    assert secret[:16] not in text
+
+
+# ------------------------------------------------- asking the provider itself
+
+def test_the_live_check_is_off_by_default(monkeypatch):
+    """The suite and a keyless clone stay offline. A network call in the
+    default path would make `run_checks` untestable without a provider."""
+    monkeypatch.setenv("GOOGLE_API_KEY", "AQ.EXAMPLE-not-a-real-key-00000000000")
+    names = [c.name for c in preflight.run_checks()]
+    assert "provider key accepted" not in names
+
+
+def test_a_rejected_key_fails_the_live_check(monkeypatch):
+    """The case a shape check cannot reach: well-formed, and revoked."""
+    monkeypatch.setenv("GOOGLE_API_KEY", "AQ.EXAMPLE-not-a-real-key-00000000000")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    rejected = (False, "rejected by Google (401)")
+    monkeypatch.setattr(
+        preflight, "verify_key",
+        lambda _name="GOOGLE_API_KEY", timeout=20.0: rejected)
+
+    check = next(c for c in preflight.run_checks(live=True)
+                 if c.name == "provider key accepted")
+    assert not check.ok
+    assert check.fatal, "a rejected key must stop the run"
+
+
+def test_an_unreachable_provider_is_not_reported_as_a_bad_key(monkeypatch):
+    """A machine behind a proxy that blocks Google is a different problem.
+    Reporting it as a bad key sends somebody to rotate a working credential."""
+    monkeypatch.setenv("GOOGLE_API_KEY", "AQ.EXAMPLE-not-a-real-key-00000000000")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    unreachable = (True, "not checked -- could not reach Google")
+    monkeypatch.setattr(
+        preflight, "verify_key",
+        lambda _name="GOOGLE_API_KEY", timeout=20.0: unreachable)
+
+    check = next(c for c in preflight.run_checks(live=True)
+                 if c.name == "provider key accepted")
+    assert check.ok
+    assert "not checked" in check.detail

@@ -218,6 +218,18 @@ The preflight reports where the key came from and what the budget buys:
 candidate zero, and the cache keeps that answer forever, so the search is taught that good
 topologies are bad.
 
+The preflight asks Google whether the key actually works, rather than whether the variable
+is set — one free call, because listing models costs nothing. It refuses to start on the
+mistakes that otherwise surface as `API key not valid` from inside an agent:
+
+```
+[FAIL] provider key: GOOGLE_API_KEY still the placeholder from .env.example
+[FAIL] provider key accepted: rejected by Google (401) -- the key is wrong, revoked,
+       or from a project without the Generative Language API enabled
+```
+
+`python scripts/check_key.py` runs just that check on its own.
+
 Then either re-measure the seeds yourself, or adopt the measurements already paid for and
 spend your budget on new candidates instead:
 
