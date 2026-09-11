@@ -7,41 +7,148 @@ agent networks, and an evolutionary search that uses it.**
 [![python](https://img.shields.io/badge/python-3.12%2B-blue)](pyproject.toml)
 [![license](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
 
-neuro-san turns a sentence into a working multi-agent network. `agent_network_designer`
-generates one, validates it, and serves it in about five seconds. It generates **one**,
-and never measures it.
+---
 
-Nothing in neuro-san scores an agent network against another. `neuro_san/test/evaluators/`
-holds `assertIn`-style assertions for integration testing a single network's answer, which
-is regression testing rather than a fitness function. So nobody can answer whether a
+## The gap this fills
+
+neuro-san turns a sentence into a working multi-agent network. `agent_network_designer`
+generates one, validates it, and serves it in about five seconds. It generates **one**, and
+never measures it.
+
+Nothing in neuro-san scores one agent network against another. `neuro_san/test/evaluators/`
+holds `assertIn`-style assertions for integration-testing a single network's answer, which
+is regression testing rather than a fitness function. So there is no way to answer whether a
 nine-agent topology beats a five-agent one for the same job, which model each agent should
 run, or whether the generated instructions are any good. That is design without evaluation.
 
-This project supplies the missing half. It measures a network — accuracy, token cost and
-size over a fixed task set — and then searches for a better one using **ESP**
+This project supplies the missing half. It **measures** a network — accuracy, token cost and
+size over a fixed task set — and then **searches** for a better one using **ESP**
 (Evolutionary Surrogate-assisted Prescription), Cognizant AI Lab's own method for
-optimisation where every real evaluation is expensive: learn a cheap Predictor from real
-measurements, evolve thousands of candidates against it for free, and pay for real
-evaluation only on the elite.
+optimisation where every real evaluation is expensive.
 
-## Features
+## Results
 
-- **A measured fitness function** for neuro-san topologies: accuracy, tokens and agent
-  count, scalarised for selection with the Pareto front recorded separately.
-- **The genome is neuro-san's own** `agent_network_definition`, plus a per-agent `model` —
-  the main cost/quality knob the framework already supports and nobody tunes.
-- **Seven mutation operators** — add, remove, rewire, split, merge, toggle search, reassign
-  model. Invalid mutants are discarded, never repaired.
-- **A synthetic evaluation world** — 24 depots, 40 contracts, 60 incidents, 124 documents
-  and 17 one-to-four-hop questions, generated so every answer is correct by construction.
-- **Deterministic retrieval**, so fitness measures the topology rather than a retrieval
-  layer that drifts between generations.
-- **Runs as a service, not a batch job** — an hourly `invocation: "event"` agent that
-  spends what the daily free tier allows, saves state after every candidate, and stops.
-- **Provider-agnostic** — Google or OpenRouter, selected by model name in `.env`.
-- **Budget-aware failover** across models, with daily caps kept as data and a preflight
-  that refuses to start on a configuration that would produce wrong numbers.
-- **A full test suite**, and reports that decline to print a number nobody measured.
+**Eleven networks measured on real model calls, 17 tasks each, one model, 187 task runs.
+The search found a better topology than the one neuro-san's designer produces.**
+
+| | Accuracy | Tokens | Agents | Fitness |
+|---|---|---|---|---|
+| `seed:designer_shaped` — the shape the designer produces | 0.8235 | 385,280 | 4 | 0.7761 |
+| `seed:flat_pair` | 0.8235 | 316,074 | 3 | 0.7852 |
+| `seed:solo` — one agent, one tool | 0.8235 | 377,716 | 1 | 0.7835 |
+| **`mut:reassign_model` — best evolved** | **0.8824** | **260,052** | 5 | **0.8453** |
+
+Against the designer's own shape that is **+5.9 points of accuracy for 32% fewer tokens**.
+The mutation that did it was a per-agent model reassignment — the knob neuro-san already
+exposes and nothing tunes. Five of the eleven reach 0.8824 and all five are evolved; no seed
+does.
+
+Every number above is recomputed from the committed evaluation cache by a test, so the
+README cannot drift away from the run. Every candidate's genome is stored beside its score
+in `tests/fixtures/cache/`, so the winner can be rebuilt and served rather than only cited.
+
+**The Predictor is the half that has not earned its place yet.** At the generation the search
+used it — nine measurements — cross-validated rank correlation was **−0.333**, worse than
+chance, and `results/history.json` records that. Refitted over all eleven it is positive on
+every split tried, **+0.24 to +0.65**, median near +0.5. Two caveats on that second figure:
+it was measured after the fact rather than being what any generation was selected on, and at
+eleven samples it moves with the cross-validation split, which is why a range is quoted
+instead of one value. So the evolutionary half of ESP produced the result above; the
+surrogate half is promising and unproven.
+
+Full numbers, the failure analysis and the prior art are in
+[docs/FINDINGS.md](docs/FINDINGS.md).
+
+## Limitations
+
+- **The surrogate did not help the search that produced this result.** Trained on nine
+  samples, cross-validated at −0.333. `report_quality` publishes that number, and prints
+  *not measured* rather than a placeholder when there are too few samples to cross-validate.
+- **Eleven real evaluations, one generation of search.** No repeat run, no second random
+  seed, no held-out task set. A candidate costs about 165 provider requests against a free
+  tier of 500 per day per model — three candidates a day, so eleven is about four days of
+  budget. The 118 candidates the surrogate scored in between cost nothing, which is the part
+  of ESP that does work as advertised.
+- **Seventeen of the 187 task runs never finished** — a timeout or a blown recursion cap
+  rather than a wrong answer. They concentrate on two full-corpus aggregation questions.
+  `accuracy` counts them as wrong; `answered_accuracy()` excludes them. Both are reported.
+- **No baseline other than the seeds.** Random search and evolution-without-a-surrogate
+  would each need their own budget, so the claim is that this beat three hand-written
+  topologies, not that it beat the alternative search strategies.
+- **One task domain.** A topology that wins at multi-hop retrieval need not win elsewhere.
+- **The surrogate idea is not novel.** AgentSquare (ICLR 2025) uses a performance predictor
+  for the same purpose. What is absent from that work is neuro-san, and what is absent from
+  neuro-san is any fitness function at all.
+
+## How it works
+
+Four phases, repeated. Phase C is the point: it is free, so the search can be wide.
+
+```
+Phase A   measure the seed topologies for real        ->  (genome, fitness) pairs
+Phase B   train a Predictor on those pairs            ->  cheap fitness estimate
+Phase C   breed and rank thousands of candidates      ->  zero LLM calls
+Phase D   pay for real evaluation of the elite only   ->  feed back into B
+```
+
+### The genome is neuro-san's own format
+
+A candidate **is** a neuro-san `agent_network_definition` — the same HOCON the framework
+serves — plus a per-agent `model` override. Nothing is invented: a genome renders straight to
+a registry file and runs as an ordinary agent network. Defined in
+`esp/genome/definition.py`; the three starting topologies are in `esp/genome/seeds.py`.
+
+The configured model is **part of the genome hash**, deliberately. A fitness measured on one
+model must not be mistaken for the same network on another.
+
+### Fitness is measured, not asserted
+
+Each candidate answers all 17 tasks through a real neuro-san session. Three objectives are
+recorded, then scalarised for selection while the Pareto front is kept separately:
+
+```
+fitness = accuracy − 0.06 · min(tokens / 600000, 1) − 0.02 · (agents / 9)
+```
+
+The evaluation world (`esp/eval/world.py`) is generated from a fixed seed: 24 depots, 40
+contracts, 60 incidents, 124 documents, and 17 questions of one to four hops whose answers
+are correct by construction. Retrieval is a deterministic coded tool, so fitness measures the
+topology rather than a retrieval layer that drifts between generations. Timeouts and blown
+recursion caps are classified as **unfinished rather than wrong** (`esp/eval/runner.py`),
+because neuro-san returns them as ordinary answer strings and scoring them as wrong answers
+teaches the search that a good topology is bad.
+
+### Seven mutation operators, behind a validity gate
+
+`add_agent`, `remove_agent`, `rewire`, `split_agent`, `merge_agents`, `toggle_search`,
+`reassign_model` (`esp/genome/mutations.py`). An invalid mutant — an unreachable agent, a
+cycle, no front man — is **discarded, never repaired**, so every candidate that reaches a
+real evaluation is a network neuro-san would actually serve.
+
+### The Predictor
+
+A `GradientBoostingRegressor` over **thirteen structural features** of the genome: agent
+count, depth, edges, branching, leaves, searchers, model tiers and instruction lengths
+(`esp/surrogate/predictor.py`). Never a measured quantity — a feature derived from a
+measurement would mean the Predictor needed a real evaluation in order to predict one.
+
+Below **eight** samples it refuses to fit, `predict` returns the training mean, and
+`ranks()` reports `False` so that callers say the generation was a random search instead of
+printing a ranking over one repeated constant. Quality is reported as cross-validated
+Spearman rank correlation, because the Predictor's job is ordering, not pricing.
+
+There is no learned Prescriptor here: the prescription step is mutation plus elite selection.
+That is a real departure from canonical ESP, and
+[docs/FINDINGS.md](docs/FINDINGS.md#what-the-predictor-is-exactly) says why.
+
+### It runs as a service, not a batch job
+
+The first version was a script that planned forty evaluations and died at the daily cap every
+time. The cap is not an obstacle to a service — it is its rhythm. An hourly
+`invocation: "event"` agent (`registries/manifest.hocon`) spends what today allows, writes the
+population down **after every candidate**, and stops. Budget-aware failover across models
+keeps the measured daily caps as data (`esp/eval/failover.py`), and a preflight refuses to
+start on a configuration that would produce wrong numbers.
 
 ## Quick start
 
@@ -52,25 +159,25 @@ python3.12 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
 make check       # ruff + the full test suite
-make offline     # Phase B and C: 2,000 candidates scored, zero LLM calls
+make offline     # phases B and C: 2,000 candidates ranked, zero LLM calls
 ```
 
-Nothing above needs an account, a key, or a network. `make offline` trains the Predictor
-on the seed measurements committed in `tests/fixtures/cache` and evolves against it,
+Nothing above needs an account, a key, or a network. `make offline` trains the Predictor on
+the eleven measurements committed in `tests/fixtures/cache/` and evolves against them,
 announcing which cache it used.
 
 ### With an API key
 
-Get a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey), then:
+A free key from [aistudio.google.com/apikey](https://aistudio.google.com/apikey) gives 500
+requests per day per model.
 
 ```bash
 cp .env.example .env      # paste the key in; .env is gitignored
 python apps/optimizer/run_optimizer.py --check   # preflight
 make probe                                       # which models answer today
-make baseline                                    # measure the seed topologies
 ```
 
-The preflight reports where the key came from and which models the run will use:
+The preflight reports where the key came from and what the budget buys:
 
 ```
 [ok  ] provider key: set, GOOGLE_API_KEY, from .env
@@ -82,30 +189,43 @@ The preflight reports where the key came from and which models the run will use:
 candidate zero, and the cache keeps that answer forever, so the search is taught that good
 topologies are bad.
 
-### The front end — talk to the agents in a browser
-
-This is the whole thing working end to end: a page in Chrome, real agents behind it, real
-model calls.
+Then either re-measure the seeds yourself, or adopt the measurements already paid for and
+spend your budget on new candidates instead:
 
 ```bash
-cp .env.example .env      # paste your key in
+make baseline                              # measure the seed topologies (~1.5 days of budget)
+python scripts/adopt_measurements.py       # or: start from the committed eleven
+python apps/optimizer/run_optimizer.py     # one wake: train, rank, pay for the elite
+```
+
+### Talk to the agents in a browser
+
+```bash
 python apps/web/serve.py  # then open http://localhost:7860
 ```
 
-One process. No separate backend to start, no second repository — the page runs questions
-through the champion topology on neuro-san's direct session, the same code path the
-evaluator measures with, so what you talk to is exactly what was scored.
-
-Questions from the graded task set are **marked against the known answer in front of you**:
+One process, no separate backend, no second repository. The page runs questions through the
+measured champion on neuro-san's direct session — the same code path the evaluator measures
+with, so what you talk to is exactly what was scored. Questions from the graded task set are
+**marked against the known answer in front of you**:
 
 ```json
 {"answer": "R. Delacroix", "expected": "R. Delacroix", "correct": true, "seconds": 48.4}
 ```
 
-Expect **30–60 seconds** for a multi-hop question. Four documents have to be found and
-chained; anything faster would mean it did not really look.
+Expect **30–60 seconds** for a multi-hop question: four documents have to be found and
+chained, and anything faster would mean it did not really look.
 
-### Running the service
+### Serve the champion as an ordinary agent
+
+```bash
+python scripts/serve_champion.py   # writes registries/champion.hocon
+export AGENT_MANIFEST_FILE=$PWD/registries/champion_manifest.hocon
+export AGENT_TOOL_PATH=$PWD PYTHONPATH=$PWD
+python -m neuro_san.service.main_loop.server_main_loop
+```
+
+### Run the optimiser as a service
 
 ```bash
 export AGENT_MANIFEST_FILE=$PWD/registries/manifest.hocon
@@ -113,94 +233,57 @@ export AGENT_TOOL_PATH=$PWD PYTHONPATH=$PWD
 python -m neuro_san.service.main_loop.server_main_loop
 ```
 
-The server logs `Found 1 periodic agent interactions` and from then on fires the optimiser
-on the cron in `registries/manifest.hocon` with `user_id: system`, no client attached.
-See [SERVING.md](SERVING.md) for state, leases, budget and the security model.
+The server logs `Found 1 periodic agent interactions` and from then on fires the optimiser on
+the cron in `registries/manifest.hocon` with `user_id: system`, no client attached. See
+[SERVING.md](SERVING.md) for state, leases, budget and the security model. In a container:
+`docker compose up -d optimizer`.
 
-In a container:
+## Repository layout
+
+| Path | What lives there |
+|---|---|
+| `esp/genome/` | The genome: neuro-san network definitions, the seven mutation operators, three seed topologies |
+| `esp/eval/` | The measured world, the 17 scored tasks, the runner, budget-aware model failover |
+| `esp/surrogate/` | The Predictor and its honest quality reporting |
+| `esp/evolve/` | The batch ESP loop — phases A through D in one sitting |
+| `esp/service/` | The same loop as an interruptible service: persistent population, budget, lease |
+| `esp/report/` | The generated PDFs, and figures from the run history |
+| `apps/web/` | The single-process browser front end |
+| `apps/optimizer/` | One wake, runnable by hand or from any scheduler |
+| `registries/` | neuro-san manifests: the optimiser agent, and the generated champion |
+| `scripts/` | Offline search, model probe, champion serving, report and proof generation |
+| `tests/` | The suite, plus the eleven committed measurements in `tests/fixtures/cache/` |
+| `results/` | `results/history.json` and the figures the reports read |
+
+## Testing and verification
 
 ```bash
-docker compose up -d optimizer
+make check      # ruff + the full suite, exactly what CI runs
+make verify     # start a real neuro-san server and prove it fires the optimiser
+make offline    # the free half of ESP, end to end, no key
 ```
 
-### Running tests
+The suite covers the genome and its validity gate, the scored tasks, outcome
+classification, the surrogate's refusal to train below eight samples, budget arithmetic and
+quota-payload parsing, the lease and its UTC clock, the container and devcontainer
+definitions, and the documented numbers themselves — several tests fail if this README
+disagrees with `results/history.json`.
 
-```bash
-make check                # ruff + the full suite, exactly what CI runs
-make verify               # start a real server and prove it fires the optimiser
-```
-
-## Results
-
-**Eleven networks measured on real model calls, same 17 tasks, same model. The search
-found a better topology than the one neuro-san's designer produces.**
-
-| | Accuracy | Tokens | Agents | Fitness |
-|---|---|---|---|---|
-| `seed:designer_shaped` — the shape the designer produces | 0.8235 | 385,280 | 4 | 0.7761 |
-| `seed:flat_pair` | 0.8235 | 316,074 | 3 | 0.7852 |
-| `seed:solo` — one agent, one tool | 0.8235 | 377,716 | 1 | 0.7835 |
-| **`mut:reassign_model` — best evolved** | **0.8824** | **260,052** | 5 | **0.8453** |
-
-Against the designer's own shape that is **+5.9 points of accuracy for 32% fewer tokens**,
-and the mutation that did it was a per-agent model reassignment — the knob neuro-san
-already has and nothing tunes. Five of the eleven reach 0.8824 and all five are evolved;
-no seed does. Every number above is recomputed from the committed evaluation cache by
-`tests/test_docs.py`, and every candidate's genome is stored beside its score in
-`tests/fixtures/cache/`, so the winner can be rebuilt and served rather than just cited.
-
-**The Predictor is the half that did not earn its place yet.** At the point the search
-used it — generation 1, nine measurements — cross-validated rank correlation was
-**−0.333**, worse than chance, and `results/history.json` records that. Refitted over all
-eleven it comes out positive and beats chance on every split tried, **+0.24 to +0.65** with
-a median near +0.5. Two honest caveats on that second number: it is a measurement taken
-afterwards rather than the one any generation was selected on, and at eleven samples a
-single figure is not stable — it moves with the cross-validation split, which is why a
-range is quoted instead of the one value that happened to come out first. So the
-evolutionary half of ESP produced the result above and the surrogate half is promising and
-unproven.
-
-Full numbers, the failure analysis, and the prior art this sits beside are in
-[docs/FINDINGS.md](docs/FINDINGS.md). Three PDFs are generated: a technical [dossier](docs/neuro-san-esp-Dossier.pdf), a jargon-free
-[primer](docs/neuro-san-esp-Primer.pdf), and an
-[explainer](docs/neuro-san-esp-Explainer.pdf) (`make explainer`) written for a reader who knows
-nothing about agents, models or tokens — every idea anchored to something ordinary, a restaurant
-kitchen or an electricity bill. `scripts/verification_report.py` produces a
-[verification report](docs/neuro-san-esp-Verification.pdf) by running every check in it.
-
-## Limitations
-
-- **The surrogate did not help the search that produced this result.** It was trained on
-  nine samples and cross-validated at **−0.333**, worse than chance, so Phase C's ranking
-  carried no information at the generation that mattered. `report_quality` publishes that
-  number rather than hiding it, and prints *not measured* rather than a placeholder when
-  there are too few samples to cross-validate at all.
-- **Eleven real evaluations is a small population, and one generation of search.** No
-  repeat run, no second random seed, no held-out task set. A candidate costs about 165
-  provider requests against a free tier of 500 per day per model, which is why: on the one
-  model all eleven were measured on, that is three candidates a day and about four days of
-  budget. The 118 candidates the surrogate scored in between cost nothing, which is the
-  part of ESP that does work as advertised.
-- **Seventeen of the 187 task runs never finished** — a timeout or a blown recursion cap
-  rather than a wrong answer. They concentrate on two full-corpus aggregation questions
-  that nine and six of the eleven networks respectively failed to complete. `accuracy`
-  counts them as wrong; `answered_accuracy()` excludes them. Both are reported.
-- **No baseline other than the seeds.** Random search and evolution-without-a-surrogate
-  would each need their own provider budget, so the claim is that this beat three
-  hand-written topologies, not that it beat the alternative search strategies.
-- **One task domain.** A topology that wins at multi-hop retrieval need not win elsewhere.
-- **The surrogate idea is not novel.** AgentSquare (ICLR 2025) uses a performance predictor
-  for the same purpose. What is absent from that work is neuro-san, and what is absent from
-  neuro-san is any fitness function at all.
+Evidence captured from real runs, rather than described, is in `docs/proofs/` and rendered
+into the dossier: the full test run, the offline search, a live neuro-san server firing the
+optimiser on a shortened cron, and a browser reaching the champion through the real agents.
 
 ## Documentation
 
 | | |
 |---|---|
+| [docs/FINDINGS.md](docs/FINDINGS.md) | Measurements, failure analysis, what the Predictor is, prior art |
 | [SERVING.md](SERVING.md) | Deployment, state, budget, and what the agent may do |
-| [docs/FINDINGS.md](docs/FINDINGS.md) | Measurements, failure analysis, prior art |
-| [What the Predictor is](docs/FINDINGS.md#what-the-predictor-is-exactly) | The surrogate's model, features, and where this departs from canonical ESP |
 | [SECURITY.md](SECURITY.md) | Reporting a vulnerability |
+| [Dossier](docs/neuro-san-esp-Dossier.pdf) | The technical report, with captured evidence |
+| [Primer](docs/neuro-san-esp-Primer.pdf) | The same result without the jargon |
+| [Explainer](docs/neuro-san-esp-Explainer.pdf) | For a reader who knows nothing about agents, models or tokens |
+| [Verification](docs/neuro-san-esp-Verification.pdf) | Every check in the dossier, re-run |
 
 Built on [neuro-san](https://github.com/cognizant-ai-lab/neuro-san) by Cognizant AI Lab.
 Licensed under Apache 2.0.
