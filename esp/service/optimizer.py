@@ -24,7 +24,7 @@ from esp.genome.definition import DEFAULT_MODEL, Genome
 from esp.genome.mutations import InvalidMutant, mutate
 from esp.genome.seeds import SEEDS
 from esp.service.state import Evaluated, Lease, ServiceState
-from esp.surrogate.predictor import Surrogate
+from esp.surrogate.predictor import MIN_SAMPLES, Surrogate
 
 # How many real evaluations one wake will attempt before stopping voluntarily.
 # Lower than a day's budget on purpose: a wake that tries to spend everything
@@ -46,6 +46,9 @@ class WakeReport:
     stopped_because: str = ""
     exhausted: list[str] = field(default_factory=list)
     note: str = ""
+    # How this wake's candidates were chosen, in words. Empty on a wake that
+    # spent its budget on seeds, because nothing was chosen.
+    selection: str = ""
 
     def material(self) -> bool:
         """Whether a human needs to hear about this wake.
@@ -57,29 +60,110 @@ class WakeReport:
         return self.improved
 
 
-def _seed_population(state: ServiceState) -> list[Genome]:
-    """The genomes to breed from: the seeds, plus anything already measured."""
-    return [build() for build in SEEDS.values()]
+def _seeds() -> list[tuple[str, Genome]]:
+    """The topologies a wake measures before it is allowed to search."""
+    return [(name, build()) for name, build in SEEDS.items()]
 
 
-def _propose(state: ServiceState, parents: list[Genome], rng: random.Random,
-             wanted: int) -> list[tuple[Genome, str]]:
+# How many of the best measured candidates are allowed to breed. Matches the
+# batch loop's `elite`, for the same reason: breeding from the whole population
+# hands equal weight to candidates already measured as bad.
+ELITE = 3
+
+
+def _population(state: ServiceState) -> list[Genome]:
+    """Every genome the service can put back into the search.
+
+    The seeds are rebuildable from source. Everything else is rebuilt from the
+    canonical genome stored beside its score, which is why that field exists.
+
+    This returned the seeds and nothing else, under a docstring that said "plus
+    anything already measured". The consequence was not a missing convenience:
+    `_propose` derives its training set from what this returns, so the Predictor
+    trained on three examples no matter how many the service had paid for -- and
+    three is below `MIN_SAMPLES`, so it never trained at all. A service whose
+    whole premise is that a population accumulates over weeks was throwing away
+    everything it accumulated, on every wake, for ever.
+
+    A record whose stored genome rebuilds to a different hash is skipped rather
+    than used. Training it against the score filed under the recorded hash would
+    teach the Predictor one network's fitness for another network's structure,
+    which is worse than having one fewer sample.
+    """
+    population = [genome for _, genome in _seeds()]
+    known = {genome.genome_hash() for genome in population}
+
+    for record in state.evaluated:
+        if not record.genome or record.genome_hash in known:
+            continue
+        try:
+            rebuilt = Genome.from_canonical(record.genome)
+        except (AttributeError, KeyError, TypeError, ValueError):
+            continue                # unreadable record, not a reason to stop
+        if rebuilt.genome_hash() != record.genome_hash:
+            continue
+        population.append(rebuilt)
+        known.add(record.genome_hash)
+
+    return population
+
+
+@dataclass
+class Proposal:
+    """The candidates a wake is about to pay for, and how they were chosen.
+
+    The batch loop prints whether the Predictor actually ranked its pool, and
+    refuses to report a "best predicted" score over an untrained one. The
+    service decided the same thing and told nobody, so an operator watching a
+    wake buy three candidates had no way to tell a surrogate-assisted
+    generation from a random one. The flag travels with the candidates for the
+    same reason the batch loop prints it: a selection nobody can distinguish
+    from a coin toss should not be described as a selection.
+    """
+
+    candidates: list[tuple[Genome, str]] = field(default_factory=list)
+    ranked: bool = False
+    samples: int = 0
+
+    def how(self) -> str:
+        """One line for the wake report."""
+        if not self.candidates:
+            return "no unseen candidate could be bred"
+        if self.ranked:
+            return (f"{len(self.candidates)} chosen by the Predictor, trained "
+                    f"on {self.samples} measurements")
+        return (f"{len(self.candidates)} taken in the order they were bred -- "
+                f"the Predictor is untrained ({self.samples} of "
+                f"{MIN_SAMPLES} measurements), so this is a random search")
+
+
+def _propose(state: ServiceState, population: list[Genome], rng: random.Random,
+             wanted: int) -> Proposal:
     """Rank a pool of mutants with the surrogate and return the best unseen ones.
 
     Phase C costs nothing, so it runs on every wake even when only one candidate
     can be afforded afterwards -- ranking a large pool for free is the whole
     reason to prefer this over picking mutants at random.
+
+    Training uses the whole measured population; breeding uses its elite. Those
+    are deliberately different sets, as they are in the batch loop: a badly
+    scoring candidate is a useful training example and a poor parent.
     """
     measured = {e.genome_hash: e.fitness for e in state.evaluated}
     trainable = [(g, measured[g.genome_hash()])
-                 for g in parents if g.genome_hash() in measured]
+                 for g in population if g.genome_hash() in measured]
 
     surrogate = Surrogate(seed=len(state.evaluated) or 1)
     if len(trainable) >= 2:
         surrogate.fit([g for g, _ in trainable], [v for _, v in trainable])
-        trained = True
-    else:
-        trained = False
+
+    # The elite breed; everything measured trains. Unmeasured genomes cannot be
+    # ranked, so they only breed when nothing has been measured yet.
+    parents = [g for g, _ in sorted(trainable, key=lambda pair: -pair[1])[:ELITE]]
+    if not parents:
+        parents = population
+    if not parents:
+        return Proposal(samples=len(trainable))
 
     seen = state.seen()
     candidates: list[tuple[Genome, str]] = []
@@ -95,15 +179,22 @@ def _propose(state: ServiceState, parents: list[Genome], rng: random.Random,
         candidates.append((child, operator))
 
     if not candidates:
-        return []
-    if not trained:
-        # Nothing measured yet, so there is nothing to rank against. Say so by
-        # taking them in order rather than pretending the surrogate chose.
-        return candidates[:wanted]
+        return Proposal(samples=len(trainable))
+
+    # `ranks()` rather than a flag of our own. This asked whether it had two
+    # samples and then set `trained = True`, but the Surrogate needs
+    # MIN_SAMPLES before it fits anything. Between two and seven samples the
+    # flag said yes over a predictor that returns one constant for every
+    # candidate, so the sort below was a no-op and the wake called an arbitrary
+    # slice a selection. Only the surrogate knows whether it trained.
+    if not surrogate.ranks():
+        return Proposal(candidates[:wanted], ranked=False,
+                        samples=len(trainable))
 
     scores = surrogate.predict([c for c, _ in candidates])
     ranked = sorted(zip(candidates, scores, strict=True), key=lambda p: -p[1])
-    return [pair for pair, _ in ranked[:wanted]]
+    return Proposal([pair for pair, _ in ranked[:wanted]], ranked=True,
+                    samples=len(trainable))
 
 
 def _models_of(genome: Genome) -> list[str]:
@@ -177,14 +268,15 @@ def wake(state: ServiceState | None = None, rng: random.Random | None = None,
 
         # Seeds first: without a measured baseline nothing can be ranked, and a
         # service with no baseline is optimising against nothing.
-        parents = _seed_population(state)
         pending: list[tuple[Genome, str]] = [
-            (g, f"seed:{name}") for name, g in zip(SEEDS.keys(),
-                                                   parents, strict=True)
-            if g.genome_hash() not in state.seen()
+            (genome, f"seed:{name}") for name, genome in _seeds()
+            if genome.genome_hash() not in state.seen()
         ]
+        selection = ""
         if not pending:
-            pending = _propose(state, parents, rng, max_evaluations)
+            proposal = _propose(state, _population(state), rng, max_evaluations)
+            pending, selection = proposal.candidates, proposal.how()
+            print(f"  Phase C -- {selection}", flush=True)
 
         done = 0
         stopped = ""
@@ -231,7 +323,7 @@ def wake(state: ServiceState | None = None, rng: random.Random | None = None,
             acquired=True, evaluated=done, generation=state.generation,
             best_fitness=after.fitness if after else None,
             improved=improved, stopped_because=stopped,
-            exhausted=state.exhausted_now(),
+            exhausted=state.exhausted_now(), selection=selection,
             note="a better topology was found" if improved
                  else "nothing better than what we already had",
         )
