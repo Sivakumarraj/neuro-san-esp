@@ -162,8 +162,23 @@ class ServiceState:
     def seen(self) -> set[str]:
         return {e.genome_hash for e in self.evaluated}
 
-    def add(self, record: Evaluated) -> None:
+    def add(self, record: Evaluated) -> bool:
+        """Record one measurement. Returns False if it was already held.
+
+        Refusing a duplicate is not tidiness. Every consumer of this list
+        treats it as a set of distinct measurements: the Predictor trains on
+        it, so a genome present twice has its fitness counted twice and pulls
+        the fit toward itself; `best()` and the reports count population size
+        from it. One wake did file the same genome twice, two milliseconds
+        apart, because the proposal that produced it contained the same mutant
+        twice -- fixed there as well, and refused here too, because the cost of
+        a silent duplicate is paid by everything downstream rather than by the
+        caller that created it.
+        """
+        if record.genome_hash in self.seen():
+            return False
         self.evaluated.append(record)
+        return True
 
     # ------------------------------------------------------------------- I/O
 

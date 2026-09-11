@@ -259,3 +259,47 @@ def test_proposals_are_never_something_already_paid_for():
     assert proposal.candidates
     for genome, _origin in proposal.candidates:
         assert genome.genome_hash() not in state.seen()
+
+
+# ----------------------------------------- never pay twice for the same thing
+
+def test_a_proposal_never_contains_the_same_candidate_twice():
+    """Within one batch, not just across days.
+
+    `_propose` deduped against the population and not against the batch it was
+    building, so the same mutant could be bred twice into one proposal. A live
+    wake did exactly that: it measured the genome, hit its own cache on the
+    second ask, and filed the record again two milliseconds later. The cache
+    meant no provider budget was lost; a slot in a three-candidate daily elite
+    was.
+    """
+    state = populated(6)
+    proposal = _propose(state, _population(state), random.Random(5), 3)
+    assert len(proposal.candidates) > 1, "nothing to duplicate, so nothing pinned"
+
+    digests = [genome.genome_hash() for genome, _origin in proposal.candidates]
+    assert len(digests) == len(set(digests)), f"duplicate proposals: {digests}"
+
+
+def test_the_population_refuses_a_genome_it_already_holds():
+    """The Predictor trains on this list. A genome present twice has its
+    fitness counted twice and pulls the fit toward itself."""
+    state = ServiceState()
+    candidate = evolved(1)[0]
+
+    assert state.add(measured(candidate, 0.81)) is True
+    assert state.add(measured(candidate, 0.99)) is False, (
+        "a second record for the same genome was accepted")
+    assert len(state.evaluated) == 1
+    assert state.evaluated[0].fitness == 0.81, "the first measurement stands"
+
+
+def test_many_proposals_in_a_row_stay_distinct():
+    """The loop breeds up to a large pool; the guard has to hold across all of
+    it, not only the first few."""
+    state = populated(6)
+    proposal = _propose(state, _population(state), random.Random(17), 25)
+    digests = [genome.genome_hash() for genome, _origin in proposal.candidates]
+    assert len(digests) == len(set(digests))
+    for digest in digests:
+        assert digest not in state.seen()
