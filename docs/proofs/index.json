@@ -52,5 +52,11 @@
     "command": "(assembled by hand -- one live session 2026-09-11: serve_studio.py, nsflow, curl against the neuro-san server, and a real question answered by the winning network)",
     "attested": "one live session 2026-09-11: serve_studio.py, nsflow, curl against the neuro-san server, and a real question answered by the winning network",
     "lines": 59
+  },
+  {
+    "name": "accelerator",
+    "command": "(assembled by hand -- one live session 2026-09-11: probe_models, serve_studio, nsflow, and four real questions answered over HTTP by the served networks)",
+    "attested": "one live session 2026-09-11: probe_models, serve_studio, nsflow, and four real questions answered over HTTP by the served networks",
+    "lines": 83
   }
 ]

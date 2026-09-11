@@ -1,0 +1,83 @@
+The whole project running in neuro-san's accelerator UI, captured 2026-09-11
+against a live provider key. Twelve measured networks served at once, so the
+same question can be put to the shape neuro-san's designer produces and to the
+network that beat it.
+
+$ python scripts/probe_models.py
+* gemini-3.5-flash-lite               11.1s  OK
+* gemini-3.1-flash-lite                5.1s  OK
+  gemini-3.5-flash                     2.2s  OK
+  gemini-3.6-flash                     2.9s  OK
+  gemini-3.7-flash                     8.6s  OK
+  gemini-3-flash                       2.4s  OK
+6 usable now        * = in the failover ladder
+
+$ python scripts/serve_studio.py
+12 measured network(s) rendered into registries/:
+   1. evolved_reassign_model_3bf9c008 fitness +0.8941  acc 0.9412   359,600 tokens  5 agent(s)
+   2. evolved_reassign_model_6859dda0 fitness +0.8453  acc 0.8824   260,052 tokens  5 agent(s)
+   3. evolved_split_agent_deca12e8   fitness +0.8441  acc 0.8824   272,068 tokens  5 agent(s)
+   4. evolved_merge_agents_4c20dbbe  fitness +0.8376  acc 0.8824   381,778 tokens  3 agent(s)
+   5. evolved_toggle_search          fitness +0.8368  acc 0.8824   345,226 tokens  5 agent(s)
+   6. evolved_split_agent_bb3340f7   fitness +0.8319  acc 0.8824   394,388 tokens  5 agent(s)
+   7. evolved_add_agent              fitness +0.7941  acc 0.8235   249,662 tokens  2 agent(s)
+   8. evolved_merge_agents_39fd57c6  fitness +0.7926  acc 0.8235   242,670 tokens  3 agent(s)
+   9. seed_flat_pair                 fitness +0.7852  acc 0.8235   316,074 tokens  3 agent(s)
+  10. seed_solo                      fitness +0.7835  acc 0.8235   377,716 tokens  1 agent(s)
+  11. seed_designer_shaped           fitness +0.7761  acc 0.8235   385,280 tokens  4 agent(s)
+  12. evolved_rewire                 fitness +0.7107  acc 0.7647   473,450 tokens  3 agent(s)
+
+$ python -m nsflow.run       (AGENT_MANIFEST_FILE=registries/studio_manifest.hocon)
+[Startup] Default NsConfig set to http://localhost:8080
+Serving frontend from: .../nsflow/prebuilt_frontend/dist
+Application startup complete.
+
+$ curl -s localhost:4173/                     -> http 200   (accelerator UI)
+$ curl -s localhost:8080/api/v1/list          -> 12 agents
+
+    studio_evolved_add_agent               studio_evolved_split_agent_bb3340f7
+    studio_evolved_merge_agents_39fd57c6   studio_evolved_split_agent_deca12e8
+    studio_evolved_merge_agents_4c20dbbe   studio_evolved_toggle_search
+    studio_evolved_reassign_model_3bf9c008 studio_seed_designer_shaped
+    studio_evolved_reassign_model_6859dda0 studio_seed_flat_pair
+    studio_evolved_rewire                  studio_seed_solo
+
+The optimiser is served and not public, as in the deployed manifest: it spends
+the day's whole evaluation budget when poked.
+
+Real questions over HTTP, through the real agents:
+
+  T01, one hop -- "Who is the depot manager of Meridian Logistics depot D08?"
+    evolved_reassign_model_3bf9c008  ->  "J. Vasquez"    entered at Coordinator
+    seed_solo                        ->  "J. Vasquez"    entered at Answerer
+    expected: J. Vasquez                                 both CORRECT
+
+  The entry agent differs because the topology differs: the five-agent network
+  routes through a Coordinator, the one-agent seed answers directly. Same
+  question, same corpus, different network, and the genome is the only thing
+  that changed.
+
+  T04, two hops -- "Who manages the depot that services the contract with
+                    client Dunmore Packaging?"
+    evolved_reassign_model_3bf9c008  ->  "R. Halvorsen"                CORRECT
+    expected: R. Halvorsen
+
+  T07, three-hop full-corpus aggregation -- "Which client holds the Meridian
+        Logistics contract with the highest annual value?"
+    evolved_reassign_model_3bf9c008  ->  "Northwind Mills"               wrong
+    seed_designer_shaped             ->  "Anvil Brewing"                 wrong
+    expected: Copperfield Print
+
+  T07 failing is the measurement reproducing, not the demo breaking. It is one
+  of the two full-corpus aggregations that nearly every network in the
+  population gets wrong or never finishes: answering it means about fourteen
+  successive searches, because CorpusSearch returns three documents a query.
+  In the committed run this same network's single miss out of seventeen was
+  T07, answered "Bright Circuit" -- a different wrong answer today, which is
+  what model nondeterminism looks like on a question none of them can do.
+
+So what is verified here is the whole loop as a person meets it: a measured
+population served as ordinary neuro-san agents, an accelerator UI listing all
+twelve with the score each earned, and real questions answered correctly
+through the real topologies -- including the one question the measurements say
+they fail, failing.

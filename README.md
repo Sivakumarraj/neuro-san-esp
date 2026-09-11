@@ -251,6 +251,11 @@ chained, and anything faster would mean it did not really look.
 make studio       # then http://localhost:4173
 ```
 
+`localhost` means the machine running the command. On a laptop that is the
+browser you already have; in Codespaces or on a remote box, forward port **4173**
+(Codespaces does it automatically and gives you a `*.app.github.dev` URL — the
+neuro-san server on 8080 stays internal, so 4173 is the only port to open).
+
 This is the comparison, not a demo. Every measured topology is rendered as its
 own servable agent and listed by the fitness it earned, so the same question can
 be put to the shape neuro-san's designer produces, to the hand-written
