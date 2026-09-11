@@ -44,10 +44,27 @@ dependencies = [
 # rather than left to the lazy install, because a dependency nobody declared is
 # exactly the bug that broke CI when reportlab turned out to be undeclared.
 openrouter = ["langchain-openrouter>=0.1"]
+# `make studio` serves every measured network in neuro-san's accelerator UI,
+# which is nsflow. It was undeclared, and that was the third time this
+# repository has made the same mistake: it was installed in the environment
+# where the target was written, so it worked there and could not work on any
+# clean install -- `ModuleNotFoundError: No module named 'nsflow'` on the first
+# machine that had never had it. An extra rather than a runtime dependency
+# because nothing except the UI needs it, and it is a large install: it bundles
+# a built frontend, speech recognition and graphviz.
+#
+# The floor is 0.7 for a reason that bites silently. nsflow 0.6.x pins
+# neuro-san<0.7, this project's floor resolves neuro-san to 0.7.x, and pip will
+# happily install a 0.6.x nsflow into an environment it cannot run in.
+studio = ["nsflow>=0.7"]
 # pypdf is a test dependency, not a runtime one: the report tests read the
 # rendered PDF back to prove a claim reached the page, rather than trusting that
 # the data structure behind it was right.
-dev = ["pytest>=8.0", "ruff>=0.6", "pypdf>=4.0"]
+#
+# nsflow is in here too, because the quick start says `pip install -e ".[dev]"`
+# and then `make studio`, and a documented sequence that cannot work is worse
+# than an undocumented one.
+dev = ["pytest>=8.0", "ruff>=0.6", "pypdf>=4.0", "nsflow>=0.7"]
 
 [tool.setuptools.packages.find]
 include = ["esp*"]

@@ -87,9 +87,22 @@ champion:
 # starts both.
 studio:
 	PYTHONPATH=$$PWD python scripts/serve_studio.py
+	@# Checked before it is used, because the failure is otherwise a bare
+	@# ModuleNotFoundError from inside a make recipe, which says nothing about
+	@# what to install.
+	@python -c "import nsflow" 2>/dev/null || { \
+	  echo ""; \
+	  echo "make studio needs nsflow, neuro-san's accelerator UI, and it is not"; \
+	  echo "installed. It is an extra because it is a large install:"; \
+	  echo ""; \
+	  echo "    pip install -e \".[studio]\"      # or .[dev], which includes it"; \
+	  echo ""; \
+	  exit 1; \
+	}
 	@# `python -m nsflow.run`, not the `nsflow` console script: the script
 	@# installed by nsflow 0.6.19 imports a `main` its own run module does not
-	@# define, so it fails on import. The module runs fine.
+	@# define, so it fails on import. The module runs fine, and 0.7 fixes the
+	@# script -- the module form works on both.
 	@#
 	@# The key is exported here because nsflow loads .env relative to its own
 	@# install directory, not the working tree, so a key in this repo's .env
