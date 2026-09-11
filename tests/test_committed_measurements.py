@@ -16,6 +16,7 @@ published number here rests on.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -138,10 +139,42 @@ def test_the_predictor_ranks_better_than_chance_on_the_whole_population():
     assert min(seen) > 0, f"a negative correlation appeared: {min(seen):+.3f}"
 
 
-def test_the_findings_quote_the_range_they_measured():
+def test_the_findings_quote_a_range_that_still_holds():
+    """The document quotes a swept interval, so this checks the interval rather
+    than reproducing the sweep.
+
+    Reproducing it would mean 120 cross-validated fits in the test suite to
+    confirm a number that moves with every new measurement. What has to stay
+    true is cheaper and is the actual claim: the quoted interval is positive,
+    it beats the chance threshold, and a fresh resample lands inside it. A
+    document left behind by a new measurement fails the last of those.
+    """
     findings = (ROOT / "docs" / "FINDINGS.md").read_text(encoding="utf-8")
-    assert "+0.236 to +0.645" in findings, (
-        "the measured spread is the finding; a single figure is a seed")
+    quoted = re.search(r"\+(\d\.\d+) to \+(\d\.\d+)", findings)
+    assert quoted, "the findings document no longer quotes a measured range"
+    low, high = float(quoted.group(1)), float(quoted.group(2))
+
+    assert 0 < low < high, f"quoted range is not a positive interval: {low}-{high}"
+    assert low > 0.2, (
+        f"the document claims the Predictor beats chance on every split, and "
+        f"quotes a low end of {low:+.3f} that does not")
+
+    for sampled in _resampled_spearman():
+        assert low <= sampled <= high, (
+            f"a resample gives {sampled:+.3f}, outside the quoted "
+            f"{low:+.3f} to {high:+.3f} -- the document predates a "
+            f"measurement")
+
+
+def _resampled_spearman() -> list[float]:
+    """A handful of splits, not the whole sweep. Enough to catch a stale range."""
+    entries = sorted(cached().items())
+    genomes = [Genome.from_canonical(entry["genome"]) for _d, entry in entries]
+    values = [RECORDS[digest]["fitness"] for digest, _e in entries]
+
+    surrogate = Surrogate()
+    return [surrogate.report_quality(genomes, values, seed=seed).spearman
+            for seed in range(4)]
 
 
 # ------------------------------------------------- reaching the measurements

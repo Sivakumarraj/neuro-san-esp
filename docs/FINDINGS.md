@@ -6,13 +6,14 @@ keeps the summary; this keeps the argument.
 
 ## What was measured
 
-**Eleven networks, 17 tasks each, 187 real task runs on real model calls.** Three seeds
-and eight mutants, every one of them cached with its per-task outcomes and its genome in
+**Twelve networks, 17 tasks each, 204 real task runs on real model calls.** Three seeds
+and nine mutants, every one of them cached with its per-task outcomes and its genome in
 `tests/fixtures/cache/`, summarised in `results/history.json`.
 
 | Origin | Accuracy | Of what it answered | Never finished | Tokens | Agents | Fitness |
 |---|---|---|---|---|---|---|
-| **`mut:reassign_model`** | **0.8824** | **1.00 (15/15)** | 2 | **260,052** | 5 | **0.8453** |
+| **`mut:reassign_model`** | **0.9412** | **0.94 (16/17)** | **0** | 359,600 | 5 | **0.8941** |
+| `mut:reassign_model` | 0.8824 | 1.00 (15/15) | 2 | **260,052** | 5 | 0.8453 |
 | `mut:split_agent` | 0.8824 | 0.94 (15/16) | 1 | 272,068 | 5 | 0.8441 |
 | `mut:merge_agents` | 0.8824 | 0.94 (15/16) | 1 | 381,778 | 3 | 0.8376 |
 | `mut:toggle_search` | 0.8824 | 0.94 (15/16) | 1 | 345,226 | 5 | 0.8368 |
@@ -24,17 +25,29 @@ and eight mutants, every one of them cached with its per-task outcomes and its g
 | `seed:designer_shaped` (the designer's shape) | 0.8235 | 0.88 (14/16) | 1 | 385,280 | 4 | 0.7761 |
 | `mut:rewire` | 0.7647 | 0.87 (13/15) | 2 | 473,450 | 3 | 0.7107 |
 
-**The search beat all three seeds, and it beat the designer's own shape by the largest
-margin of the three.** `mut:reassign_model` answers 15 of 17 against `designer_shaped`'s
-14, on 32% fewer tokens. Five networks reach 0.8824 and every one of them is evolved; no
-seed does. The operator that produced the winner was **`reassign_model`** — a per-agent
-model swap, which is the one knob neuro-san already exposes and nothing in the framework
-tunes.
+**The search beat all three seeds twice, and both wins came from the same knob.** The best
+network answers 16 of 17 against `designer_shaped`'s 14, on 7% fewer tokens. A second one
+reaches 15 of 17 for 32% fewer. Six networks now sit on the Pareto front; five of the six
+are evolved, and the one seed on it is there only for being the smallest.
+
+**Both winners reassigned the front man's model and left every specialist alone.** The best
+puts `gemini-3.5-flash` on the Coordinator and keeps all four specialists on
+`gemini-3.1-flash-lite`; the cheaper winner does the same with `gemini-3.5-flash-lite`. The
+agent that decides *who to ask* is the one worth paying for, and the agents that do the
+looking are not. That is a per-agent setting neuro-san already supports, that nothing in
+the framework tunes, and that is invisible in the topology — two networks with an identical
+shape and a different model assignment are a 5.9-point accuracy difference apart here.
+
+**The best network is the first to finish all seventeen tasks.** Every other measured
+topology lost at least one run to a timeout or a blown recursion cap. Its single miss is a
+wrong answer to T07 — it said `Bright Circuit` — which is a different and more respectable
+failure than not finishing. A better router does not merely choose better; it stops the
+network wandering until the clock runs out.
 
 **The cost spread across the population is 95%**, from 242,670 tokens to 473,450, for
-accuracies inside seven points of each other. Topology and per-agent model assignment
-changed what answering cost by a factor of two, and that is precisely the measurement
-neuro-san cannot make today. It is only visible because of the `TOKEN_SCALE` fix below —
+accuracies inside 18 points of each other. Topology and per-agent model assignment changed
+what answering cost by a factor of two, and that is precisely the measurement neuro-san
+cannot make today. It is only visible because of the `TOKEN_SCALE` fix below —
 under the saturated scale everything clipped to the same penalty and scored as
 indistinguishable.
 
@@ -43,20 +56,23 @@ cross-validated quality report, at generation 1 on nine samples: **spearman −0
 0.049, `beats_random: false`**. That is the surrogate the search actually ranked with, and
 it ranked worse than chance.
 
-Refitting `report_quality` over all eleven committed measurements says something better,
+Refitting `report_quality` over all twelve committed measurements says something better,
 with a caveat attached. Across three input orderings and forty cross-validation seeds — 120
-runs — spearman came out **positive every time, +0.236 to +0.645, median +0.518**, beating
-the 0.2 threshold in all 120. So the Predictor does carry ranking information on eleven
-samples. But the spread is the finding as much as the median is: at this sample size the
-number moves by 0.4 depending on how `KFold` happens to split, so **any single figure
-quoted from it is an artefact of a seed**. `make offline` prints +0.618 and the first
-recomputation done for this document printed +0.473; both are the same measurement with a
-different split.
+runs — spearman came out **positive every time, +0.280 to +0.755, median +0.671**, beating
+the 0.2 threshold in all 120. At eleven measurements the same sweep gave +0.236 to +0.645,
+median +0.518: the estimate is improving and its spread is narrowing as samples accumulate,
+which is the expected shape and not yet a result.
 
-Two things follow. The first is that this is a measurement taken after the fact, not the
-one any generation was selected on, so it cannot be offered as evidence that the surrogate
-helped the search. The second is that a stable quality number needs more real evaluations,
-not a better estimator.
+The spread is still part of the finding. At this sample size the number moves by almost 0.5
+depending on how `KFold` happens to split, so **any single figure quoted from it is an
+artefact of a seed** — which is why a range is given here and nowhere is one value.
+
+**The twelfth network is the first the Predictor actually chose.** A service wake trained on
+eleven real samples, ranked a pool of mutants, paid for the top of it, and the candidate it
+picked beat everything measured before. That is the ESP loop working end to end, once. It is
+not evidence that the surrogate beats picking at random, because nothing in this repository
+has yet run both on the same budget — and until that exists, the honest attribution for the
+improvement is the evolutionary search with the Predictor unproven alongside it.
 
 `esp/surrogate/predictor.py` reports `spearman` as `None` rather than `0.000` when there
 are too few samples to cross-validate, because a placeholder printed in a measurement's
@@ -89,18 +105,18 @@ quietly stop being true.
 
 ### Where the unfinished runs are
 
-Seventeen of the 187 task runs never finished. They are not spread evenly:
+Seventeen of the 204 task runs never finished, all of them among the first eleven networks. They are not spread evenly:
 
 | Task | Shape | Networks that never finished it |
 |---|---|---|
-| T08 | 3-hop full-corpus aggregation | 9 of 11 |
-| T06 | 3-hop full-corpus aggregation | 6 of 11 |
-| T03 | 2-hop | 1 of 11 |
-| T07 | 3-hop | 1 of 11 |
+| T08 | 3-hop full-corpus aggregation | 9 of 12 |
+| T06 | 3-hop full-corpus aggregation | 6 of 12 |
+| T03 | 2-hop | 1 of 12 |
+| T07 | 3-hop | 1 of 12 |
 
 T06 and T08 are full-corpus aggregations — *"across all forty contracts, which has the
 highest…"* — and `CorpusSearch` returns three documents a query, so answering one means
-about fourteen successive searches. Two of the eleven managed T08. They are not free to
+about fourteen successive searches. Three of the twelve managed T08. They are not free to
 fail: whatever a network spends looping on a question it cannot answer is charged to it as
 cost, so the spread above measures efficiency *and* failure mode together. Separating them
 needs a re-measurement this project has not been able to buy.
@@ -109,7 +125,7 @@ The winner's two unfinished runs are worth naming precisely, because one of them
 its fault: T08 was the 600-second timeout every network hits, and T03 came back as a
 provider `500 INTERNAL`. It answered correctly everything it finished.
 
-All eleven were measured on the same model, **`gemini-3.1-flash-lite`**. That is not
+All twelve were measured on the same base model, **`gemini-3.1-flash-lite`**. That is not
 incidental — the model is part of the genome hash, so a fitness compared across models
 would not mean anything, and the table above is only a comparison because one model
 produced all of it. `reassign_model` changes a *per-agent* model override inside that

@@ -16,6 +16,7 @@ from pathlib import Path
 
 from reportlab.platypus import PageBreak, Spacer
 
+from esp.report.facts import facts, spelled
 from esp.report.layout import (
     ACCENT,
     AMBER,
@@ -157,7 +158,7 @@ class Primer(Layout):
 
         self.callout(
             "This is the whole point",
-            "Trying two thousand designs would take eleven days and a large bill. "
+            "Trying two thousand designs for real would take months and a large bill. "
             "Trying two thousand <i>predictions</i> takes a tenth of a second and "
             "costs nothing. You only pay for the few the prediction says are worth "
             "it. That trade is what makes the search affordable &mdash; and it is why "
@@ -220,36 +221,52 @@ class Primer(Layout):
     def _numbers(self) -> None:
         self.h1("What it found", "The result that makes the whole thing worth doing.")
 
+        F = facts()
         self.p(
-            "Eleven network designs were run for real against all 17 questions. "
-            "Three were the starting designs; the other eight the search invented. "
-            "The best of each:", BIG)
+            f"{spelled(F.measured).capitalize()} network designs were run for "
+            f"real against all {F.tasks} questions. {spelled(F.seeds).capitalize()} "
+            f"were the starting designs; the other {spelled(F.evolved)} the "
+            f"search invented. The best of each:", BIG)
+
+        rows = []
+        for record in (F.designer, *(m for m in [F.cheapest_winner] if m)):
+            if record is None:
+                continue
+            label = ("The shape neuro-san's own designer produces"
+                     if record is F.designer
+                     else "A cheaper design the search found")
+            rows.append([label, f"{record.accuracy:.0%}",
+                         f"{record.tokens:,}", str(record.agents)])
+        rows.append(["<b>The best design the search found</b>",
+                     f"<b>{F.best.accuracy:.0%}</b>",
+                     f"<b>{F.best.tokens:,}</b>", str(F.best.agents)])
 
         self.table(
             ["The design", "Questions right", "Cost (words of AI)", "Agents"],
-            [["The shape neuro-san's own designer produces",
-              "82%", "385,280", "4"],
-             ["A flat pair of agents", "82%", "316,074", "3"],
-             ["One agent doing everything", "82%", "377,716", "1"],
-             ["<b>The best design the search found</b>",
-              "<b>88%</b>", "<b>260,052</b>", "5"]],
+            rows,
             widths=[CW * 0.42, CW * 0.18, CW * 0.24, CW * 0.16],
-            highlight=[3])
+            highlight=[len(rows) - 1])
 
+        gained = F.best_correct - round(
+            (F.designer.accuracy if F.designer else 0) * F.tasks)
+        saved = (F.designer.tokens - F.best.tokens) if F.designer else 0
         self.callout(
             "Read that table again",
-            "The design the search found got <b>one more question right</b> than any "
-            "of the three starting designs, and did it for <b>a third less</b> "
-            "&mdash; 125,000 fewer words of AI than the shape neuro-san's own designer "
-            "produces.<br/><br/>"
+            f"The design the search found got <b>{spelled(gained)} more "
+            f"question{'' if gained == 1 else 's'} right</b> than any of the "
+            f"{spelled(F.seeds)} starting designs, and did it for "
+            f"<b>{abs(saved):,} fewer words of AI</b> than the shape "
+            f"neuro-san's own designer produces.<br/><br/>"
             "The change that did it was not a new agent or a new tool. It was "
             "<b>swapping which model one agent inside the network uses</b> &mdash; a "
             "setting the framework already offers and nobody tunes, because until now "
             "there was no way to see what it was worth.<br/><br/>"
-            "The three starting designs also got exactly the same number right as each "
-            "other while differing 22% in cost, which is the same lesson in "
-            "miniature: on a real system running thousands of requests a day, that is "
-            "a bill nobody can see.")
+            "The starting designs are the same lesson in miniature: they got "
+            "exactly the same number right as each other while differing in "
+            f"cost, and across all {spelled(F.measured)} designs the dearest "
+            f"cost <b>{F.cost_spread_percent():.0f}% more</b> than the "
+            "cheapest. On a real system running thousands of requests a day, "
+            "that is a bill nobody can see.")
 
         self.callout(
             "And now read the small print",
@@ -262,8 +279,9 @@ class Primer(Layout):
             "only the questions each one actually finished, the one-agent design got "
             "<b>everything</b> right and the four-agent design did not. What the shape "
             "of the network changed was how often it <i>finished</i>.<br/><br/>"
-            "That is a more interesting finding than the one it replaced, and a weaker "
-            "one: it rests on three measurements.",
+            "That is a more interesting finding than the one it replaced, and "
+            f"still a weak one: it rests on {spelled(facts().seeds)} of the "
+            f"{spelled(facts().measured)} measurements.",
             bg=WARN_BG, bar=AMBER)
 
         self.p(
@@ -380,7 +398,8 @@ class Primer(Layout):
 
         self.callout(
             "It has beaten the starting design once, on a small experiment",
-            "Eleven real tests exist and the search is one round deep. One round, one "
+            f"{spelled(facts().measured).capitalize()} real tests exist and the "
+            "search is shallow. A couple of rounds, one "
             "throw of the dice, one kind of question, one model &mdash; not repeated, "
             "and not tried on questions it had never seen. Beating a starting design "
             "convincingly needs a collection of results, a collection needs allowance, "
@@ -393,10 +412,14 @@ class Primer(Layout):
             bg=WARN_BG, bar=AMBER)
 
         self.callout(
-            "The predictor is currently no better than guessing",
-            "Trained on three examples, its measured accuracy at ranking is exactly "
-            "chance, and the report prints that rather than hiding it. That is what "
-            "three examples are worth. The machinery is right and the predictions are "
+            "The predictor is promising and unproven",
+            f"Trained on {spelled(facts().measured - 1)} examples it picked the "
+            "best design measured so far &mdash; but earlier, with fewer, its "
+            "measured accuracy at ranking was <b>worse than guessing</b>, and "
+            "the report prints both rather than the flattering one. Nothing here "
+            "has yet run the search with the predictor and without it on the same "
+            "budget, which is what would settle whether it earns its place. The "
+            "machinery is right and the predictions are "
             "free; their <i>quality</i> depends on how many real results have "
             "accumulated &mdash; which is precisely why it runs every hour instead of "
             "once.",
@@ -518,10 +541,10 @@ class Primer(Layout):
             "One sentence, if you only remember one",
             "neuro-san can design an AI agent network but cannot tell you whether it "
             "is any good; this measures that, searches for a better one, and keeps "
-            "searching by itself &mdash; and on its first eleven measurements it found "
-            "a network that answers more questions than the one neuro-san's own "
-            "designer produces, for a third of the cost less, by changing which model "
-            "a single agent inside it uses.",
+            f"searching by itself &mdash; and on its first {spelled(facts().measured)} "
+            "measurements it found a network that answers more questions than the "
+            "one neuro-san's own designer produces, for less money, by changing "
+            "which model a single agent inside it uses.",
             bg=SOFT, bar=ACCENT)
 
 
