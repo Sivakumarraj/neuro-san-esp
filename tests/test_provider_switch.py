@@ -141,7 +141,13 @@ def test_a_model_change_does_not_look_like_an_evolved_candidate():
     re-hashes every seed. serve_champion matched the committed measurement by
     hash alone, so it concluded the winner was an unreconstructable evolved
     candidate and pointed the reader at ServiceState -- when the actual cause
-    was ESP_DEFAULT_MODEL, and the record's `origin` named the seed all along.
+    was ESP_DEFAULT_MODEL.
+
+    Every committed measurement now carries its genome, so the champion is
+    rebuilt from that rather than matched by hash and the old conclusion cannot
+    be reached at all. What has to survive is the honesty: the network is
+    pinned to the model it was measured on, so a deployment configured for a
+    different model has to be told which one it will actually call.
     """
     finished = subprocess.run(
         [sys.executable, "scripts/serve_champion.py", "--state", "no-such-state"],
@@ -151,20 +157,33 @@ def test_a_model_change_does_not_look_like_an_evolved_candidate():
              "ESP_MODEL_TIERS": "gemini-3.5-flash-lite"})
 
     assert finished.returncode == 0, finished.stderr
-    assert "evolved candidate" not in finished.stdout + finished.stderr
+    assert "cannot be rebuilt" not in finished.stdout + finished.stderr
+    assert "extend ServiceState" not in finished.stdout + finished.stderr
+    assert "pinned to gemini-3.1-flash-lite" in finished.stdout, finished.stdout
+    assert "gemini-3.5-flash-lite" in finished.stdout
 
-    # A seed name, not a specific one. This used to assert "designer_shaped",
-    # which coupled the test to whichever seed happened to be winning in
-    # results/history.json -- and that file is rewritten by every real search.
-    # The first search to change the ranking turned a passing test red without
-    # anything being broken. What the test is actually about is that the seed
-    # is *named* rather than reported as unreconstructable.
-    from esp.genome.seeds import SEEDS
 
-    assert any(name in finished.stdout for name in SEEDS), (
-        f"no seed name in output: {finished.stdout[:300]}")
-    # and it must not present the old numbers as describing the new model
-    assert "NOT what you are about to talk to" in finished.stdout
+def test_a_measurement_with_no_genome_still_names_its_seed():
+    """The old cause, kept covered. A record written before genomes were stored
+    can only be matched by hash, and a changed model breaks that match -- so
+    `origin` has to be consulted rather than concluding the winner is an
+    unreconstructable evolved candidate."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import serve_champion
+
+    from esp.service.state import Evaluated, ServiceState
+
+    state = ServiceState()
+    state.add(Evaluated(
+        genome_hash="0" * 16,               # hashed under another model
+        origin="seed:designer_shaped", fitness=0.7761, accuracy=0.8235,
+        tokens=385_280, agents=4, depth=2, generation=0, measured_at="",
+        model="gemini-3.1-flash-lite", genome=None))
+
+    name, genome, record = serve_champion.champion_genome(state)
+    assert name == "designer_shaped"
+    assert genome is not None
+    assert record.origin == "seed:designer_shaped"
 
 
 def test_a_genuinely_evolved_winner_still_reports_honestly():
