@@ -31,3 +31,20 @@ registries/champion.hocon
 registries/champion_manifest.hocon
 logs/
 state/champion.hocon
+
+# One deployment's own runtime, which is never another deployment's.
+#
+# state.json is this machine's population and its per-day, per-model spend
+# ledger. Committed, every clone would start up believing it had already
+# measured candidates on somebody else's key and already spent today's budget.
+# The measurements worth sharing are committed in tests/fixtures/cache, and
+# scripts/adopt_measurements.py is how a fresh deployment picks them up.
+#
+# lease.json is a process lock. Lease.acquire only refuses while the recorded
+# timestamp is inside ESP_LEASE_SECONDS, so a committed lease is worse than
+# clutter: a clone would decline to run a wake for the rest of that hour,
+# reporting that another optimiser holds a lease that no longer exists.
+state/state.json
+state/state.json.tmp
+state/lease.json
+state/lease.json.guard
