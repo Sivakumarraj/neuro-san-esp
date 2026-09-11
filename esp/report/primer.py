@@ -221,27 +221,35 @@ class Primer(Layout):
         self.h1("What it found", "The result that makes the whole thing worth doing.")
 
         self.p(
-            "Three starting network designs were run for real against all 17 "
-            "questions:", BIG)
+            "Eleven network designs were run for real against all 17 questions. "
+            "Three were the starting designs; the other eight the search invented. "
+            "The best of each:", BIG)
 
         self.table(
             ["The design", "Questions right", "Cost (words of AI)", "Agents"],
             [["The shape neuro-san's own designer produces",
-              "<b>82%</b>", "<b>278,532</b>", "4"],
-             ["A flat pair of agents", "<b>82%</b>", "326,364", "3"],
-             ["One agent doing everything", "<b>82%</b>", "<b>396,378</b>", "1"]],
+              "82%", "385,280", "4"],
+             ["A flat pair of agents", "82%", "316,074", "3"],
+             ["One agent doing everything", "82%", "377,716", "1"],
+             ["<b>The best design the search found</b>",
+              "<b>88%</b>", "<b>260,052</b>", "5"]],
             widths=[CW * 0.42, CW * 0.18, CW * 0.24, CW * 0.16],
-            highlight=[0])
+            highlight=[3])
 
         self.callout(
             "Read that table again",
-            "All three got <b>exactly the same number of questions right</b>. But the "
-            "most expensive one cost <b>42% more</b> than the cheapest &mdash; "
-            "118,000 extra words of AI for zero extra correct answers.<br/><br/>"
-            "The cost difference is the real finding. On a real system running "
-            "thousands of requests a day, that is a 42% bill for nothing &mdash; and "
-            "there is currently no way to see it, because the framework has no way to "
-            "measure any of this.")
+            "The design the search found got <b>one more question right</b> than any "
+            "of the three starting designs, and did it for <b>a third less</b> "
+            "&mdash; 125,000 fewer words of AI than the shape neuro-san's own designer "
+            "produces.<br/><br/>"
+            "The change that did it was not a new agent or a new tool. It was "
+            "<b>swapping which model one agent inside the network uses</b> &mdash; a "
+            "setting the framework already offers and nobody tunes, because until now "
+            "there was no way to see what it was worth.<br/><br/>"
+            "The three starting designs also got exactly the same number right as each "
+            "other while differing 22% in cost, which is the same lesson in "
+            "miniature: on a real system running thousands of requests a day, that is "
+            "a bill nobody can see.")
 
         self.callout(
             "And now read the small print",
@@ -371,12 +379,15 @@ class Primer(Layout):
                 "Stated plainly, because this is the part people skip.")
 
         self.callout(
-            "The search has not yet beaten the starting design",
-            "Only three real tests exist. Beating a baseline needs a collection of "
-            "results, a collection needs allowance, and allowance arrives at three "
-            "tests a day. That is the honest state of it. If it never beats the "
-            "baseline, that will be reported as the answer &mdash; the reporting code "
-            "renders a failure as readily as a success, and it distinguishes "
+            "It has beaten the starting design once, on a small experiment",
+            "Eleven real tests exist and the search is one round deep. One round, one "
+            "throw of the dice, one kind of question, one model &mdash; not repeated, "
+            "and not tried on questions it had never seen. Beating a starting design "
+            "convincingly needs a collection of results, a collection needs allowance, "
+            "and allowance arrives at three tests a day. That is the honest state of "
+            "it. Had it found nothing better, that would be reported as the answer "
+            "&mdash; the reporting code renders a failure as readily as a success, and "
+            "it distinguishes "
             "\"we searched and found nothing better\" from \"we never searched\", "
             "because those are different claims.",
             bg=WARN_BG, bar=AMBER)
@@ -507,9 +518,10 @@ class Primer(Layout):
             "One sentence, if you only remember one",
             "neuro-san can design an AI agent network but cannot tell you whether it "
             "is any good; this measures that, searches for a better one, and keeps "
-            "searching by itself &mdash; and the first thing it measured was three "
-            "designs with a 42% difference in cost, and a tie on correctness that "
-            "turned out to be three different failures wearing the same score.",
+            "searching by itself &mdash; and on its first eleven measurements it found "
+            "a network that answers more questions than the one neuro-san's own "
+            "designer produces, for a third of the cost less, by changing which model "
+            "a single agent inside it uses.",
             bg=SOFT, bar=ACCENT)
 
 

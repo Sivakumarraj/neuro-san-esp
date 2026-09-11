@@ -132,11 +132,33 @@ make verify               # start a real server and prove it fires the optimiser
 
 ## Results
 
-Three seed topologies over the same 17 tasks on one model. The cost spread is real: the
-four-agent network is the cheapest and the single-agent network the most expensive, a 42%
-difference for the same score. The matching accuracy is **not** a result — all three fail
-the same three tasks for three different reasons, one of them by crashing out of them
-entirely.
+**Eleven networks measured on real model calls, same 17 tasks, same model. The search
+found a better topology than the one neuro-san's designer produces.**
+
+| | Accuracy | Tokens | Agents | Fitness |
+|---|---|---|---|---|
+| `seed:designer_shaped` — the shape the designer produces | 0.8235 | 385,280 | 4 | 0.7761 |
+| `seed:flat_pair` | 0.8235 | 316,074 | 3 | 0.7852 |
+| `seed:solo` — one agent, one tool | 0.8235 | 377,716 | 1 | 0.7835 |
+| **`mut:reassign_model` — best evolved** | **0.8824** | **260,052** | 5 | **0.8453** |
+
+Against the designer's own shape that is **+5.9 points of accuracy for 32% fewer tokens**,
+and the mutation that did it was a per-agent model reassignment — the knob neuro-san
+already has and nothing tunes. Five of the eleven reach 0.8824 and all five are evolved;
+no seed does. Every number above is recomputed from the committed evaluation cache by
+`tests/test_docs.py`, and every candidate's genome is stored beside its score in
+`tests/fixtures/cache/`, so the winner can be rebuilt and served rather than just cited.
+
+**The Predictor is the half that did not earn its place yet.** At the point the search
+used it — generation 1, nine measurements — cross-validated rank correlation was
+**−0.333**, worse than chance, and `results/history.json` records that. Refitted over all
+eleven it comes out positive and beats chance on every split tried, **+0.24 to +0.65** with
+a median near +0.5. Two honest caveats on that second number: it is a measurement taken
+afterwards rather than the one any generation was selected on, and at eleven samples a
+single figure is not stable — it moves with the cross-validation split, which is why a
+range is quoted instead of the one value that happened to come out first. So the
+evolutionary half of ESP produced the result above and the surrogate half is promising and
+unproven.
 
 Full numbers, the failure analysis, and the prior art this sits beside are in
 [docs/FINDINGS.md](docs/FINDINGS.md). Three PDFs are generated: a technical [dossier](docs/neuro-san-esp-Dossier.pdf), a jargon-free
@@ -148,13 +170,24 @@ kitchen or an electricity bill. `scripts/verification_report.py` produces a
 
 ## Limitations
 
-- **The surrogate is not trained on the data this project has.** It needs eight samples and
-  three exist, so it returns a constant and Phase C ranks nothing. `report_quality`
-  publishes that it was *not measured* rather than a number.
-- **No evolved candidate has beaten the baseline.** A candidate costs about 165 provider
-  requests against a free tier of 500 per day per model, so no search has completed.
-- **Six of the fifty-one seed task runs were timeouts or crashes**, not answers. `accuracy`
+- **The surrogate did not help the search that produced this result.** It was trained on
+  nine samples and cross-validated at **−0.333**, worse than chance, so Phase C's ranking
+  carried no information at the generation that mattered. `report_quality` publishes that
+  number rather than hiding it, and prints *not measured* rather than a placeholder when
+  there are too few samples to cross-validate at all.
+- **Eleven real evaluations is a small population, and one generation of search.** No
+  repeat run, no second random seed, no held-out task set. A candidate costs about 165
+  provider requests against a free tier of 500 per day per model, which is why: on the one
+  model all eleven were measured on, that is three candidates a day and about four days of
+  budget. The 118 candidates the surrogate scored in between cost nothing, which is the
+  part of ESP that does work as advertised.
+- **Seventeen of the 187 task runs never finished** — a timeout or a blown recursion cap
+  rather than a wrong answer. They concentrate on two full-corpus aggregation questions
+  that nine and six of the eleven networks respectively failed to complete. `accuracy`
   counts them as wrong; `answered_accuracy()` excludes them. Both are reported.
+- **No baseline other than the seeds.** Random search and evolution-without-a-surrogate
+  would each need their own provider budget, so the claim is that this beat three
+  hand-written topologies, not that it beat the alternative search strategies.
 - **One task domain.** A topology that wins at multi-hop retrieval need not win elsewhere.
 - **The surrogate idea is not novel.** AgentSquare (ICLR 2025) uses a performance predictor
   for the same purpose. What is absent from that work is neuro-san, and what is absent from
@@ -166,6 +199,7 @@ kitchen or an electricity bill. `scripts/verification_report.py` produces a
 |---|---|
 | [SERVING.md](SERVING.md) | Deployment, state, budget, and what the agent may do |
 | [docs/FINDINGS.md](docs/FINDINGS.md) | Measurements, failure analysis, prior art |
+| [What the Predictor is](docs/FINDINGS.md#what-the-predictor-is-exactly) | The surrogate's model, features, and where this departs from canonical ESP |
 | [SECURITY.md](SECURITY.md) | Reporting a vulnerability |
 
 Built on [neuro-san](https://github.com/cognizant-ai-lab/neuro-san) by Cognizant AI Lab.
