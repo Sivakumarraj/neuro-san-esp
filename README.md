@@ -185,7 +185,7 @@ Python 3.12+. Works the same in Codespaces, a devcontainer, or a laptop.
 
 ```bash
 python3.12 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev]"      # adds the test tools and the accelerator UI
 
 make check       # ruff + the full test suite
 make offline     # phases B and C: 2,000 candidates ranked, zero LLM calls
@@ -248,7 +248,8 @@ chained, and anything faster would mean it did not really look.
 ### Open every measured network in the accelerator UI
 
 ```bash
-make studio       # then http://localhost:4173
+pip install -e ".[studio]"   # nsflow, the accelerator UI — included in .[dev]
+make studio                  # then http://localhost:4173
 ```
 
 `localhost` means the machine running the command. On a laptop that is the
