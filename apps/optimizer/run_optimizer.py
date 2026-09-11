@@ -69,6 +69,7 @@ def main() -> int:
         "stopped_because": report.stopped_because,
         "exhausted_today": report.exhausted,
         "note": report.note,
+        "selection": report.selection,
     }, indent=2))
 
     best = state.best()

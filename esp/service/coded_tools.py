@@ -36,6 +36,10 @@ class RunWake(CodedTool):
             "stopped_because": report.stopped_because,
             "exhausted_today": report.exhausted,
             "note": report.note,
+            # How the candidates were chosen. A generation the Predictor could
+            # not rank is a random search, and the agent reporting the wake has
+            # to be able to say so.
+            "selection": report.selection,
         }
         if best:
             payload["best"] = {
