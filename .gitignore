@@ -36,6 +36,12 @@ registries/champion_manifest.hocon
 # that earned the score, and then the thing being served would not be the
 # thing that was measured.
 registries/studio_*.hocon
+
+# nsflow's own local database, created in the working directory the moment the
+# accelerator UI starts. One deployment's chat history and session rows, and
+# nothing another clone should inherit.
+nss_local.db
+nss_local.db-journal
 logs/
 state/champion.hocon
 
