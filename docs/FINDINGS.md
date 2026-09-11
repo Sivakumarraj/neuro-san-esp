@@ -167,6 +167,71 @@ The report states the budget ceiling on its first page rather than presenting on
 generation as a converged search. Those are different claims, and the weaker one is the
 true one.
 
+## Held-out tasks: what this task set can and cannot support
+
+Every result above selects a network on the same seventeen questions it
+measures it with. That is the weakest point in the whole argument, and it can be
+tested without spending anything, because each evaluation recorded the outcome
+of every individual task. Split the seventeen in two, rank the population on one
+half, and see where that half's winner lands on the other. Two hundred random
+splits, nine tasks selecting and eight judging (`make holdout`).
+
+It gives two answers, and they point in opposite directions.
+
+**No, half of seventeen tasks cannot identify which network is best.**
+
+| | |
+|---|---|
+| Selection winner also ranked first on the held-out half | 0% of splits |
+| Selection winner ranked in the held-out top three | 0% of splits |
+| Its mean held-out rank | 7.2 of 12 |
+| Population ordering carried across the split, accuracy alone | +0.022 |
+| Population ordering carried across the split, full fitness | +0.108 |
+
+A rank correlation of +0.022 is no relationship at all. The reason is arithmetic
+rather than mysterious: accuracy over eight tasks takes nine possible values and
+moves in steps of 0.125, while the entire cost penalty across this population
+spans about 0.03 — less than a quarter of one step. So held-out accuracy sorts
+the networks into three or four large ties, and the cost terms decide the order
+inside them. Which networks land in which tie is split-specific.
+
+**This is a limitation of the measurement, not of the networks, and it
+invalidates one kind of claim made above.** "This network is the best of the
+twelve" does not survive a held-out split. Anything resting on the ordering of
+individual networks — which operator is best, whether +0.8941 genuinely beats
++0.8453 — is inside the noise of a seventeen-task set. The fix is more tasks,
+and nothing cheaper works: a better estimator cannot recover a signal the
+sample size does not contain.
+
+**Yes, searching beat not searching, and that does hold out of sample.**
+
+| | |
+|---|---|
+| Searched winner beat the designer's shape on held-out tasks | 90% of splits |
+| Mean held-out fitness margin over it | +0.0224 |
+| The designer's shape, mean held-out rank | 10.4 of 12 |
+| Mean held-out rank, the nine evolved networks | 5.8 of 12 |
+| Mean held-out rank, the three seeds | 8.5 of 12 |
+| Best evolved network beat the best seed on held-out tasks | **100% of splits** |
+
+The comparison is genuinely out of sample: the winner is chosen on the selection
+half and judged on tasks that took no part in choosing it. Evolved networks
+outrank hand-written ones by two and a half places on average, and in two
+hundred splits there was not one where the best seed beat the best evolved
+network.
+
+So the claim this evidence supports is the population-level one — **evolutionary
+search over neuro-san topologies produces better networks than the shape the
+designer produces, robustly** — and not the per-network one. The headline table
+is still the honest report of what was measured; what it cannot bear is being
+read as a ranking.
+
+Two caveats on the test itself. Held-out questions come from the same generated
+world, so this measures stability across questions rather than transfer to a new
+domain, which would be a stronger test and needs a second world. And the
+selection half is itself only nine tasks, so the winner it picks is noisier than
+a real search's would be after a fuller run.
+
 ## What the Predictor is, exactly
 
 Asked directly in review, and the answer was implicit in the code and nowhere in the

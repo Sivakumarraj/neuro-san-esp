@@ -31,6 +31,12 @@ search:
 # Phase B and C only: train the Predictor on whatever real evaluations are
 # cached, then evolve against it. Zero provider calls, so this runs with no
 # budget and no key at all.
+# Select a winner on half the tasks, then judge it on the half it was not
+# selected on. Costs nothing: every evaluation recorded the outcome of each
+# individual task, so the question is already answerable from what is committed.
+holdout:
+	PYTHONPATH=$$PWD python scripts/holdout_report.py
+
 offline:
 	PYTHONPATH=$$PWD python scripts/offline_search.py --pool 2000
 
