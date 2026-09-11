@@ -91,21 +91,35 @@ python apps/optimizer/run_optimizer.py
 
 ```json
 {
-  "wake": 1,
-  "generation": 1,
+  "wake": 4,
+  "generation": 2,
   "evaluated_this_wake": 3,
-  "population": 3,
-  "best_fitness": 0.7868,
+  "population": 11,
+  "best_fitness": 0.8453,
   "improved": true,
   "stopped_because": "",
   "exhausted_today": [],
-  "note": "a better topology was found"
+  "note": "a better topology was found",
+  "selection": "3 chosen by the Predictor, trained on 11 measurements"
 }
 
-best so far: 459ac1a66d925b0c  seed:designer_shaped  acc=0.82 tokens=278,532 agents=4 fitness=+0.7868
+best so far: 6859dda0dfabcf2d  mut:reassign_model  acc=0.88 tokens=260,052 agents=5 fitness=+0.8453
 
 MATERIAL: a better topology was found -- worth telling someone.
 ```
+
+`selection` is how this wake's candidates were picked, and it is there because
+the alternative was invisible. Below the Predictor's eight-sample threshold every
+prediction is the same constant, so the ranking is a no-op and the wake is
+spending real budget on an arbitrary slice. It says so in that case:
+
+```
+"selection": "3 taken in the order they were bred -- the Predictor is untrained
+              (5 of 8 measurements), so this is a random search"
+```
+
+A wake that spends its budget measuring seeds reports `selection` as empty,
+because nothing was chosen.
 
 As a service, on neuro-san's own schedule — see [SERVING.md](../../SERVING.md):
 
