@@ -28,7 +28,7 @@ MAX_RETRIES = 6
 _buckets: dict[str, Bucket] = {}
 _buckets_lock = threading.Lock()
 _stats = {"waits": 0, "wait_seconds": 0.0, "retries": 0, "calls": 0,
-          "model_swaps": 0}
+          "model_swaps": 0, "transient_retries": 0}
 
 
 def _apply_model(client, model: str) -> None:
@@ -202,6 +202,41 @@ def _is_quota_error(exc: BaseException) -> bool:
     return "RESOURCE_EXHAUSTED" in text or "429" in text
 
 
+# Transient faults on the provider's side: the model is busy or something broke
+# in their stack, and the response says so. Distinct from a quota error in
+# cause and identical in the only respect that matters here -- waiting fixes
+# it.
+_TRANSIENT_MARKERS = (
+    "503", "UNAVAILABLE",          # "currently experiencing high demand"
+    "500", "INTERNAL",             # their side fell over
+    "504", "DEADLINE_EXCEEDED",    # their gateway gave up, not our timeout
+)
+
+
+def _is_transient_server_error(exc: BaseException) -> bool:
+    """Whether waiting and asking again is the right response.
+
+    These were raised on the first attempt with no retry, because the retry
+    condition below asked only whether the error was a quota error. The
+    backoff loop was already sitting there; the one error class whose own
+    message says "please try again later" was the class excluded from it.
+
+    It costs measured accuracy, not just time. In the committed run the best
+    network lost task T03 to a 500 INTERNAL and was recorded at 0.8824 when it
+    had answered correctly everything it actually finished -- a whole task of
+    seventeen, five accuracy points, thrown away on provider weather that a
+    ten-second wait would have cleared.
+
+    Matched on the message because that is all the provider hands back through
+    langchain. Broad on purpose: a 503 misread as transient costs one retry,
+    and a transient fault misread as an answer costs a task.
+    """
+    text = str(exc)
+    if _is_quota_error(exc):
+        return False        # quota is handled above this, and differently
+    return any(marker in text for marker in _TRANSIENT_MARKERS)
+
+
 def install(rpm: int = DEFAULT_RPM) -> bool:
     """Patch the Google chat model. Idempotent; returns False if unavailable."""
     try:
@@ -252,9 +287,14 @@ def install(rpm: int = DEFAULT_RPM) -> bool:
                                 raise
                             _apply_model(self, nxt)
                             continue
-                        if not _is_quota_error(exc) or attempt == MAX_RETRIES - 1:
+                        transient = _is_transient_server_error(exc)
+                        if ((not _is_quota_error(exc) and not transient)
+                                or attempt == MAX_RETRIES - 1):
                             raise
                         _stats["retries"] += 1
+                        if transient:
+                            _stats["transient_retries"] = _stats.get(
+                                "transient_retries", 0) + 1
                         # Jittered backoff: synchronised retries from parallel
                         # workers would re-collide on the same second.
                         await asyncio.sleep(min(60.0, 2 ** attempt) + random.random())
@@ -287,9 +327,14 @@ def install(rpm: int = DEFAULT_RPM) -> bool:
                                 raise
                             _apply_model(self, nxt)
                             continue
-                        if not _is_quota_error(exc) or attempt == MAX_RETRIES - 1:
+                        transient = _is_transient_server_error(exc)
+                        if ((not _is_quota_error(exc) and not transient)
+                                or attempt == MAX_RETRIES - 1):
                             raise
                         _stats["retries"] += 1
+                        if transient:
+                            _stats["transient_retries"] = _stats.get(
+                                "transient_retries", 0) + 1
                         time.sleep(min(60.0, 2 ** attempt) + random.random())
                 return None
 
