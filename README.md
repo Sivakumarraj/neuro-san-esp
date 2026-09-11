@@ -28,48 +28,60 @@ optimisation where every real evaluation is expensive.
 
 ## Results
 
-**Eleven networks measured on real model calls, 17 tasks each, one model, 187 task runs.
-The search found a better topology than the one neuro-san's designer produces.**
+**Twelve networks measured on real model calls, 17 tasks each, 204 task runs. The search
+found a better topology than the one neuro-san's designer produces, twice, and both wins
+came from the same knob.**
 
 | | Accuracy | Tokens | Agents | Fitness |
 |---|---|---|---|---|
 | `seed:designer_shaped` — the shape the designer produces | 0.8235 | 385,280 | 4 | 0.7761 |
 | `seed:flat_pair` | 0.8235 | 316,074 | 3 | 0.7852 |
 | `seed:solo` — one agent, one tool | 0.8235 | 377,716 | 1 | 0.7835 |
-| **`mut:reassign_model` — best evolved** | **0.8824** | **260,052** | 5 | **0.8453** |
+| `mut:reassign_model` — cheapest win | 0.8824 | 260,052 | 5 | 0.8453 |
+| **`mut:reassign_model` — best measured** | **0.9412** | 359,600 | 5 | **0.8941** |
 
-Against the designer's own shape that is **+5.9 points of accuracy for 32% fewer tokens**.
-The mutation that did it was a per-agent model reassignment — the knob neuro-san already
-exposes and nothing tunes. Five of the eleven reach 0.8824 and all five are evolved; no seed
-does.
+Against the designer's own shape, the best network answers **two more questions of
+seventeen for 7% fewer tokens**. A second network on the front reaches a smaller accuracy
+gain for **32% fewer tokens**. Both are on the Pareto front, because the trade-off is the
+honest result and one number hides it.
+
+**Both wins are the same finding: put the better model on the router, keep the cheap one on
+the workers.** Each was produced by `reassign_model` and each reassigned the front man — the
+agent that decides which specialist to ask — while leaving every specialist on the cheap
+model. That is a per-agent setting neuro-san already exposes, that nothing in the framework
+tunes, and that no one would find by reading the topology. The best network is also the
+first in the population to **finish all seventeen tasks**: its one miss is a wrong answer,
+not a timeout.
 
 Every number above is recomputed from the committed evaluation cache by a test, so the
 README cannot drift away from the run. Every candidate's genome is stored beside its score
-in `tests/fixtures/cache/`, so the winner can be rebuilt and served rather than only cited.
+in `tests/fixtures/cache/`, so any of them can be rebuilt, served and talked to — `make
+studio` puts all twelve in neuro-san's own UI at once.
 
-**The Predictor is the half that has not earned its place yet.** At the generation the search
-used it — nine measurements — cross-validated rank correlation was **−0.333**, worse than
-chance, and `results/history.json` records that. Refitted over all eleven it is positive on
-every split tried, **+0.24 to +0.65**, median near +0.5. Two caveats on that second figure:
-it was measured after the fact rather than being what any generation was selected on, and at
-eleven samples it moves with the cross-validation split, which is why a range is quoted
-instead of one value. So the evolutionary half of ESP produced the result above; the
-surrogate half is promising and unproven.
+**The Predictor has started to earn its place, and has not finished.** At the generation the
+first search used it — nine measurements — cross-validated rank correlation was **−0.333**,
+worse than chance, and `results/history.json` records that. Refitted over all twelve it is
+positive on every split tried, **+0.28 to +0.76**, median near +0.67, and the twelfth
+network was the first one it actually chose: a wake trained on eleven real samples ranked a
+pool and paid for the top of it. That is the loop working as designed, once. It is not yet
+evidence that the surrogate beats picking at random, which needs a run that does both.
 
 Full numbers, the failure analysis and the prior art are in
 [docs/FINDINGS.md](docs/FINDINGS.md).
 
 ## Limitations
 
-- **The surrogate did not help the search that produced this result.** Trained on nine
-  samples, cross-validated at −0.333. `report_quality` publishes that number, and prints
-  *not measured* rather than a placeholder when there are too few samples to cross-validate.
-- **Eleven real evaluations, one generation of search.** No repeat run, no second random
+- **The surrogate has never been compared against random selection.** It chose the
+  twelfth network, and at the generation the first search used it it cross-validated at
+  −0.333, worse than chance. Both facts are published. Which of the two the loop deserves
+  credit for needs a run that searches with the Predictor and without it on the same
+  budget, and that has not been bought.
+- **Twelve real evaluations, two generations of search.** No repeat run, no second random
   seed, no held-out task set. A candidate costs about 165 provider requests against a free
   tier of 500 per day per model — three candidates a day, so eleven is about four days of
   budget. The 118 candidates the surrogate scored in between cost nothing, which is the part
   of ESP that does work as advertised.
-- **Seventeen of the 187 task runs never finished** — a timeout or a blown recursion cap
+- **Seventeen of the 204 task runs never finished** — a timeout or a blown recursion cap
   rather than a wrong answer. They concentrate on two full-corpus aggregation questions.
   `accuracy` counts them as wrong; `answered_accuracy()` excludes them. Both are reported.
 - **No baseline other than the seeds.** Random search and evolution-without-a-surrogate

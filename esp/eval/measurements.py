@@ -19,6 +19,7 @@ there is now one reader, and the three callers share it.
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -32,6 +33,9 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 # points at it.
 FIXTURE_CACHE = ROOT / "tests" / "fixtures" / "cache"
 HISTORY = ROOT / "results" / "history.json"
+# The live service population, which knows the origin of a candidate it
+# measured before that candidate reaches the published history.
+STATE = Path(os.environ.get("ESP_STATE", ROOT / "state")) / "state.json"
 
 # Weights live with the loop that selects on them; imported lazily inside
 # `_fitness` so that reading measurements does not drag the evolution module in.
@@ -70,17 +74,48 @@ def _origins() -> dict[str, str]:
     """Which operator or seed produced each measured hash.
 
     The cache does not record it -- it is keyed by genome and knows nothing
-    about the search that proposed the genome -- but `results/history.json`
-    does, and a champion labelled `mut:reassign_model` rather than by its hash
-    is the difference between a result and a checksum.
+    about the search that proposed the genome -- so provenance comes from the
+    two files that do: the published run history, and the live service state.
+    A champion labelled `mut:reassign_model` rather than by its hash is the
+    difference between a result and a checksum.
+
+    The service state is read second and does not overwrite the history,
+    because the history is what was published. It is read at all because a
+    candidate a wake measured this morning is in the state and in the cache
+    and not yet in the history -- and without this it would surface as a
+    network nobody could say the origin of, which is how a freshly measured
+    winner ends up published with a blank provenance.
     """
-    if not HISTORY.exists():
-        return {}
-    try:
-        records = json.loads(HISTORY.read_text(encoding="utf-8"))["records"]
-    except (json.JSONDecodeError, KeyError, OSError):
-        return {}
-    return {r["genome_hash"]: r.get("origin", "") for r in records}
+    origins: dict[str, str] = {}
+
+    for path, key in ((STATE, "evaluated"), (HISTORY, "records")):
+        if not path.exists():
+            continue
+        try:
+            entries = json.loads(path.read_text(encoding="utf-8"))[key] or []
+        except (json.JSONDecodeError, KeyError, OSError, TypeError):
+            continue
+        for entry in entries:
+            digest = entry.get("genome_hash")
+            origin = entry.get("origin") or ""
+            if digest and origin:
+                origins[digest] = origin
+
+    return origins
+
+
+def _normalise_origin(origin: str) -> str:
+    """`reassign_model` and `mut:reassign_model` are the same provenance.
+
+    The batch loop prefixes an operator with `mut:` and the service records the
+    bare operator name, so the same candidate reads differently depending on
+    which one measured it. Normalising here keeps the published history
+    consistent with itself rather than recording the accident of which code
+    path paid for the candidate.
+    """
+    if not origin or origin.startswith(("seed:", "mut:")):
+        return origin
+    return f"mut:{origin}"
 
 
 def load(cache_dir: Path | None = None) -> list[Measurement]:
@@ -135,8 +170,9 @@ def load(cache_dir: Path | None = None) -> list[Measurement]:
             fitness=round(_fitness(accuracy, tokens, agents), 4),
             accuracy=accuracy, tokens=tokens, agents=agents,
             depth=int(raw.get("depth", genome.depth())),
-            origin=origins.get(digest) or (seeds[digest][0]
-                                           if digest in seeds else "")))
+            origin=_normalise_origin(
+                origins.get(digest)
+                or (seeds[digest][0] if digest in seeds else ""))))
 
     return sorted(found, key=lambda m: -m.fitness)
 
@@ -145,3 +181,23 @@ def best(cache_dir: Path | None = None) -> Measurement | None:
     """The highest-scoring network anybody here has actually paid to measure."""
     found = load(cache_dir)
     return found[0] if found else None
+
+
+def raw(cache_dir: Path | None = None) -> list[dict]:
+    """The cached evaluations as written, for readers that need the per-task
+    detail rather than the genome.
+
+    `load` returns what can be searched and served; the outcome of each
+    individual task is not part of that and is what the reports count
+    unfinished runs from.
+    """
+    directory = cache_dir or FIXTURE_CACHE
+    if not directory.is_dir():
+        return []
+    entries = []
+    for path in sorted(directory.glob("*.json")):
+        try:
+            entries.append(json.loads(path.read_text(encoding="utf-8")))
+        except (json.JSONDecodeError, OSError):
+            continue
+    return entries
