@@ -38,6 +38,7 @@ from esp.config import bootstrap  # noqa: E402
 # of rotating.
 bootstrap()
 
+from esp.eval import measurements  # noqa: E402
 from esp.eval.runner import _ask, write_network  # noqa: E402
 from esp.eval.tasks import TASKS, score  # noqa: E402
 from esp.genome.definition import Genome  # noqa: E402
@@ -55,11 +56,18 @@ _asked = {"count": 0}
 def champion():
     """The measured best, or the designer-shaped seed when nothing is measured.
 
-    Priority: state/champion.json (evolved mutant winner with full genome +
-    measurement), then ServiceState (seed matches only), then the designer-shaped
-    seed as last-resort fallback. Falling back rather than failing is deliberate:
-    a fresh deployment with no state should still answer, and the page says
-    which case it is in.
+    Priority: this deployment's own `state/champion.json`, then its service
+    population, then the evaluation cache committed with the repository, then
+    the designer-shaped seed. Falling back rather than failing is deliberate: a
+    fresh deployment with no state should still answer, and the page says which
+    case it is in.
+
+    The committed cache was missing from that list, and the omission was not
+    cosmetic. A fresh clone has no state, so every deployment anybody has ever
+    started from one served `designer_shaped` at +0.7761 -- the *worst* of the
+    eleven measured networks -- under a page headed "measured champion", while
+    the network that actually won at +0.8453 sat in the repository with its
+    genome beside its score.
     """
     state_dir = Path(os.environ.get("ESP_STATE", ROOT / "state"))
     manifest = state_dir / "champion.json"
@@ -82,6 +90,17 @@ def champion():
             genome = build()
             if genome.genome_hash() == best.genome_hash:
                 return name, genome, best
+
+    committed = measurements.best()
+    if committed is not None:
+        return committed.name(), committed.genome, Evaluated(
+            genome_hash=committed.genome_hash, origin=committed.origin,
+            fitness=committed.fitness, accuracy=committed.accuracy,
+            tokens=committed.tokens, agents=committed.agents,
+            depth=committed.depth, generation=0, measured_at="",
+            model=committed.genome.default_model,
+            genome=committed.genome.canonical())
+
     return "designer_shaped", SEEDS["designer_shaped"](), None
 
 
@@ -160,9 +179,13 @@ async function ask(){
 
 
 def measurement_count() -> int:
-    """How many real evaluations this deployment can see."""
-    cache = ROOT / "tests" / "fixtures" / "cache"
-    return len(list(cache.glob("*.json"))) if cache.is_dir() else 0
+    """How many real evaluations this deployment can see.
+
+    Counted through the same reader the champion comes from, so the page cannot
+    report a population it did not actually resolve -- a cache file whose
+    genome will not rebuild is not a measurement this deployment can see.
+    """
+    return len(measurements.load())
 
 
 def surrogate_quality() -> dict | None:
