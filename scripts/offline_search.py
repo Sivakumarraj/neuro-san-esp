@@ -102,8 +102,22 @@ def main() -> int:
     print(f"\nPhase C -- evolving {args.pool} candidates against it")
     rng = random.Random(args.seed)
     started = time.monotonic()
-    candidates, rejected = [], 0
-    while len(candidates) < args.pool:
+
+    # Everything already paid for. Phase C exists to find candidates worth
+    # buying, and a candidate that has been measured is not one: proposing it
+    # spends an elite slot on a known answer, and it flatters the surrogate,
+    # which "discovers" a network it was trained on. The measured champion was
+    # filling four of the five places in the printed top five.
+    known = {genome.genome_hash() for genome in genomes}
+    seen: set[str] = set()
+
+    candidates, rejected, repeats, already = [], 0, 0, 0
+    # Bounded. The reachable space is finite -- with a small population and
+    # strict validity, asking for 2,000 distinct mutants can simply be more
+    # than exists, and an unbounded loop would spin instead of saying so.
+    attempts = 0
+    while len(candidates) < args.pool and attempts < args.pool * 40:
+        attempts += 1
         parent = rng.choice(genomes)
         try:
             child, operator = mutate(parent, rng)
@@ -112,16 +126,41 @@ def main() -> int:
             # than the operator produced.
             rejected += 1
             continue
+        digest = child.genome_hash()
+        if digest in known:
+            already += 1
+            continue
+        if digest in seen:
+            repeats += 1
+            continue
+        seen.add(digest)
         candidates.append((child, operator))
 
+    bred = time.monotonic() - started
+
+    scoring = time.monotonic()
     predictions = surrogate.predict([c for c, _ in candidates])
-    elapsed = time.monotonic() - started
+    elapsed = time.monotonic() - scoring
     ranked = sorted(zip(candidates, predictions, strict=True),
                     key=lambda pair: -pair[1])
 
-    print(f"  {len(candidates)} viable, {rejected} rejected as invalid")
-    print(f"  scored in {elapsed:.2f}s with zero provider calls")
-    print(f"  ~{elapsed / max(len(candidates), 1) * 1000:.3f} ms per candidate")
+    print(f"  {len(candidates)} distinct viable, {rejected} rejected as invalid, "
+          f"{repeats} duplicates, {already} already measured")
+    if len(candidates) < args.pool:
+        # Said rather than silently delivering a smaller pool. A ratio quoted
+        # over 2,000 candidates is wrong if only 600 existed.
+        print(f"  NOTE: asked for {args.pool} and the reachable space yielded "
+              f"{len(candidates)}. The numbers below describe what was "
+              f"actually generated.")
+    # Reported apart, because they are different claims. "Ranking is free" is
+    # about the Predictor. Breeding and rejecting mutants is ordinary compute,
+    # and once duplicates and already-measured genomes are filtered it is most
+    # of the clock -- quoting the total as scoring time would overstate the one
+    # number the whole method rests on.
+    print(f"  bred in {bred:.2f}s, scored in {elapsed:.2f}s, "
+          f"zero provider calls")
+    print(f"  ~{elapsed / max(len(candidates), 1) * 1000:.3f} ms per candidate "
+          f"to rank")
 
     if not surrogate.ranks():
         print(f"\n  !! The surrogate is UNTRAINED on {len(genomes)} samples "
