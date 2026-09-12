@@ -295,3 +295,86 @@ def test_an_untrained_surrogate_admits_it_cannot_rank():
     predictions = surrogate.predict([designer_shaped(), solo(), flat_pair()])
     assert len(set(predictions.tolist())) == 1, (
         "predictions differ, so this test no longer pins the degenerate case")
+
+
+# ---------------------------------------- rank correlation, with ties present
+
+def test_rank_correlation_does_not_depend_on_input_order():
+    """The bug this replaced.
+
+    `argsort(argsort(x))` gives tied values arbitrary distinct ranks in the
+    order they arrived, where Spearman requires them to share a midrank. So the
+    same data permuted identically scored -0.143 and +0.143, and the correct
+    answer was 0. A repository whose argument is that its numbers were measured
+    cannot have a measurement that moves with list order.
+    """
+    import numpy as np
+
+    from esp.surrogate.predictor import _spearman
+
+    a = np.array([1.0, 1.0, 1.0, 0.875, 0.875, 0.75, 0.75, 0.75])
+    b = np.array([0.75, 1.0, 0.875, 0.75, 1.0, 0.875, 0.75, 1.0])
+    order = [3, 0, 5, 7, 1, 6, 2, 4]
+
+    assert _spearman(a, b) == pytest.approx(_spearman(a[order], b[order]))
+
+
+def test_tied_values_share_a_rank():
+    """Independent of any permutation: on this pair every distinct value of `a`
+    maps to the full spread of `b`, so the honest answer is no correlation."""
+    import numpy as np
+
+    from esp.surrogate.predictor import _spearman
+
+    a = np.array([1.0, 1.0, 1.0, 0.875, 0.875, 0.75, 0.75, 0.75])
+    b = np.array([0.75, 1.0, 0.875, 0.75, 1.0, 0.875, 0.75, 1.0])
+    assert _spearman(a, b) == pytest.approx(0.0, abs=1e-9)
+
+
+def test_a_perfect_ordering_is_still_one():
+    import numpy as np
+
+    from esp.surrogate.predictor import _spearman
+
+    a = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
+    assert _spearman(a, a * 3 + 1) == pytest.approx(1.0)
+    assert _spearman(a, -a) == pytest.approx(-1.0)
+
+
+def test_a_constant_vector_correlates_with_nothing():
+    """An untrained surrogate predicts one constant. That has to come back as
+    zero rather than as a nan that propagates into a published figure -- and
+    without reaching the correlation at all, because the variance of six
+    identical floats is 1.1e-16 rather than zero and an exact test for zero
+    let it through.
+    """
+    import warnings
+
+    import numpy as np
+
+    from esp.surrogate.predictor import _spearman
+
+    flat = np.full(6, 0.78)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")          # a warning here is the bug
+        assert _spearman(flat, np.arange(6.0)) == 0.0
+        assert _spearman(np.arange(6.0), flat) == 0.0
+
+
+def test_the_published_verdicts_survive_the_correction():
+    """The fix moved the committed figures by at most 0.015 and changed no
+    verdict. Pinned so that is a fact rather than a memory."""
+    from esp.eval import measurements
+    from esp.surrogate.predictor import Surrogate
+
+    found = measurements.load()
+    genomes = [m.genome for m in found]
+    values = [m.fitness for m in found]
+
+    surrogate = Surrogate()
+    for seed in range(6):
+        quality = surrogate.report_quality(genomes, values, seed=seed)
+        assert quality.measured
+        assert quality.spearman > 0.2, (
+            f"seed {seed}: {quality.spearman:+.4f} no longer beats chance")
+        assert quality.beats_random

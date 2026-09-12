@@ -59,14 +59,21 @@ def test_an_openrouter_model_is_read_out_of_a_429(text, expected):
 
 # --------------------------------------------------------- provider keys
 
+# Key-shaped, because `provider_keys` now asks whether the value could be a key
+# rather than only whether it is non-empty. "x" satisfied a presence check and
+# is exactly the kind of value the preflight has to reject.
+FAKE_GOOGLE = "AQ.EXAMPLE-not-a-real-key-0000000000000000000000000000"
+FAKE_OPENROUTER = "sk-or-v1-" + "0" * 56
+
+
 def test_either_provider_key_satisfies_the_preflight(monkeypatch):
     from esp.config import provider_keys
 
     monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
-    monkeypatch.setenv("OPENROUTER_API_KEY", "x")
+    monkeypatch.setenv("OPENROUTER_API_KEY", FAKE_OPENROUTER)
     assert provider_keys() == ["OPENROUTER_API_KEY"]
 
-    monkeypatch.setenv("GOOGLE_API_KEY", "y")
+    monkeypatch.setenv("GOOGLE_API_KEY", FAKE_GOOGLE)
     assert set(provider_keys()) == {"GOOGLE_API_KEY", "OPENROUTER_API_KEY"}
 
 
@@ -84,7 +91,7 @@ def test_the_preflight_names_which_key_it_found(monkeypatch):
     from esp.config import key_source
 
     monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
-    monkeypatch.setenv("OPENROUTER_API_KEY", "x")
+    monkeypatch.setenv("OPENROUTER_API_KEY", FAKE_OPENROUTER)
     assert "OPENROUTER_API_KEY" in key_source()
 
 

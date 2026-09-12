@@ -58,6 +58,16 @@ README cannot drift away from the run. Every candidate's genome is stored beside
 in `tests/fixtures/cache/`, so any of them can be rebuilt, served and talked to — `make
 studio` puts all twelve in neuro-san's own UI at once.
 
+**Read the table as a measurement, not as a ranking.** Splitting the 17 tasks in two and
+selecting on one half, the winner of that half never tops the other half and averages rank
+7.2 of 12: seventeen tasks are too few to order individual networks, and the gap between
++0.8941 and +0.8453 is inside the noise. What does survive the split is the population
+claim — the best evolved network beat the best seed on held-out tasks in **100% of 200
+splits**, and evolved networks outrank the hand-written ones by two and a half places.
+`make holdout` reproduces both halves of that from committed data, no key needed, and
+[docs/FINDINGS.md](docs/FINDINGS.md#held-out-tasks-what-this-task-set-can-and-cannot-support)
+works through it.
+
 **The Predictor has started to earn its place, and has not finished.** At the generation the
 first search used it — nine measurements — cross-validated rank correlation was **−0.333**,
 worse than chance, and `results/history.json` records that. Refitted over all twelve it is
@@ -87,7 +97,14 @@ Full numbers, the failure analysis and the prior art are in
 - **No baseline other than the seeds.** Random search and evolution-without-a-surrogate
   would each need their own budget, so the claim is that this beat three hand-written
   topologies, not that it beat the alternative search strategies.
-- **One task domain.** A topology that wins at multi-hop retrieval need not win elsewhere.
+- **Seventeen tasks cannot rank individual networks.** Selecting on half of them and
+  judging on the other half, per-network accuracy carries across the split at +0.022 — no
+  relationship. The population-level result holds out of sample; the per-network ordering
+  does not. More tasks is the only fix, and a better estimator is not one.
+- **One task domain, and the held-out test stays inside it.** Held-out questions come from
+  the same generated world, so what was measured is stability across questions rather than
+  transfer to a new domain. A topology that wins at multi-hop retrieval need not win
+  elsewhere.
 - **The surrogate idea is not novel.** AgentSquare (ICLR 2025) uses a performance predictor
   for the same purpose. What is absent from that work is neuro-san, and what is absent from
   neuro-san is any fitness function at all.
@@ -168,10 +185,10 @@ Python 3.12+. Works the same in Codespaces, a devcontainer, or a laptop.
 
 ```bash
 python3.12 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev]"      # adds the test tools and the accelerator UI
 
 make check       # ruff + the full test suite
-make offline     # phases B and C: 2,000 candidates ranked, zero LLM calls
+make offline     # phases B and C: breed and rank candidates, zero LLM calls
 ```
 
 Nothing above needs an account, a key, or a network. `make offline` trains the Predictor on
@@ -200,6 +217,23 @@ The preflight reports where the key came from and what the budget buys:
 **Run the preflight first.** A misconfigured evaluator does not crash. It scores every
 candidate zero, and the cache keeps that answer forever, so the search is taught that good
 topologies are bad.
+
+The preflight asks Google whether the key actually works, rather than whether the variable
+is set — one free call, because listing models costs nothing. It refuses to start on the
+mistakes that otherwise surface as `API key not valid` from inside an agent:
+
+```
+[FAIL] provider key: GOOGLE_API_KEY still the placeholder from .env.example
+[FAIL] provider key accepted: rejected by Google (401) -- the key is wrong, revoked,
+       or from a project without the Generative Language API enabled
+```
+
+`python scripts/check_key.py` runs just that check on its own.
+
+**The key is read once, at launch.** Editing `.env` under a running server
+changes nothing until it restarts, and `.env.example` is the committed template
+— it is not read for a key, so put the key in `.env` and leave the example
+alone.
 
 Then either re-measure the seeds yourself, or adopt the measurements already paid for and
 spend your budget on new candidates instead:
@@ -231,8 +265,14 @@ chained, and anything faster would mean it did not really look.
 ### Open every measured network in the accelerator UI
 
 ```bash
-make studio       # then http://localhost:4173
+pip install -e ".[studio]"   # nsflow, the accelerator UI — included in .[dev]
+make studio                  # then http://localhost:4173
 ```
+
+`localhost` means the machine running the command. On a laptop that is the
+browser you already have; in Codespaces or on a remote box, forward port **4173**
+(Codespaces does it automatically and gives you a `*.app.github.dev` URL — the
+neuro-san server on 8080 stays internal, so 4173 is the only port to open).
 
 This is the comparison, not a demo. Every measured topology is rendered as its
 own servable agent and listed by the fitness it earned, so the same question can
@@ -298,6 +338,7 @@ the cron in `registries/manifest.hocon` with `user_id: system`, no client attach
 make check      # ruff + the full suite, exactly what CI runs
 make verify     # start a real neuro-san server and prove it fires the optimiser
 make offline    # the free half of ESP, end to end, no key
+make holdout    # select on half the tasks, judge on the other half, no key
 ```
 
 The suite covers the genome and its validity gate, the scored tasks, outcome
