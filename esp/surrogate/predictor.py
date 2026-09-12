@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from scipy.stats import spearmanr
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import KFold
 
@@ -115,15 +116,39 @@ class Quality:
 
 
 def _spearman(a: np.ndarray, b: np.ndarray) -> float:
-    """Rank correlation without a scipy dependency. Ranking is what matters --
-    the surrogate only has to order candidates, not price them."""
+    """Rank correlation. Ranking is what matters -- the surrogate only has to
+    order candidates, not price them.
+
+    This was hand-rolled as `argsort(argsort(x))` to avoid "a scipy
+    dependency" that the project already had: scikit-learn hard-requires
+    scipy, so it has been installed all along. What the hand-rolled version
+    bought instead was a bug. Ordinal ranks from a double argsort give tied
+    values arbitrary distinct ranks in whatever order they arrived, where
+    Spearman requires the tied values to share a midrank. So the answer moved
+    with the order of the inputs: two identical vectors, permuted identically,
+    scored -0.143 and +0.143 on the same data, and the correct answer was 0.
+
+    A tree ensemble predicts a finite set of leaf averages, so ties in the
+    predictions are ordinary rather than exotic -- they appeared in 8 of 20
+    cross-validation seeds on the committed population. The published figures
+    moved by at most 0.015 and no verdict changed, which is luck rather than
+    justification: a repository whose argument is that its numbers were
+    measured cannot have a measurement that depends on list order.
+    """
     if len(a) < 3:
         return 0.0
-    rank_a = np.argsort(np.argsort(a)).astype(float)
-    rank_b = np.argsort(np.argsort(b)).astype(float)
-    if rank_a.std() == 0 or rank_b.std() == 0:
+    # A tolerance, not `== 0`. The variance of six identical floats comes out
+    # at 1.1e-16 rather than zero, so an exact test let a constant vector reach
+    # scipy, which warned and returned nan -- the right answer arrived only
+    # because the nan was caught below. The old code compared integer ranks,
+    # where exact zero was safe; this one compares the values. 1e-9 is the same
+    # threshold `fit` and `report_quality` already use for a flat target.
+    if np.asarray(a, dtype=float).std() < 1e-9:
+        return 0.0        # no ordering to correlate against
+    if np.asarray(b, dtype=float).std() < 1e-9:
         return 0.0
-    return float(np.corrcoef(rank_a, rank_b)[0, 1])
+    result = spearmanr(a, b).statistic
+    return 0.0 if np.isnan(result) else float(result)
 
 
 class Surrogate:

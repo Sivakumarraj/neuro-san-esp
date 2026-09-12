@@ -31,6 +31,12 @@ search:
 # Phase B and C only: train the Predictor on whatever real evaluations are
 # cached, then evolve against it. Zero provider calls, so this runs with no
 # budget and no key at all.
+# Select a winner on half the tasks, then judge it on the half it was not
+# selected on. Costs nothing: every evaluation recorded the outcome of each
+# individual task, so the question is already answerable from what is committed.
+holdout:
+	PYTHONPATH=$$PWD python scripts/holdout_report.py
+
 offline:
 	PYTHONPATH=$$PWD python scripts/offline_search.py --pool 2000
 
@@ -81,9 +87,28 @@ champion:
 # starts both.
 studio:
 	PYTHONPATH=$$PWD python scripts/serve_studio.py
+	@# Checked before it is used, because the failure is otherwise a bare
+	@# ModuleNotFoundError from inside a make recipe, which says nothing about
+	@# what to install.
+	@python -c "import nsflow" 2>/dev/null || { \
+	  echo ""; \
+	  echo "make studio needs nsflow, neuro-san's accelerator UI, and it is not"; \
+	  echo "installed. It is an extra because it is a large install:"; \
+	  echo ""; \
+	  echo "    pip install -e \".[studio]\"      # or .[dev], which includes it"; \
+	  echo ""; \
+	  exit 1; \
+	}
+	@# The key, before the UI rather than after. Without this the first failure
+	@# is an agent replying "API key not valid" in the chat panel, which is a bad
+	@# place to find out and a worse one in front of somebody. Non-fatal: twelve
+	@# topologies are worth looking at even with no key, so it warns and opens.
+	@set -a; [ -f .env ] && . ./.env; set +a; \
+	PYTHONPATH=$$PWD python scripts/check_key.py --warn --quiet-when-fine
 	@# `python -m nsflow.run`, not the `nsflow` console script: the script
 	@# installed by nsflow 0.6.19 imports a `main` its own run module does not
-	@# define, so it fails on import. The module runs fine.
+	@# define, so it fails on import. The module runs fine, and 0.7 fixes the
+	@# script -- the module form works on both.
 	@#
 	@# The key is exported here because nsflow loads .env relative to its own
 	@# install directory, not the working tree, so a key in this repo's .env

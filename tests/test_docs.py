@@ -181,3 +181,50 @@ def test_the_documented_predictor_thresholds_are_the_real_ones():
     assert WORDS_TO_TEXT[len(FEATURE_NAMES)] in section, (
         f"the Predictor reads {len(FEATURE_NAMES)} features and the section "
         f"does not say so")
+
+
+def test_no_committed_file_holds_a_credential_shaped_string():
+    """The whole tree, not just .env.example.
+
+    A key-shaped literal was committed as a test fixture while these checks
+    watched the one file they were told to watch. The fixtures were written by
+    copying a real key, which is the obvious thing to reach for and puts a live
+    credential into git history -- where removing it means rewriting history and
+    rotating the key anyway.
+
+    Anything genuinely key-shaped in a committed file has to say it is not one.
+    """
+    tracked = subprocess.run(["git", "ls-files"], cwd=ROOT,
+                             capture_output=True, text=True).stdout.split()
+
+    # Shapes, not values: two Google formats and OpenRouter's.
+    shapes = (
+        re.compile(r"AIza[0-9A-Za-z_\-]{30,}"),
+        re.compile(r"AQ\.[0-9A-Za-z_\-]{30,}"),
+        re.compile(r"sk-or-v1-[0-9a-f]{40,}"),
+        re.compile(r"sk-[A-Za-z0-9]{40,}"),
+    )
+    # A fixture has to announce itself. Anything matching a shape and saying
+    # none of these is treated as real.
+    disclaimers = ("EXAMPLE", "example", "not-a-real", "paste-your",
+                   "fake", "FAKE", "xxxx", "XXXX")
+
+    offences: list[str] = []
+    for name in tracked:
+        path = ROOT / name
+        if not path.is_file() or path.suffix in (".png", ".pdf", ".db"):
+            continue
+        try:
+            body = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        for shape in shapes:
+            for hit in shape.findall(body):
+                if any(word in hit for word in disclaimers):
+                    continue
+                offences.append(f"{name}: {hit[:12]}... ({len(hit)} chars)")
+
+    assert not offences, (
+        "credential-shaped strings in committed files -- if any of these is "
+        "real it is now published and must be rotated:\n  "
+        + "\n  ".join(offences))

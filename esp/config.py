@@ -48,9 +48,108 @@ def load_env(path: Path | None = None) -> list[str]:
     return applied
 
 
+# What .env.example ships on the key line. Someone who copies the example and
+# pastes badly leaves this behind, and it is a perfectly good non-empty string:
+# `bool(value)` is true, the preflight passes, and the provider answers
+# "API key not valid" on the first real call -- eight minutes into a candidate,
+# or in front of somebody being shown the UI.
+PLACEHOLDER = "paste-your-key-here"
+
+
+def key_problem(value: str) -> str:
+    """Why this string cannot be a usable API key, or "" if it looks like one.
+
+    A shape check, not an authentication check -- only the provider can say
+    whether a well-formed key is live, and `verify_key` asks it. What this
+    catches is the class of mistake that makes a key obviously wrong before any
+    call is made, because the preflight's whole job is to refuse to start on a
+    configuration that would produce wrong numbers.
+
+    The report is about the string, never the string itself: a message that
+    echoed the value would put a live credential into terminal scrollback,
+    screen shares and pasted logs.
+    """
+    if not value:
+        return "unset"
+    if PLACEHOLDER in value:
+        if value.strip() == PLACEHOLDER:
+            return ("still the placeholder from .env.example -- replace "
+                    f"{PLACEHOLDER!r} with the key itself")
+        return (f"the placeholder {PLACEHOLDER!r} is still in the value, with "
+                "the key pasted next to it rather than over it")
+    if any(character.isspace() for character in value):
+        return ("contains a space, tab or newline -- a key pasted across a "
+                "line break, or with the shell prompt caught on the end")
+    if len(value) < 20:
+        return f"only {len(value)} characters, which is too short to be a key"
+    return ""
+
+
 def provider_keys() -> list[str]:
-    """Which provider keys are actually set."""
-    return [name for name in KEY_NAMES if os.environ.get(name)]
+    """Which provider keys are set to something that could be a key.
+
+    A placeholder is not one. This returned every non-empty value, so
+    `GOOGLE_API_KEY=paste-your-key-here` reported as a key that was set and the
+    preflight passed on it.
+    """
+    return [name for name in KEY_NAMES
+            if os.environ.get(name) and not key_problem(os.environ[name])]
+
+
+def unusable_keys() -> dict[str, str]:
+    """Keys that are set to something unusable, and why. For the preflight."""
+    return {name: problem for name in KEY_NAMES
+            if (value := os.environ.get(name))
+            and (problem := key_problem(value))}
+
+
+def verify_key(name: str = "GOOGLE_API_KEY", timeout: float = 20.0
+               ) -> tuple[bool, str]:
+    """Ask Google whether the key is live. Returns (ok, what it said).
+
+    Lists models rather than generating anything: the model list is free, so a
+    key can be checked without spending a request from a daily budget that buys
+    three candidates. A shape check cannot tell a revoked key from a live one,
+    and "API key not valid" arriving in front of an audience is the failure this
+    exists to move earlier.
+
+    stdlib urllib, because every HTTP client in this environment is somebody
+    else's transitive dependency and this module exists to avoid relying on one.
+    """
+    import json
+    import urllib.error
+    import urllib.request
+
+    value = os.environ.get(name, "")
+    problem = key_problem(value)
+    if problem:
+        return False, problem
+    if name != "GOOGLE_API_KEY":
+        return True, "not checked -- only Google keys can be verified here"
+
+    request = urllib.request.Request(
+        "https://generativelanguage.googleapis.com/v1beta/models",
+        headers={"x-goog-api-key": value})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        count = len(payload.get("models") or [])
+        return True, f"accepted by Google, {count} models visible"
+    except urllib.error.HTTPError as failure:
+        body = failure.read().decode("utf-8", "replace")
+        if failure.code in (400, 401, 403):
+            reason = "API_KEY_INVALID" if "API_KEY_INVALID" in body else ""
+            return False, (
+                f"rejected by Google ({failure.code}"
+                f"{', ' + reason if reason else ''}) -- the key is wrong, "
+                "revoked, or from a project without the Generative Language "
+                "API enabled")
+        return False, f"could not be checked: HTTP {failure.code}"
+    except (urllib.error.URLError, TimeoutError, OSError) as failure:
+        # Not a verdict on the key. A machine behind a proxy that blocks Google
+        # is a different problem, and reporting it as a bad key would send
+        # somebody to rotate a credential that was fine.
+        return True, f"not checked -- could not reach Google ({failure})"
 
 
 def key_source(name: str | None = None) -> str:
