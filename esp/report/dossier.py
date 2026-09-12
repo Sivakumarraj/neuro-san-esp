@@ -797,6 +797,21 @@ class Dossier(Layout):
             "<b>Automated agent architecture search is an active field.</b> The idea "
             "is not new. What is absent from all of it is neuro-san, and what is absent "
             "from neuro-san is any fitness function at all.",
+            "<b>There is no learned Prescriptor here, and ESP has one.</b> In "
+            "<i>Effective Reinforcement Learning through Evolutionary "
+            "Surrogate-Assisted Prescription</i> (Francon, Gonzalez, Hodjat, "
+            "Meyerson, Miikkulainen, Qiu, Shahrzad &mdash; GECCO 2020) the "
+            "Prescriptor is itself a neural network, evolved against the surrogate. "
+            "This borrows the Predictor and the sample-efficiency argument and "
+            "leaves the Prescriptor out: prescription is seven mutation operators "
+            "plus elite selection. Stated here rather than left to be discovered, "
+            "because the repository is named after the method.",
+            "<b>The closer relative is LEAF, not ESP.</b> <i>Evolutionary Neural "
+            "AutoML for Deep Learning</i> (Liang, Meyerson, Hodjat, Fink, Mutch, "
+            "Miikkulainen &mdash; GECCO 2019) evolves network architectures and "
+            "size against a multi-objective fitness. That is this project's shape "
+            "with agents where LEAF had layers, and it is the more honest "
+            "lineage.",
         ]:
             self.p(f"&bull;&nbsp; {text}",
                    _s("li", fontSize=9.6, leading=13.4, leftIndent=8, spaceAfter=7))
