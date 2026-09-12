@@ -345,7 +345,37 @@ An experiment whose baseline is already perfect measures nothing.
 
 ## Prior art
 
-Automated agent architecture search is a crowded, fast-moving field: ADAS (meta-agent
+### The two papers this sits directly on top of
+
+**ESP.** *Effective Reinforcement Learning through Evolutionary Surrogate-Assisted
+Prescription* — Francon, Gonzalez, Hodjat, Meyerson, Miikkulainen, Qiu, Shahrzad, GECCO
+2020 ([arXiv:2002.05368](https://arxiv.org/abs/2002.05368)). This repository is named
+after it, so the departure has to be stated first rather than found:
+
+> **In the paper the Prescriptor is a neural network, evolved to maximise the surrogate's
+> predictions. Here there is no learned Prescriptor at all.** Prescription is seven
+> mutation operators plus elite selection over measured fitness. One learned model, not
+> two.
+
+That is a real difference, not a detail. What is faithful is the Predictor's role and the
+sample-efficiency argument: evaluate cheaply on a surrogate, spend real evaluations only
+on the elite. The paper's surrogate is "a random forest or a neural network trained with
+gradient descent", so a `GradientBoostingRegressor` is squarely in family.
+
+**LEAF.** *Evolutionary Neural AutoML for Deep Learning* — Liang, Meyerson, Hodjat, Fink,
+Mutch, Miikkulainen, GECCO 2019. LEAF evolves network **architectures and size**, not just
+hyperparameters, and reports that architecture optimisation beats hyperparameter
+optimisation while shrinking the network.
+
+**LEAF is the closer relative, and the more honest lineage.** This evolves the topology of
+an agent network and the model assigned to each agent, scored against a multi-objective
+fitness that prices accuracy, tokens and size — which is LEAF's shape, one level up, with
+agents where LEAF had layers. Calling the whole thing "ESP" overstates the
+Prescriptor half and understates what it actually resembles.
+
+### Automated agent architecture search
+
+A crowded, fast-moving field: ADAS (meta-agent
 plus archive), AFlow (MCTS over operator graphs), GPTSwarm (RL over edge probabilities),
 MaAS and AutoMaAS (agentic supernets), AgentSquare (modular design space), EvoMAS
 (evolutionary generation of multi-agent systems), Promptbreeder. **The idea of searching

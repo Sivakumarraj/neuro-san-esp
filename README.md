@@ -22,9 +22,17 @@ nine-agent topology beats a five-agent one for the same job, which model each ag
 run, or whether the generated instructions are any good. That is design without evaluation.
 
 This project supplies the missing half. It **measures** a network — accuracy, token cost and
-size over a fixed task set — and then **searches** for a better one using **ESP**
-(Evolutionary Surrogate-assisted Prescription), Cognizant AI Lab's own method for
-optimisation where every real evaluation is expensive.
+size over a fixed task set — and then **searches** for a better one, borrowing the
+surrogate-assisted structure of **ESP** (Evolutionary Surrogate-assisted Prescription),
+Cognizant AI Lab's own method for optimisation where every real evaluation is expensive.
+
+**Said plainly up front, because the name invites the question:** in the
+[ESP paper](https://arxiv.org/abs/2002.05368) the Prescriptor is itself a neural network,
+evolved to maximise the surrogate's predictions. **There is no learned Prescriptor here** —
+prescription is seven mutation operators plus elite selection. What is borrowed is the
+Predictor and the sample-efficiency argument. In shape this is nearer to **LEAF**
+(*Evolutionary Neural AutoML for Deep Learning*, GECCO 2019), which evolves architectures
+and size, with agents where LEAF had layers.
 
 ## Results
 
@@ -188,7 +196,7 @@ python3.12 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"      # adds the test tools and the accelerator UI
 
 make check       # ruff + the full test suite
-make offline     # phases B and C: 2,000 candidates ranked, zero LLM calls
+make offline     # phases B and C: breed and rank candidates, zero LLM calls
 ```
 
 Nothing above needs an account, a key, or a network. `make offline` trains the Predictor on
