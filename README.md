@@ -188,7 +188,7 @@ python3.12 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"      # adds the test tools and the accelerator UI
 
 make check       # ruff + the full test suite
-make offline     # phases B and C: 2,000 candidates ranked, zero LLM calls
+make offline     # phases B and C: breed and rank candidates, zero LLM calls
 ```
 
 Nothing above needs an account, a key, or a network. `make offline` trains the Predictor on

@@ -14,6 +14,7 @@ the documented path.
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -77,3 +78,69 @@ def test_local_measurements_are_preferred_over_the_committed_ones(tmp_path):
     finished = run(mine)
     assert finished.returncode == 0, finished.stderr
     assert "falling back" not in finished.stdout
+
+
+# --------------------------------------- what Phase C is allowed to propose
+
+def test_the_pool_holds_no_duplicates(tmp_path):
+    """Phase C had no dedupe at all, so the same genome filled four of the five
+    places in the printed top five. A ranking that lists one network repeatedly
+    is not a ranking, and the elite it feeds would buy the same candidate more
+    than once."""
+    finished = run(tmp_path, "--pool", "200", "--top", "20")
+    assert finished.returncode == 0, finished.stderr
+
+    listed = re.findall(r"^\s+[+-]\d\.\d+\s+([0-9a-f]{16})", finished.stdout,
+                        re.M)
+    assert listed, f"no candidates listed: {finished.stdout[-400:]}"
+    assert len(listed) == len(set(listed)), (
+        f"the same genome appears more than once: {listed}")
+
+
+def test_an_already_measured_genome_is_never_proposed(tmp_path):
+    """Phase C exists to find candidates worth paying for, and one that has
+    been measured is not one. Proposing it spends an elite slot on a known
+    answer and flatters the Predictor, which then "discovers" a network it was
+    trained on. The measured champion `3bf9c008d880c3fc` was topping the list.
+    """
+    from esp.eval import measurements
+
+    finished = run(tmp_path, "--pool", "200", "--top", "20")
+    assert finished.returncode == 0, finished.stderr
+
+    measured = {m.genome_hash for m in measurements.load()}
+    assert measured, "no committed measurements to exclude"
+
+    listed = set(re.findall(r"^\s+[+-]\d\.\d+\s+([0-9a-f]{16})",
+                            finished.stdout, re.M))
+    overlap = listed & measured
+    assert not overlap, f"already-measured genomes proposed: {sorted(overlap)}"
+
+
+def test_it_says_when_the_reachable_space_is_smaller_than_asked_for(tmp_path):
+    """With 12 genomes and a strict validity gate there are only a few hundred
+    distinct one-step mutants. Asking for 2,000 and quietly delivering 388
+    would make every ratio quoted over the pool wrong."""
+    finished = run(tmp_path, "--pool", "5000", "--top", "3")
+    assert finished.returncode == 0, finished.stderr
+    assert "reachable space yielded" in finished.stdout, finished.stdout[-600:]
+    assert "describe what was" in finished.stdout
+
+
+def test_breeding_and_ranking_are_timed_separately(tmp_path):
+    """"Ranking is free" is the claim the whole method rests on, and it is
+    about the Predictor. Breeding mutants is ordinary compute and, once
+    duplicates are filtered, most of the clock. Quoting the total as scoring
+    time would overstate the one number that matters."""
+    finished = run(tmp_path, "--pool", "100")
+    assert finished.returncode == 0, finished.stderr
+    assert "bred in" in finished.stdout
+    assert "scored in" in finished.stdout
+    assert "to rank" in finished.stdout
+
+
+def test_it_terminates_when_the_space_is_exhausted(tmp_path):
+    """Unbounded, the loop spins forever once every reachable mutant has been
+    seen. The subprocess timeout in `run` is the assertion."""
+    finished = run(tmp_path, "--pool", "3000", "--top", "1")
+    assert finished.returncode == 0, finished.stderr
