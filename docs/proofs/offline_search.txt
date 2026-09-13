@@ -1,22 +1,23 @@
 No local measurements in .esp-cache -- falling back to the committed ones in tests/fixtures/cache.
 Run `make baseline` with a key to train on your own instead.
 
-Phase B -- training the Predictor on 3 real evaluations from tests/fixtures/cache
-  surrogate on 3 samples: rank quality NOT MEASURED -- cross-validation needs 8. The predictor is untrained and returns a constant.
+Phase B -- training the Predictor on 12 real evaluations from tests/fixtures/cache
+  one model per outcome objective; fitness is derived from their predictions, not learned
+  outcome surrogate on 12 samples: fitness +0.648 (accuracy +0.680, tokens -0.634)
+  !! the tokens model ranks no better than chance (spearman -0.634). Phase C still weights it, so that part of the objective is noise.
 
 Phase C -- evolving 2000 candidates against it
-  2000 viable, 822 rejected as invalid
-  scored in 0.12s with zero provider calls
-  ~0.058 ms per candidate
+  348 distinct viable, 7475 rejected as invalid, 62942 duplicates, 9235 already measured
+  NOTE: asked for 2000 and the reachable space yielded 348. The numbers below describe what was actually generated.
+  bred in 7.11s, scored in 0.02s, zero provider calls
+  ~0.061 ms per candidate to rank
 
-  !! The surrogate is UNTRAINED on 3 samples (needs 8). Every prediction below is the same constant, so this is NOT a ranking -- it is the first 5 candidates in generation order. Phase C's cost claim holds; its selection claim does not, until there are more real evaluations.
+Top 5 by predicted fitness:
+  +0.8941  1e577dd4b4ac043f  agents=5 depth=2  via reassign_model
+  +0.8941  e07c77770d8f522b  agents=5 depth=2  via reassign_model
+  +0.8941  864949c8758c7e7c  agents=5 depth=2  via reassign_model
+  +0.8941  889099b651b394e1  agents=5 depth=2  via reassign_model
+  +0.8898  082719663a081155  agents=5 depth=2  via toggle_search
 
-First 5 in generation order -- all tied, see above:
-  +0.7842  915e149aed588d57  agents=5 depth=2  via split_agent
-  +0.7842  0334802d6e9b1376  agents=2 depth=2  via merge_agents
-  +0.7842  7edd0c338d311ac0  agents=5 depth=3  via add_agent
-  +0.7842  9f1d2fa76d71da2e  agents=4 depth=2  via split_agent
-  +0.7842  0334802d6e9b1376  agents=2 depth=2  via merge_agents
-
-Phase C scored 2000 candidates in 0.1s. The same number evaluated for real, at roughly 8 minutes each, would take about 267 hours.
-Phase C generated and scored them for nothing, which is the cost claim. It did not rank them, and it never measures -- only Phase D does.
+Phase C scored 348 candidates in 0.0s. The same number evaluated for real, at roughly 8 minutes each, would take about 46 hours.
+Phase C ranks. It does not measure -- only Phase D does.

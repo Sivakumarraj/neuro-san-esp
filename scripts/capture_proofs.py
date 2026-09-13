@@ -57,10 +57,26 @@ COMMANDS: dict[str, tuple[list[str], bool]] = {
 # and flagged so the document can never present them as harness-captured.
 # The flag is the point: an out-of-band proof printed like a machine-captured
 # one is a stronger claim than the truth.
+#
+# Every attested transcript must be listed HERE and not only in the committed
+# index. The index is rewritten wholesale on each capture, so a transcript
+# attested by hand into the index alone is deleted from it by the next run --
+# silently, with the .txt still sitting on disk unreferenced. That is what
+# happened to `studio` and `accelerator`, and
+# `test_proofs.py::test_every_committed_transcript_is_reachable_through_the_index`
+# is what noticed. Attest here, or the evidence does not survive.
 ATTESTED: dict[str, str] = {
     "serving_champion":
-        "assembled by hand from one live session: serve_champion.py, a real "
-        "neuro-san server, curl, and a browser",
+        "two captures: serve_champion.py re-run on a clean clone 2026-09-11, "
+        "and one live 2026-08-22 session with a real neuro-san server, curl "
+        "and a browser",
+    "studio":
+        "one live session 2026-09-11: serve_studio.py, nsflow, curl against "
+        "the neuro-san server, and a real question answered by the winning "
+        "network",
+    "accelerator":
+        "one live session 2026-09-11: probe_models, serve_studio, nsflow, and "
+        "four real questions answered over HTTP by the served networks",
 }
 
 

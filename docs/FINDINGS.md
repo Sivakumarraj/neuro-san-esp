@@ -234,15 +234,79 @@ a real search's would be after a fuller run.
 
 ## What the Predictor is, exactly
 
-Asked directly in review, and the answer was implicit in the code and nowhere in the
-documentation, so: the Predictor is a **`GradientBoostingRegressor` from scikit-learn** —
-200 trees, depth 3, learning rate 0.05, subsample 0.9 — fitted on
-`(genome, measured fitness)` pairs and returning one scalar per candidate. It lives in
-`esp/surrogate/predictor.py` and it is the only model in this repository. There is no
-neural network anywhere in it.
+Asked directly in review — twice, and the second time by a co-author of the ESP paper, who
+said he had *"a hard time understanding what the predictor surrogate is in the ESP for this
+general use-case"* and described what it ought to be:
 
-**Its input is thirteen numbers describing the network's structure and configuration, and
-nothing that was measured:**
+> Typically, the surrogate model is one or more ML models that act as predictors for various
+> outcome objectives we expect from the target we are optimizing — in this case, the
+> Neuro-san agent network. The prescription then generates actions optimized against the
+> surrogate.
+
+The first version was not that, and the confusion was the code's fault rather than the
+reader's. It trained **one** model directly on the already-scalarised fitness. That single
+choice fused the three things a reader has to be able to separate — what is predicted, how
+it is scored, what proposes the next candidate — into one object, and no amount of prose
+around it would have made them distinct.
+
+### The three things, separated
+
+| | What it is | Learned? | Where |
+|---|---|---|---|
+| **Predictor** | One `GradientBoostingRegressor` per outcome objective — 200 trees, depth 3, learning rate 0.05, subsample 0.9 — fitted on `(genome → outcome)`. Predicts **accuracy** and **token cost**. | Yes, from real evaluations | `esp/surrogate/outcomes.py` |
+| **Fitness** | `accuracy − 0.06·min(tokens/600000, 1) − 0.02·(agents/9)`. A fixed weighting. Applied to *measured* outcomes it scores Phases A and D; applied to *predicted* outcomes it ranks Phase C. | No — arithmetic | `esp/evolve/loop.py::scalarise` |
+| **Prescription** | Seven mutation operators plus elite selection, run against the Predictor. | No | `esp/genome/mutations.py` |
+
+**Agent count is an objective with no model.** It is an exact property of a genome, so
+`predict_outcomes` counts it. Asking a regressor to estimate a number already in hand adds
+error and buys nothing. Depth is excluded from fitness entirely and is reported only.
+
+Two things follow from making the split, beyond matching the paper. The weights stop being
+baked into a fitted model, so re-weighting no longer needs a retrain on a population that
+cost four days of provider budget to collect. And each objective becomes separately
+measurable — which is how the next section exists at all.
+
+### Splitting it found a defect: token cost is anti-predicted
+
+Reported per objective over the twelve measured networks, 20 cross-validation seeds:
+
+| Objective | min | median | max | negative seeds |
+|---|---|---|---|---|
+| accuracy | +0.306 | **+0.619** | +0.724 | 0 / 20 |
+| **token cost** | **−0.725** | **−0.608** | **−0.476** | **20 / 20** |
+| derived fitness | +0.466 | +0.648 | +0.762 | 0 / 20 |
+| *(the old single model, same data)* | *+0.401* | *+0.648* | *+0.720* | *0 / 20* |
+
+The token model does not merely fail to predict cost. It predicts it **backwards**, in every
+seed tried, at a magnitude comparable to the accuracy model's success. Thirteen structural
+features — agent count, depth, branching, model tiers, instruction lengths — apparently
+carry a signal about what a network will spend that points the wrong way on this population.
+The honest reading is that twelve samples cannot support the claim that it is a stable
+property of the feature set rather than of these twelve networks; what *is* solid is that
+nothing here predicts token cost usefully, and Phase C has been weighting a prediction that
+is worse than a constant.
+
+**Note the last row.** The combined figure is unchanged — median +0.648 either way. The
+scalarised surrogate looked healthy, was healthy by its own measure, and was concealing
+this, because the accuracy term is large enough to carry the total on its own. That is the
+part worth generalising: a single scalarised quality number cannot express *which*
+objective is broken, and a multi-objective search reporting one number will not notice when
+half of it is noise.
+
+It is now said out loud in three places rather than left in a table: `make offline` prints a
+warning under the quality line, the service puts it in the wake report an unattended
+operator reads, and `tests/test_outcome_surrogate.py::test_token_cost_is_anti_predicted_on_the_committed_population`
+fails if it ever stops being true — so fixing it forces this section to be rewritten instead
+of allowing it to go quietly stale.
+
+**What has not been done:** nothing here diagnoses *why*, and no feature has been added to
+try to fix it. Both need more than twelve evaluations to be worth doing, and inventing a
+fix that cannot be validated would be worse than reporting the defect.
+
+### The feature set
+
+**The Predictor's input is thirteen numbers describing the network's structure and
+configuration, and nothing that was measured:**
 
 | | |
 |---|---|
@@ -259,16 +323,20 @@ list and a genome measured under a swapped model must not take feature extractio
 with it.
 
 A gradient-boosted tree ensemble rather than anything larger because the training set is
-**tens of samples**. Below eight it refuses to fit at all: `predict` then returns the mean
-of whatever it has seen, `ranks()` reports `False`, and both the batch loop and the service
-say out loud that the generation is a random search rather than printing a ranking over one
-repeated constant.
+**tens of samples**, and there is no neural network anywhere in this repository. Below eight
+samples it refuses to fit at all: `predict` then returns the mean of whatever it has seen,
+`ranks()` reports `False`, and both the batch loop and the service say out loud that the
+generation is a random search rather than printing a ranking over one repeated constant. An
+objective whose measured values are constant gets no model either, and a surrogate missing
+one of its objectives does not claim to rank.
 
 Quality is reported as **cross-validated Spearman rank correlation**, not error, because
 the Predictor's job is ordering. It never has to price a topology correctly — it has to put
 the promising ones above the hopeless ones so that real budget goes to the top of the list.
-`report_quality` runs `KFold` over the whole scored population and publishes the number
-whatever it says, including the −0.333 above.
+`report_quality` runs `KFold` over the whole scored population, publishes a figure per
+objective **and** for the derived fitness, and names any objective that ranks no better than
+chance rather than letting it disappear into a mean. It publishes whatever it says,
+including the −0.333 above and the −0.608 in the section before this one.
 
 **Where this is not canonical ESP.** In ESP as Cognizant AI Lab published it, the
 Prescriptor is *also* a learned model — a network mapping context to actions, evolved

@@ -94,6 +94,12 @@ Full numbers, the failure analysis and the prior art are in
   −0.333, worse than chance. Both facts are published. Which of the two the loop deserves
   credit for needs a run that searches with the Predictor and without it on the same
   budget, and that has not been bought.
+- **One of the two predicted objectives is worse than useless.** Token cost cross-validates
+  between −0.73 and −0.48 on the twelve measured networks — negative in all 20 seeds tried,
+  so the Predictor orders candidates by cost backwards. Phase C still weights it. The
+  combined fitness ranks well regardless because accuracy carries it, which is precisely
+  what made this invisible until the surrogate was split per objective. Thirteen structural
+  features do not predict what a network will spend; nothing here yet says what would.
 - **Twelve real evaluations, two generations of search.** No repeat run, no second random
   seed, no held-out task set. A candidate costs about 165 provider requests against a free
   tier of 500 per day per model — three candidates a day, so eleven is about four days of
@@ -122,11 +128,15 @@ Full numbers, the failure analysis and the prior art are in
 Four phases, repeated. Phase C is the point: it is free, so the search can be wide.
 
 ```
-Phase A   measure the seed topologies for real        ->  (genome, fitness) pairs
-Phase B   train a Predictor on those pairs            ->  cheap fitness estimate
-Phase C   breed and rank thousands of candidates      ->  zero LLM calls
+Phase A   measure the seed topologies for real        ->  (genome, outcomes) pairs
+Phase B   train one Predictor per outcome objective   ->  cheap outcome estimates
+Phase C   breed candidates, rank by derived fitness   ->  zero LLM calls
 Phase D   pay for real evaluation of the elite only   ->  feed back into B
 ```
+
+Fitness is **derived** from the Predictor's outputs, never learned by it — see
+[Predictor, fitness, prescription](#predictor-fitness-prescription--which-is-which) below for
+why that distinction matters and what it exposed.
 
 ### The genome is neuro-san's own format
 
@@ -162,21 +172,47 @@ teaches the search that a good topology is bad.
 cycle, no front man — is **discarded, never repaired**, so every candidate that reaches a
 real evaluation is a network neuro-san would actually serve.
 
-### The Predictor
+### Predictor, fitness, prescription — which is which
 
-A `GradientBoostingRegressor` over **thirteen structural features** of the genome: agent
-count, depth, edges, branching, leaves, searchers, model tiers and instruction lengths
-(`esp/surrogate/predictor.py`). Never a measured quantity — a feature derived from a
-measurement would mean the Predictor needed a real evaluation in order to predict one.
+Three words get used loosely about a loop like this, and conflating them is how a search
+comes to optimise something nobody chose. In this repository they are three separate things:
+
+| | What it is | Where it lives |
+|---|---|---|
+| **Predictor** | The surrogate. **One `GradientBoostingRegressor` per outcome objective**, learned from real evaluations. It predicts *accuracy* and *token cost*. It never sees a fitness and never sees the weights below. | `esp/surrogate/outcomes.py` |
+| **Fitness** | A fixed weighting applied to outcomes — not learned, not fitted, just arithmetic. Over **measured** outcomes it scores Phases A and D. Over **predicted** outcomes it ranks Phase C. Same function both times. | `esp/evolve/loop.py::scalarise` |
+| **Prescription** | What proposes the next candidate. Seven mutation operators plus elite selection, run against the Predictor. **Not** a learned model — see the departure noted at the top. | `esp/genome/mutations.py` |
+
+Agent count is a fourth objective and has **no model at all**: it is an exact property of a
+genome, so it is counted rather than estimated. A regressor asked to guess a number already
+in hand only adds error.
+
+The Predictor's input is **thirteen structural features** of the genome — agent count, depth,
+edges, branching, leaves, searchers, model tiers, instruction lengths — and never a measured
+quantity. A feature derived from a measurement would mean the Predictor needed a real
+evaluation in order to predict one.
 
 Below **eight** samples it refuses to fit, `predict` returns the training mean, and
 `ranks()` reports `False` so that callers say the generation was a random search instead of
 printing a ranking over one repeated constant. Quality is reported as cross-validated
 Spearman rank correlation, because the Predictor's job is ordering, not pricing.
 
-There is no learned Prescriptor here: the prescription step is mutation plus elite selection.
-That is a real departure from canonical ESP, and
-[docs/FINDINGS.md](docs/FINDINGS.md#what-the-predictor-is-exactly) says why.
+**This split was made after review feedback and it immediately found a defect.** The first
+version trained a single model directly on the scalarised fitness, which put the weighting
+inside the surrogate. Reported per objective instead, on the twelve measured networks:
+
+| Objective | Spearman (20 CV seeds) | |
+|---|---|---|
+| accuracy | **+0.31 to +0.72**, median +0.62 | ranks better than chance |
+| token cost | **−0.73 to −0.48**, median −0.61 | **anti-predicted in every seed tried** |
+| derived fitness | +0.47 to +0.76, median +0.65 | ranks better than chance |
+
+The token model orders candidates by cost **backwards**, and the accuracy term is large
+enough to carry the combined score into respectable territory anyway — which is exactly why
+one scalarised number could not show it. `make offline` now prints the warning, the service
+puts it in its wake report, and `tests/test_outcome_surrogate.py` pins it so the claim cannot
+drift away from the code. Full account in
+[docs/FINDINGS.md](docs/FINDINGS.md#what-the-predictor-is-exactly).
 
 ### It runs as a service, not a batch job
 

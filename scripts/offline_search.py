@@ -23,7 +23,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from esp.eval import measurements
 from esp.eval.runner import CACHE_DIR as DEFAULT_CACHE_DIR
 from esp.genome.mutations import InvalidMutant, mutate
-from esp.surrogate.predictor import MIN_SAMPLES, Surrogate
+from esp.surrogate.outcomes import Outcome, OutcomeSurrogate
+from esp.surrogate.predictor import MIN_SAMPLES
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -43,16 +44,21 @@ def _shown(path: Path) -> str:
         return str(path)
 
 
-def _cached_measurements(cache_dir: Path) -> tuple[list, list[float]]:
+def _cached_measurements(cache_dir: Path) -> tuple[list, list[Outcome]]:
     """Real evaluations already paid for, matched back to their genomes.
 
     Reads through `esp.eval.measurements`, which is also what `make champion`
     and the web front end resolve the best network with. This held its own copy
     of the logic, and the copies disagreed about what counted as a usable
     measurement.
+
+    Returns the *outcomes*, not the fitness. The Predictor is trained on what
+    was measured -- accuracy and token cost -- and fitness is derived from its
+    predictions afterwards by the same weighting the search selects on.
     """
     found = measurements.load(cache_dir)
-    return [m.genome for m in found], [m.fitness for m in found]
+    return ([m.genome for m in found],
+            [Outcome(accuracy=m.accuracy, tokens=m.tokens) for m in found])
 
 
 def main() -> int:
@@ -67,7 +73,7 @@ def main() -> int:
     args = parser.parse_args()
 
     cache_dir = Path(args.cache) if args.cache else DEFAULT_CACHE_DIR
-    genomes, values = _cached_measurements(cache_dir)
+    genomes, outcomes = _cached_measurements(cache_dir)
 
     # `make offline` is the one command the README hands a new reader to see the
     # core claim without a key, and on a fresh clone it exited 1: the live cache
@@ -79,12 +85,13 @@ def main() -> int:
     # while the reader believes they are their own is the sort of quiet
     # substitution this project refuses everywhere else.
     if len(genomes) < 2 and args.cache is None and cache_dir != FIXTURE_CACHE:
-        fallback, fallback_values = _cached_measurements(FIXTURE_CACHE)
+        fallback, fallback_outcomes = _cached_measurements(FIXTURE_CACHE)
         if len(fallback) >= 2:
             print(f"No local measurements in {_shown(cache_dir)} -- falling "
                   f"back to the committed ones in {_shown(FIXTURE_CACHE)}.")
             print("Run `make baseline` with a key to train on your own instead.\n")
-            cache_dir, genomes, values = FIXTURE_CACHE, fallback, fallback_values
+            cache_dir, genomes, outcomes = (
+                FIXTURE_CACHE, fallback, fallback_outcomes)
 
     if len(genomes) < 2:
         print(f"need at least 2 cached seed evaluations in {cache_dir}, "
@@ -94,10 +101,25 @@ def main() -> int:
 
     print(f"Phase B -- training the Predictor on {len(genomes)} real evaluations "
           f"from {_shown(cache_dir)}")
-    surrogate = Surrogate(seed=args.seed)
-    quality = surrogate.report_quality(genomes, values, seed=args.seed)
+    print("  one model per outcome objective; fitness is derived from their "
+          "predictions, not learned")
+    surrogate = OutcomeSurrogate(seed=args.seed)
+    quality = surrogate.report_quality(genomes, outcomes, seed=args.seed)
     print(f"  {quality}")
-    surrogate.fit(genomes, values)
+    # Printed on its own line because the combined figure will not show it.
+    # Token cost on the committed population comes back reliably negative --
+    # the Predictor orders candidates by cost backwards -- and the accuracy
+    # term is large enough to carry the total into respectable territory
+    # regardless. Scalarised into one model this was invisible, which is the
+    # whole reason the surrogate now reports per objective.
+    for useless in quality.useless_outcomes():
+        detail = quality.per_outcome.get(useless)
+        rho = "" if detail is None or detail.spearman is None \
+            else f" (spearman {detail.spearman:+.3f})"
+        print(f"  !! the {useless} model ranks no better than chance{rho}. "
+              f"Phase C still weights it, so that part of the objective is "
+              f"noise.")
+    surrogate.fit(genomes, outcomes)
 
     print(f"\nPhase C -- evolving {args.pool} candidates against it")
     rng = random.Random(args.seed)
