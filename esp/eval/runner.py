@@ -17,6 +17,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from esp.eval.ratelimit import install as install_rate_limit
+from esp.eval.ratelimit import install_others as install_other_rate_limits
 from esp.eval.tasks import TASKS, Task, score
 from esp.genome.definition import Genome
 
@@ -101,6 +102,11 @@ def _session_factory():
                 DirectAgentSessionFactory,
             )
             install_rate_limit()
+            # Anthropic and OpenAI too, when their drivers are present. An
+            # unpaced provider is not a smaller version of a paced one: a rate
+            # limit comes back through neuro-san as an agent error, the
+            # candidate scores zero, and the cache keeps that answer.
+            install_other_rate_limits()
             _FACTORY = DirectAgentSessionFactory()
     return _FACTORY
 

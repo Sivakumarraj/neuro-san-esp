@@ -268,7 +268,7 @@ def test_the_live_check_is_off_by_default(monkeypatch):
     default path would make `run_checks` untestable without a provider."""
     monkeypatch.setenv("GOOGLE_API_KEY", "AQ.EXAMPLE-not-a-real-key-00000000000")
     names = [c.name for c in preflight.run_checks()]
-    assert "provider key accepted" not in names
+    assert not any(name.endswith(" accepted") for name in names)
 
 
 def test_a_rejected_key_fails_the_live_check(monkeypatch):
@@ -281,7 +281,7 @@ def test_a_rejected_key_fails_the_live_check(monkeypatch):
         lambda _name="GOOGLE_API_KEY", timeout=20.0: rejected)
 
     check = next(c for c in preflight.run_checks(live=True)
-                 if c.name == "provider key accepted")
+                 if c.name.endswith(" accepted"))
     assert not check.ok
     assert check.fatal, "a rejected key must stop the run"
 
@@ -297,6 +297,6 @@ def test_an_unreachable_provider_is_not_reported_as_a_bad_key(monkeypatch):
         lambda _name="GOOGLE_API_KEY", timeout=20.0: unreachable)
 
     check = next(c for c in preflight.run_checks(live=True)
-                 if c.name == "provider key accepted")
+                 if c.name.endswith(" accepted"))
     assert check.ok
     assert "not checked" in check.detail
