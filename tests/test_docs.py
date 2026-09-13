@@ -150,7 +150,13 @@ def test_the_documented_predictor_features_are_the_real_ones():
     from esp.surrogate.predictor import FEATURE_NAMES
 
     findings = (ROOT / "docs" / "FINDINGS.md").read_text(encoding="utf-8")
-    section = findings[findings.index("## What the Predictor is"):]
+    # Anchored on the feature subsection, not on "What the Predictor is". That
+    # section now also carries a table separating Predictor from fitness from
+    # prescription, and a table of per-objective rank correlations -- both of
+    # which name things in backticks that are not features. Scraping every
+    # table under the heading made this check fail on the documentation it
+    # exists to protect.
+    section = findings[findings.index("### The feature set"):]
     section = section[:section.index("\n## ", 1)]
 
     # Only the feature table counts. Backticked names elsewhere in the prose

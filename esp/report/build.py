@@ -132,10 +132,18 @@ class Report(Layout):
         # --- how it works
         self.h1("Method", "Four phases, repeated. Phase C is the point.")
         self.terminal(
-            "Phase A   seed population evaluated for real      -->  (genome, fitness)\n"
-            "Phase B   train a Predictor on those pairs\n"
-            "Phase C   evolve thousands of candidates against it  --  zero LLM calls\n"
+            "Phase A   seed population evaluated for real      -->  (genome, outcomes)\n"
+            "Phase B   train one Predictor per outcome objective\n"
+            "Phase C   evolve thousands of candidates, rank by derived fitness\n"
             "Phase D   real-evaluate only the elite, feed back to B")
+
+        self.p(
+            "The Predictor estimates the <i>outcomes</i> &mdash; accuracy and token "
+            "cost &mdash; and fitness is derived from those estimates by the same "
+            "fixed weighting the search selects on. It is never trained on a fitness, "
+            "so the weighting is not inside the model: re-weighting the objectives "
+            "needs no retrain. Agent count is an objective with no model at all, "
+            "because it is an exact property of a genome and can be counted.")
 
         self.p(
             "The genome is neuro-san's own <font face='Courier' size='9'>"
