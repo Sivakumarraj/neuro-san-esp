@@ -205,8 +205,32 @@ announcing which cache it used.
 
 ### With an API key
 
-A free key from [aistudio.google.com/apikey](https://aistudio.google.com/apikey) gives 500
-requests per day per model.
+Runs on **Gemini, Claude or GPT**. neuro-san picks the client class from the model name, so
+a provider is a model name plus its key:
+
+| Provider | Key | Example model |
+|---|---|---|
+| Google | `GOOGLE_API_KEY` | `gemini-3.1-flash-lite` |
+| Anthropic | `ANTHROPIC_API_KEY` | `claude-haiku-4-5` |
+| OpenAI | `OPENAI_API_KEY` | `gpt-5-mini` |
+| OpenRouter | `OPENROUTER_API_KEY` | `openrouter/free` |
+
+```bash
+ESP_DEFAULT_MODEL=claude-haiku-4-5    # with ANTHROPIC_API_KEY in .env
+```
+
+The preflight refuses to start when the model and the key disagree, because that mismatch
+does not fail at startup — it fails inside every agent, scores every candidate zero, and the
+cache keeps those zeros.
+
+**The model is part of the genome hash, so measurements do not cross providers.** The twelve
+committed results are all on `gemini-3.1-flash-lite`. Point this at Claude and every hash
+changes, the cache misses correctly, and the measurements start again. That is deliberate: a
+fitness measured on one model does not describe the same network on another.
+
+Google's free tier gives 500 requests per day per model. Claude and GPT are paid APIs — the
+daily-cap failover in `esp/eval/failover.py` is a Google free-tier concept and does not
+apply to them; pacing and transient-fault retry apply to all three.
 
 ```bash
 cp .env.example .env      # paste the key in; .env is gitignored
