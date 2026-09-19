@@ -3,14 +3,18 @@ Run `make baseline` with a key to train on your own instead.
 
 Phase B -- training the Predictor on 12 real evaluations from tests/fixtures/cache
   one model per outcome objective; fitness is derived from their predictions, not learned
-  outcome surrogate on 12 samples: fitness +0.648 (accuracy +0.680, tokens -0.634)
-  !! the tokens model ranks no better than chance (spearman -0.634). Phase C still weights it, so that part of the objective is noise.
+  outcome surrogate on 12 samples: fitness +0.648 (accuracy +0.680 (null -0.081), tokens -0.634 (null -0.004))
+  the null in brackets is what this same cross-validation returns on shuffled targets --
+  on a population this small it is not zero, so the margin over it is the real figure:
+    accuracy  margin over its own null: +0.761
+    tokens    margin over its own null: -0.630
+  !! the tokens model does not beat its own null (margin -0.630). Phase C still weights it, so that part of the objective is noise.
 
 Phase C -- evolving 2000 candidates against it
   348 distinct viable, 7475 rejected as invalid, 62942 duplicates, 9235 already measured
   NOTE: asked for 2000 and the reachable space yielded 348. The numbers below describe what was actually generated.
-  bred in 7.11s, scored in 0.02s, zero provider calls
-  ~0.061 ms per candidate to rank
+  bred in 5.53s, scored in 0.02s, zero provider calls
+  ~0.047 ms per candidate to rank
 
 Top 5 by predicted fitness:
   +0.8941  1e577dd4b4ac043f  agents=5 depth=2  via reassign_model

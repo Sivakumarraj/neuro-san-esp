@@ -23,10 +23,21 @@ Three things follow from the change, beyond matching the paper:
   are exact properties of a genome -- they can be counted, not guessed. Asking
   a regressor to estimate a number already in hand adds error for nothing.
 * **Each objective becomes separately measurable, and that is what found the
-  bug.** Reported on its own, token cost turns out to be *anti*-predicted:
-  rank correlation around -0.6 on the committed population, consistently
-  negative across every seed tried. Scalarised into one target it was hidden,
-  because the accuracy term carried the combined score.
+  bug.** Reported on its own, token cost cross-validates around -0.6 on the
+  committed population, negative in every seed tried. Scalarised into one
+  target it was hidden, because the accuracy term carried the combined score.
+
+**And measuring it separately is not enough -- it has to be measured against
+the right null.** A first version of this module reported that -0.6 as though
+zero were the no-signal baseline. It is not. Cross-validation on twelve samples
+manufactures negative rank correlation on its own: hold out a high value, the
+training mean drops, the model predicts low, and the held-out prediction is
+wrong in a direction that correlates. `permutation_null` measures that by
+destroying the relationship and re-running the identical procedure. On the
+committed population the token null is about -0.2, not 0, so part of the
+published effect was the procedure and part looks real -- and twelve samples
+cannot separate them. Every rank correlation here is now reported against its
+own permutation null.
 """
 
 from __future__ import annotations
@@ -63,21 +74,48 @@ class OutcomeQuality:
     samples: int
     per_outcome: dict[str, Quality] = field(default_factory=dict)
     derived: Quality | None = None
+    # Median rank correlation this same procedure produces on the same data
+    # with the relationship destroyed. Empty when the null was not measured;
+    # never assumed to be zero, because on small samples it is not.
+    nulls: dict[str, float] = field(default_factory=dict)
 
     @property
     def measured(self) -> bool:
         return self.derived is not None and self.derived.measured
 
+    def margin(self, name: str) -> float | None:
+        """How far an objective beats its own no-signal baseline.
+
+        This is the number that means something, and the reason the raw
+        spearman alone was misleading: an objective at -0.61 against a null of
+        -0.21 is not "anti-predicted at -0.61", it is 0.4 below a baseline
+        that was already negative.
+        """
+        quality = self.per_outcome.get(name)
+        if quality is None or quality.spearman is None:
+            return None
+        return quality.spearman - self.nulls.get(name, 0.0)
+
     def useless_outcomes(self) -> list[str]:
-        """Objectives whose model ranks no better than chance, or worse.
+        """Objectives whose model ranks no better than its own null.
 
         Named rather than averaged away. A predictor that is reliably wrong
         about an objective is a fact about the feature set, and it belongs in
         the report instead of inside a mean.
+
+        Compared against the permutation null where one was measured, and
+        against a flat +0.2 otherwise. The first version compared against
+        +0.2 always, which on twelve samples judges an objective against a
+        baseline the procedure cannot reach.
         """
-        return [name for name, quality in sorted(self.per_outcome.items())
-                if quality.measured and quality.spearman is not None
-                and quality.spearman <= 0.2]
+        out = []
+        for name, quality in sorted(self.per_outcome.items()):
+            if not quality.measured or quality.spearman is None:
+                continue
+            floor = self.nulls.get(name, 0.0) + 0.2
+            if quality.spearman <= floor:
+                out.append(name)
+        return out
 
     def as_record(self) -> dict:
         """The history entry, shaped so older readers keep working.
@@ -96,7 +134,9 @@ class OutcomeQuality:
             "beats_random": bool(derived and derived.beats_random),
             "per_outcome": {
                 name: {"spearman": quality.spearman, "mae": quality.mae,
-                       "beats_random": quality.beats_random}
+                       "beats_random": quality.beats_random,
+                       "null": self.nulls.get(name),
+                       "margin": self.margin(name)}
                 for name, quality in sorted(self.per_outcome.items())},
             "useless_outcomes": self.useless_outcomes(),
         }
@@ -107,14 +147,24 @@ class OutcomeQuality:
                     f"MEASURED -- cross-validation needs {MIN_SAMPLES}")
         parts = []
         for name, quality in sorted(self.per_outcome.items()):
-            shown = ("not measured" if quality.spearman is None
-                     else f"{quality.spearman:+.3f}")
-            parts.append(f"{name} {shown}")
+            if quality.spearman is None:
+                parts.append(f"{name} not measured")
+                continue
+            shown = f"{name} {quality.spearman:+.3f}"
+            if name in self.nulls:
+                shown += f" (null {self.nulls[name]:+.3f})"
+            parts.append(shown)
         derived = self.derived.spearman if self.derived else None
         head = ("fitness not measured" if derived is None
                 else f"fitness {derived:+.3f}")
         return (f"outcome surrogate on {self.samples} samples: {head} "
                 f"({', '.join(parts)})")
+
+
+# How many shuffles the permutation null averages over. Each one re-runs the
+# whole cross-validation, so this is the expensive part of a quality report --
+# which is why it is opt-in rather than on by default.
+NULL_TRIALS = 12
 
 
 def _model(seed: int) -> GradientBoostingRegressor:
@@ -141,6 +191,56 @@ def scalarise(accuracy, tokens, agents) -> np.ndarray:
             - WEIGHTS["tokens"] * np.minimum(
                 np.asarray(tokens, dtype=float) / TOKEN_SCALE, 1.0)
             - WEIGHTS["agents"] * (np.asarray(agents, dtype=float) / 9.0))
+
+
+def _cross_validate(matrix: np.ndarray, values: np.ndarray,
+                    folds: list, seed: int) -> np.ndarray:
+    """Out-of-fold predictions for one objective.
+
+    Extracted so the permutation null runs the *identical* procedure on
+    shuffled targets. A null measured by a different code path would not be a
+    null of this measurement.
+    """
+    predictions = np.zeros(len(values))
+    for train_index, test_index in folds:
+        model = _model(seed)
+        model.fit(matrix[train_index], values[train_index])
+        predictions[test_index] = model.predict(matrix[test_index])
+    return predictions
+
+
+def permutation_null(matrix: np.ndarray, values: np.ndarray, folds: list,
+                     seed: int = 0, trials: int = NULL_TRIALS) -> float:
+    """The rank correlation this procedure yields when there is nothing to find.
+
+    Shuffle the targets against the features, so no relationship can survive,
+    then cross-validate exactly as the real measurement does. The median over
+    `trials` shuffles is the baseline the real figure has to beat.
+
+    On small samples this comes back *negative*, not zero, and that is the
+    whole point of measuring it. Holding out a high value drags the training
+    mean down, the model predicts low, and the error correlates with the truth
+    in the wrong direction. Reporting a real -0.61 against an assumed null of
+    0 turns a modest effect into a dramatic one.
+
+    **One limit, and it decides which objective this can be trusted on.** A
+    permutation only destroys a relationship if permuting moves the values.
+    Accuracy takes four distinct values across the twelve committed
+    measurements, so a shuffle often maps a value onto an identical one and
+    leaves the ordering largely intact -- one shuffled draw scored +0.88. Its
+    null is therefore weak. Token cost is distinct in all twelve, so its null
+    is sound, and token cost is the objective the published finding is about.
+    A caller reporting this on a tied objective should say so.
+    """
+    rng = np.random.default_rng(seed)
+    found = []
+    for trial in range(trials):
+        shuffled = values[rng.permutation(len(values))]
+        if shuffled.std() <= 1e-9:
+            continue
+        found.append(_spearman(_cross_validate(matrix, shuffled, folds, trial),
+                               shuffled))
+    return float(np.median(found)) if found else 0.0
 
 
 class OutcomeSurrogate:
@@ -198,8 +298,16 @@ class OutcomeSurrogate:
         return self.trained
 
     def report_quality(self, genomes: list[Genome], outcomes: list[Outcome],
-                       seed: int = 0) -> OutcomeQuality:
-        """Cross-validated, per objective and for the derived fitness."""
+                       seed: int = 0,
+                       null_trials: int = 0) -> OutcomeQuality:
+        """Cross-validated, per objective and for the derived fitness.
+
+        `null_trials` above zero also measures each objective's permutation
+        null, which is what makes the rank correlations interpretable. It is
+        off by default because it costs `null_trials` extra cross-validations
+        per objective, and an hourly service wake should not pay that to
+        rediscover a constant.
+        """
         samples = len(genomes)
         report = OutcomeQuality(samples=samples)
         if samples < MIN_SAMPLES:
@@ -221,15 +329,17 @@ class OutcomeSurrogate:
                 report.per_outcome[name] = Quality(samples, None, None, False)
                 held[name] = np.full(samples, float(values.mean()))
                 continue
-            predictions = np.zeros(samples)
-            for train_index, test_index in folds:
-                model = _model(seed)
-                model.fit(matrix[train_index], values[train_index])
-                predictions[test_index] = model.predict(matrix[test_index])
+            predictions = _cross_validate(matrix, values, folds, seed)
             held[name] = predictions
             rho = _spearman(predictions, values)
             mae = float(np.mean(np.abs(predictions - values)))
-            report.per_outcome[name] = Quality(samples, rho, mae, rho > 0.2)
+            if null_trials > 0:
+                report.nulls[name] = permutation_null(
+                    matrix, values, folds, seed=seed, trials=null_trials)
+            # Beating the null, not beating zero. On this population the two
+            # differ by 0.4 for token cost.
+            floor = report.nulls.get(name, 0.0) + 0.2
+            report.per_outcome[name] = Quality(samples, rho, mae, rho > floor)
 
         truth = scalarise(targets["accuracy"], targets["tokens"], agents)
         derived = scalarise(held["accuracy"], held["tokens"], agents)

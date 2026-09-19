@@ -19,7 +19,7 @@ from datetime import UTC, datetime
 
 from esp.eval import failover
 from esp.eval.runner import QuotaExhausted, evaluate
-from esp.evolve.loop import fitness
+from esp.evolve.loop import fitness, non_dominated
 from esp.genome.definition import DEFAULT_MODEL, Genome
 from esp.genome.mutations import InvalidMutant, mutate
 from esp.genome.seeds import SEEDS
@@ -188,8 +188,21 @@ def _propose(state: ServiceState, population: list[Genome], rng: random.Random,
 
     # The elite breed; everything measured trains. Unmeasured genomes cannot be
     # ranked, so they only breed when nothing has been measured yet.
-    parents = [g for g, r in sorted(trainable, key=lambda pair: -pair[1].fitness)
-               [:ELITE]]
+    #
+    # The elite is the Pareto front first, topped up with the best scalarised
+    # fitness. Same rule as the batch loop, for the same reason: a candidate
+    # nothing dominates on all three objectives is a better parent than one
+    # that happens to sit high under one weighting.
+    points = [(r.accuracy, float(r.tokens), float(r.agents))
+              for _, r in trainable]
+    chosen = [trainable[i] for i in non_dominated(points)][:ELITE]
+    if len(chosen) < ELITE:
+        for pair in sorted(trainable, key=lambda p: -p[1].fitness):
+            if pair not in chosen:
+                chosen.append(pair)
+            if len(chosen) >= ELITE:
+                break
+    parents = [g for g, _ in chosen]
     if not parents:
         parents = population
     if not parents:

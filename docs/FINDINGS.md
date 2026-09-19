@@ -266,25 +266,53 @@ baked into a fitted model, so re-weighting no longer needs a retrain on a popula
 cost four days of provider budget to collect. And each objective becomes separately
 measurable — which is how the next section exists at all.
 
-### Splitting it found a defect: token cost is anti-predicted
+### Splitting it found a defect: token cost does not beat its own null
 
-Reported per objective over the twelve measured networks, 20 cross-validation seeds:
+Reported per objective over the twelve measured networks:
 
-| Objective | min | median | max | negative seeds |
+| Objective | spearman | permutation null | margin over null | margin sign |
 |---|---|---|---|---|
-| accuracy | +0.306 | **+0.619** | +0.724 | 0 / 20 |
-| **token cost** | **−0.725** | **−0.608** | **−0.476** | **20 / 20** |
-| derived fitness | +0.466 | +0.648 | +0.762 | 0 / 20 |
-| *(the old single model, same data)* | *+0.401* | *+0.648* | *+0.720* | *0 / 20* |
+| accuracy | +0.610 [+0.306 … +0.724] | **−0.032** | **+0.628** | positive 20 / 20 |
+| **token cost** | **−0.608** [−0.725 … −0.476] | **−0.125** | **−0.472** | **negative 20 / 20** |
+| derived fitness | +0.648 | — | — | — |
+| *(the old single model, same data)* | *+0.648* | *—* | *—* | *—* |
 
-The token model does not merely fail to predict cost. It predicts it **backwards**, in every
-seed tried, at a magnitude comparable to the accuracy model's success. Thirteen structural
-features — agent count, depth, branching, model tiers, instruction lengths — apparently
-carry a signal about what a network will spend that points the wrong way on this population.
-The honest reading is that twelve samples cannot support the claim that it is a stable
-property of the feature set rather than of these twelve networks; what *is* solid is that
-nothing here predicts token cost usefully, and Phase C has been weighting a prediction that
-is worse than a constant.
+Medians over 20 cross-validation seeds; each null is itself the median of 12 shuffles.
+
+**The null column was not in the first version of this table, and leaving it out overstated
+the finding.** That version reported −0.608 as though zero were the no-signal baseline.
+Cross-validation on twelve samples can manufacture negative rank correlation on its own:
+hold out a high value and the training mean drops, so the model predicts low and the error
+correlates with the truth in the wrong direction. The baseline has to be measured, not
+assumed.
+
+`permutation_null()` measures it the only way that means anything — shuffle the targets so no
+relationship can survive, run the **identical** cross-validation, take the median over twelve
+shuffles.
+
+Measuring it corrected the record in both directions:
+
+* **Accuracy's null is −0.03, effectively zero.** That figure was always sound, and the
+  worry that it too might be inflated was unfounded.
+* **Token cost's null is −0.13, so the real effect is −0.47, not −0.61.** About 20% smaller
+  than published. The finding survives — the margin is negative in every one of 20 seeds,
+  and the Predictor genuinely orders candidates by cost backwards — but the dramatic version
+  of the number does not.
+
+**A limit on the null itself, which decides which objective it can be trusted on.** A
+permutation destroys a relationship only if permuting moves the values. Accuracy takes
+**four distinct values across twelve networks**, so a shuffle frequently maps a value onto an
+identical one and leaves the ordering largely intact — one shuffled draw came back at +0.88.
+Its null is therefore weak, and its +0.63 margin should be read as indicative rather than
+measured — though since that null came out near zero anyway, little rests on it. Token cost is distinct in all twelve, so its null is sound — and token cost is the
+objective the finding is about. `test_the_null_is_only_meaningful_on_an_untied_objective`
+pins this so nobody moves the check to the tied objective.
+
+**And the spread is wide even where the null is sound.** The median is stable; a single draw
+is not. Individual shuffled token correlations run from roughly −0.55 to +0.59 at this sample
+size, and the *null itself* ranges from −0.39 to −0.01 across cross-validation seeds. The
+margin over the null is the right statistic. It is not a precise one, and no figure in this
+table should be quoted to three decimal places as though it were.
 
 **Note the last row.** The combined figure is unchanged — median +0.648 either way. The
 scalarised surrogate looked healthy, was healthy by its own measure, and was concealing
@@ -338,6 +366,16 @@ objective **and** for the derived fitness, and names any objective that ranks no
 chance rather than letting it disappear into a mean. It publishes whatever it says,
 including the −0.333 above and the −0.608 in the section before this one.
 
+**The deeper departure: there is no context.** ESP prescribes *actions for a context*, and
+the Prescriptor is precisely the model that maps one to the other. This project has **no
+context variable anywhere** — every candidate is evaluated against the same fixed seventeen
+tasks. That is not an omission that could be patched by bolting on a network: with nothing to
+map from, a Prescriptor has no input, which is why seven mutation operators occupy that slot
+instead. Building a real Prescriptor here starts with deciding what the context *is* — a
+task distribution, a budget, a domain — and that decision is the research, not the network.
+Stated before a reader has to ask, because "ESP" without it invites exactly the confusion the
+review raised.
+
 **Where this is not canonical ESP.** In ESP as Cognizant AI Lab published it, the
 Prescriptor is *also* a learned model — a network mapping context to actions, evolved
 against the Predictor. Here there is no learned Prescriptor. The prescription step is the
@@ -347,6 +385,20 @@ place of an evolved prescriptor. That is a deliberate simplification for a genom
 HOCON agent network rather than a fixed-length action vector, and it is a real difference
 rather than a detail: anyone comparing this against the ESP papers should expect to find
 one model here, not two.
+
+### The Pareto front now breeds
+
+`pareto()` was computed on every run, written to `history.json`, and drawn in three PDFs.
+Selection ignored it completely and took the top `elite` candidates by scalarised fitness.
+That is multi-objective in the report and single-objective in the search, and the gap has a
+cost: the cheapest network ever measured contributes nothing to breeding if one particular
+weighting puts it mid-table — which is the exact outcome a Pareto front exists to prevent.
+
+Parents are now chosen by non-dominated sorting on (accuracy up, tokens down, agents down),
+topped up with the best scalarised fitness when the front is smaller than the elite, so a
+one-point front cannot collapse the search onto a single parent. The batch loop and the
+service wake share one `non_dominated()` so the front the reports draw and the front the
+search breeds from cannot drift apart.
 
 ## What measurement changed
 

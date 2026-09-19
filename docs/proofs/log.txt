@@ -1,3 +1,5 @@
+21c53be feat: predict the outcome objectives, derive fitness from them
+c0ca45f feat: run on Gemini, Claude or GPT, and refuse a mismatched key
 18f8262 Merge pull request #3: cite ESP and LEAF, state the Prescriptor departure up front
 87f7f05 docs: cite the two papers this sits on, and name the departure first
 2aa3a20 Merge pull request #2: held-out validation, accelerator UI, clean-install fixes
@@ -11,5 +13,3 @@ bb9c121 feat: judge a winner on the tasks it was not chosen on
 a0b6802 feat: a twelfth measured network, and reports that stop restating the population
 503d6e5 fix: nsflow's local database is not repository content
 9b40fdd feat: every measured network at once, in neuro-san's accelerator UI
-8c1c6cf fix: never pay twice for the same candidate in one wake
-abbb7d7 fix: one deployment's runtime state is not another deployment's

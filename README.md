@@ -94,12 +94,20 @@ Full numbers, the failure analysis and the prior art are in
   −0.333, worse than chance. Both facts are published. Which of the two the loop deserves
   credit for needs a run that searches with the Predictor and without it on the same
   budget, and that has not been bought.
-- **One of the two predicted objectives is worse than useless.** Token cost cross-validates
-  between −0.73 and −0.48 on the twelve measured networks — negative in all 20 seeds tried,
-  so the Predictor orders candidates by cost backwards. Phase C still weights it. The
-  combined fitness ranks well regardless because accuracy carries it, which is precisely
-  what made this invisible until the surrogate was split per objective. Thirteen structural
-  features do not predict what a network will spend; nothing here yet says what would.
+- **One of the two predicted objectives does not beat its own null.** Token cost
+  cross-validates at −0.61 against a permutation null of −0.13, so it sits **0.47 below the
+  no-signal baseline**, negative in all 20 seeds tried, and the Predictor orders candidates
+  by cost backwards. Phase C still weights it. The combined fitness ranks well regardless
+  because accuracy carries it, which is what made this invisible until the surrogate was
+  split per objective. Thirteen structural features do not predict what a network will
+  spend; nothing here yet says what would, and twelve samples cannot say how much of the
+  −0.47 is real.
+- **There is no context, so this is not ESP's loop.** ESP prescribes *actions for a context*
+  and the Prescriptor is the model that maps one to the other. This project has **no context
+  variable at all** — every candidate is scored against the same fixed task set. That is the
+  reason there is no learned Prescriptor rather than an oversight: with nothing to map from,
+  mutation operators are the only thing that can fill that slot. What this implements is
+  surrogate-assisted architecture search, which is nearer to LEAF than to ESP.
 - **Twelve real evaluations, two generations of search.** No repeat run, no second random
   seed, no held-out task set. A candidate costs about 165 provider requests against a free
   tier of 500 per day per model — three candidates a day, so eleven is about four days of
@@ -172,6 +180,12 @@ teaches the search that a good topology is bad.
 cycle, no front man — is **discarded, never repaired**, so every candidate that reaches a
 real evaluation is a network neuro-san would actually serve.
 
+**The Pareto front breeds.** Parents are chosen by non-dominated sorting on
+(accuracy up, tokens down, agents down), topped up with the best scalarised fitness when the
+front is smaller than the elite. Selection used to take the top few by fitness alone while
+the front was computed, plotted in three documents and never consulted — multi-objective in
+the report and single-objective in the search.
+
 ### Predictor, fitness, prescription — which is which
 
 Three words get used loosely about a loop like this, and conflating them is how a search
@@ -181,7 +195,13 @@ comes to optimise something nobody chose. In this repository they are three sepa
 |---|---|---|
 | **Predictor** | The surrogate. **One `GradientBoostingRegressor` per outcome objective**, learned from real evaluations. It predicts *accuracy* and *token cost*. It never sees a fitness and never sees the weights below. | `esp/surrogate/outcomes.py` |
 | **Fitness** | A fixed weighting applied to outcomes — not learned, not fitted, just arithmetic. Over **measured** outcomes it scores Phases A and D. Over **predicted** outcomes it ranks Phase C. Same function both times. | `esp/evolve/loop.py::scalarise` |
-| **Prescription** | What proposes the next candidate. Seven mutation operators plus elite selection, run against the Predictor. **Not** a learned model — see the departure noted at the top. | `esp/genome/mutations.py` |
+| **Prescription** | What proposes the next candidate. Seven mutation operators plus Pareto-front selection, run against the Predictor. **Not** a learned model — see the departure noted at the top. | `esp/genome/mutations.py` |
+
+**There is no context here, and that is the deeper departure.** In ESP a Prescriptor maps a
+*context* to the actions to take in it. Every candidate in this project is evaluated against
+the same fixed task set, so there is no context to map from — which is why mutation operators
+occupy the prescription slot rather than a learned model. Building a real Prescriptor starts
+with deciding what the context is; that decision is the research, not the network.
 
 Agent count is a fourth objective and has **no model at all**: it is an exact property of a
 genome, so it is counted rather than estimated. A regressor asked to guess a number already
@@ -201,17 +221,32 @@ Spearman rank correlation, because the Predictor's job is ordering, not pricing.
 version trained a single model directly on the scalarised fitness, which put the weighting
 inside the surrogate. Reported per objective instead, on the twelve measured networks:
 
-| Objective | Spearman (20 CV seeds) | |
-|---|---|---|
-| accuracy | **+0.31 to +0.72**, median +0.62 | ranks better than chance |
-| token cost | **−0.73 to −0.48**, median −0.61 | **anti-predicted in every seed tried** |
-| derived fitness | +0.47 to +0.76, median +0.65 | ranks better than chance |
+| Objective | Spearman | Permutation null | Margin over null |
+|---|---|---|---|
+| accuracy | **+0.61** [+0.31 … +0.72] | −0.03 | **+0.63**, positive in 20/20 seeds |
+| token cost | **−0.61** [−0.73 … −0.48] | −0.13 | **−0.47**, negative in 20/20 seeds |
 
-The token model orders candidates by cost **backwards**, and the accuracy term is large
-enough to carry the combined score into respectable territory anyway — which is exactly why
-one scalarised number could not show it. `make offline` now prints the warning, the service
-puts it in its wake report, and `tests/test_outcome_surrogate.py` pins it so the claim cannot
-drift away from the code. Full account in
+Medians over 20 cross-validation seeds; each null is the median of 12 shuffles.
+
+**The null column is the point, and the first version of this table did not have it.** A rank
+correlation only means something against the baseline the same procedure produces when there
+is no signal to find, and on twelve samples that baseline is not automatically zero.
+Cross-validation can manufacture negative correlation on its own: hold out a high value, the
+training mean drops, the model predicts low. `permutation_null()` measures it by shuffling
+the targets and re-running the identical cross-validation.
+
+Two things came out of measuring it. **Accuracy's null is about −0.03 — essentially zero — so
+that figure was always sound.** **Token cost's null is −0.13, so the real effect is −0.47,
+not −0.61.** The finding holds: the margin is negative in every seed tried, and the Predictor
+does order candidates by cost backwards. It is just about 20% smaller than first published,
+and twelve samples cannot cleanly separate the real part from the artifact.
+
+**Two caveats the tests record.** The null is only trustworthy on an untied objective — a
+permutation destroys a relationship only if permuting moves the values, and accuracy takes
+just four distinct values across twelve networks, so its null is weak. Token cost is distinct
+in all twelve, so its null is sound, and token cost is what the finding is about. And the
+spread is wide: the token null itself ranges from −0.39 to −0.01 across seeds. The margin is
+the right statistic; it is not a precise one. Full account in
 [docs/FINDINGS.md](docs/FINDINGS.md#what-the-predictor-is-exactly).
 
 ### It runs as a service, not a batch job

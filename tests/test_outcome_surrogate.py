@@ -270,3 +270,127 @@ def test_every_predicted_objective_is_actually_measured(name):
     a default."""
     assert all(getattr(o, name) is not None for o in OUTCOMES)
     assert len({getattr(o, name) for o in OUTCOMES}) > 1
+
+
+# ----------------------------------- measuring against the right baseline
+
+@cache
+def null_quality(seed: int):
+    """A quality report that also measured each objective's permutation null."""
+    return OutcomeSurrogate(seed=seed).report_quality(
+        GENOMES, OUTCOMES, seed=seed, null_trials=12)
+
+
+def test_the_token_baseline_is_measurably_negative():
+    """The correction, stated as the fact that forced it.
+
+    The first version reported token cost at -0.61 as though zero were the
+    baseline. Cross-validation on twelve samples manufactures negative rank
+    correlation on its own: hold out a high value, the training mean drops,
+    the model predicts low, and the error correlates the wrong way.
+
+    Asserted on tokens only, and on the median across seeds, because a single
+    seed's null is noisy -- see the spread test below.
+    """
+    nulls = [null_quality(s).nulls["tokens"] for s in range(5)]
+    assert np.median(nulls) < -0.05, (
+        f"the token null came back at {np.median(nulls):+.3f}; if the "
+        f"procedure no longer has a negative bias, the published margin "
+        f"is wrong")
+
+
+def test_the_accuracy_baseline_is_near_zero():
+    """The other half of the correction, and it went the other way.
+
+    Measuring the null was expected to shrink both figures. It did not:
+    accuracy's null sits around -0.03 over 20 seeds, so that figure was sound
+    all along and its margin is close to its raw spearman. Recorded because
+    "we checked and nothing was wrong" is a result too.
+    """
+    nulls = [null_quality(s).nulls["accuracy"] for s in range(5)]
+    assert abs(np.median(nulls)) < 0.25, (
+        f"accuracy's null moved to {np.median(nulls):+.3f}; the README says "
+        f"it is near zero")
+
+
+def test_the_token_effect_is_smaller_than_it_was_published_as():
+    """Part artifact, part real -- and twelve samples cannot separate them.
+
+    This stops the dramatic version of the claim coming back. The raw median
+    is about -0.61; the margin over the null is about -0.47. Both negative, so
+    the finding survives; only its size changes.
+    """
+    raws, margins = [], []
+    for seed in range(5):
+        report = null_quality(seed)
+        raws.append(report.per_outcome["tokens"].spearman)
+        margins.append(report.margin("tokens"))
+
+    assert np.median(raws) < 0 and np.median(margins) < 0, (
+        "the finding itself should still hold")
+    assert all(m < 0 for m in margins), (
+        f"the margin must stay negative in every seed: {margins}")
+    assert np.median(margins) > np.median(raws), (
+        f"margin median {np.median(margins):+.3f} must be less extreme than "
+        f"raw median {np.median(raws):+.3f}, or the null is doing nothing")
+
+
+def test_uselessness_is_judged_against_the_null_not_against_zero():
+    report = null_quality(0)
+    assert "tokens" in report.useless_outcomes()
+    assert "accuracy" not in report.useless_outcomes()
+    # And the printed line says what it was compared against.
+    assert "null" in str(report)
+
+
+def test_a_shuffled_target_does_not_beat_its_own_null():
+    """Destroy the signal and the objective must stop clearing the bar.
+
+    Done on **token cost**, not accuracy, and that choice is the finding. A
+    permutation test only destroys a relationship if permuting actually moves
+    the values. Accuracy takes four distinct values across twelve samples, so
+    a shuffle frequently maps a value onto an identical one and leaves the
+    ordering largely intact -- shuffled accuracy came back at +0.88 on one
+    draw. Token cost is distinct in all twelve, so shuffling it genuinely
+    destroys the relationship and the null means what it claims.
+    """
+    rng = np.random.default_rng(3)
+    order = rng.permutation(len(OUTCOMES))
+    shuffled = [Outcome(accuracy=OUTCOMES[i].accuracy,
+                        tokens=OUTCOMES[order[i]].tokens)
+                for i in range(len(OUTCOMES))]
+    report = OutcomeSurrogate(seed=1).report_quality(
+        GENOMES, shuffled, seed=1, null_trials=12)
+    assert "tokens" in report.useless_outcomes()
+
+
+def test_the_null_is_only_meaningful_on_an_untied_objective():
+    """Why the test above uses tokens, pinned so nobody moves it to accuracy.
+
+    A permutation null on a heavily tied target measures less than it looks
+    like it does. This records which of the two objectives is safe.
+    """
+    accuracies = {o.accuracy for o in OUTCOMES}
+    tokens = {o.tokens for o in OUTCOMES}
+
+    assert len(tokens) == len(OUTCOMES), (
+        "token cost is distinct per network, which is what makes its "
+        "permutation null trustworthy")
+    assert len(accuracies) < len(OUTCOMES) / 2, (
+        "accuracy is heavily tied -- if that stops being true, the caveat in "
+        "docs/FINDINGS.md about its null should be revisited")
+
+
+def test_the_null_is_absent_rather_than_assumed_when_not_measured():
+    """A wake that skips the null must not silently get a zero baseline it
+    never measured."""
+    report = quality(0)
+    assert report.nulls == {}
+    assert report.margin("tokens") == report.per_outcome["tokens"].spearman
+
+
+def test_the_record_carries_the_null_and_the_margin():
+    record = null_quality(0).as_record()
+    tokens = record["per_outcome"]["tokens"]
+    assert tokens["null"] is not None
+    assert tokens["margin"] == tokens["spearman"] - tokens["null"]

@@ -67,6 +67,9 @@ def main() -> int:
                         help="candidates to generate and score against the surrogate")
     parser.add_argument("--seed", type=int, default=20260821)
     parser.add_argument("--top", type=int, default=5)
+    parser.add_argument("--null-trials", type=int, default=12,
+                        help="shuffles used to measure each objective's "
+                             "permutation null; 0 skips it")
     parser.add_argument("--cache", default=None,
                         help="directory of cached evaluations "
                              "(default: the live .esp-cache)")
@@ -104,8 +107,18 @@ def main() -> int:
     print("  one model per outcome objective; fitness is derived from their "
           "predictions, not learned")
     surrogate = OutcomeSurrogate(seed=args.seed)
-    quality = surrogate.report_quality(genomes, outcomes, seed=args.seed)
+    quality = surrogate.report_quality(genomes, outcomes, seed=args.seed,
+                                       null_trials=args.null_trials)
     print(f"  {quality}")
+    if quality.nulls:
+        print("  the null in brackets is what this same cross-validation "
+              "returns on shuffled targets --")
+        print("  on a population this small it is not zero, so the margin "
+              "over it is the real figure:")
+        for name in sorted(quality.nulls):
+            margin = quality.margin(name)
+            if margin is not None:
+                print(f"    {name:9s} margin over its own null: {margin:+.3f}")
     # Printed on its own line because the combined figure will not show it.
     # Token cost on the committed population comes back reliably negative --
     # the Predictor orders candidates by cost backwards -- and the accuracy
@@ -113,10 +126,9 @@ def main() -> int:
     # regardless. Scalarised into one model this was invisible, which is the
     # whole reason the surrogate now reports per objective.
     for useless in quality.useless_outcomes():
-        detail = quality.per_outcome.get(useless)
-        rho = "" if detail is None or detail.spearman is None \
-            else f" (spearman {detail.spearman:+.3f})"
-        print(f"  !! the {useless} model ranks no better than chance{rho}. "
+        margin = quality.margin(useless)
+        shown = "" if margin is None else f" (margin {margin:+.3f})"
+        print(f"  !! the {useless} model does not beat its own null{shown}. "
               f"Phase C still weights it, so that part of the objective is "
               f"noise.")
     surrogate.fit(genomes, outcomes)
