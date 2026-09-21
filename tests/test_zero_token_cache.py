@@ -112,3 +112,86 @@ def test_an_unfinished_task_is_still_distinguishable_from_a_dead_run():
     classified = classify(results)
     assert classified[0].infrastructure
     assert not classified[1].infrastructure
+
+
+# ------------------------- every task gave up: the environment, not the shape
+
+def test_a_run_where_every_task_blew_the_recursion_cap_is_not_cached(
+        tmp_path, monkeypatch):
+    """Seen live against neuro-san 0.7.4: langgraph's recursion limit of 40 was
+    reached on every question.
+
+    None of the other guards catches it. neuro-san returns a blown cap as an
+    ordinary answer string, so `error` is empty; the agents spent real tokens
+    reaching the cap, so the zero-token guard passes it; and no 429 was
+    involved. What would land in the cache is accuracy 0.00 with a plausible
+    token count, filed against a topology that was never asked anything it
+    could finish.
+    """
+    monkeypatch.setattr("esp.eval.runner.CACHE_DIR", tmp_path / "cache")
+    monkeypatch.setattr("esp.eval.runner.NETWORK_DIR", tmp_path / "networks")
+
+    def always_blows_the_cap(hocon_path, question):
+        return ("Recursion limit of 40 reached without hitting a stop "
+                "condition."), {"totals": {"total_tokens": 8800}}, 12.0
+
+    monkeypatch.setattr("esp.eval.runner._ask", always_blows_the_cap)
+
+    genome = next(iter(SEEDS.values()))()
+    with pytest.raises(OSError, match="gave up before answering"):
+        evaluate(genome, tasks=TASKS[:4], use_cache=False)
+    assert not list((tmp_path / "cache").glob("*.json"))
+
+
+def test_a_run_where_every_task_timed_out_is_not_cached(tmp_path, monkeypatch):
+    """Same shape, the other way it happens."""
+    monkeypatch.setattr("esp.eval.runner.CACHE_DIR", tmp_path / "cache")
+    monkeypatch.setattr("esp.eval.runner.NETWORK_DIR", tmp_path / "networks")
+
+    def always_times_out(hocon_path, question):
+        return "Agent timed out", {"totals": {"total_tokens": 5100}}, 300.0
+
+    monkeypatch.setattr("esp.eval.runner._ask", always_times_out)
+    with pytest.raises(OSError, match="gave up before answering"):
+        evaluate(next(iter(SEEDS.values()))(), tasks=TASKS[:4], use_cache=False)
+
+
+def test_some_unfinished_tasks_are_still_a_real_measurement(
+        tmp_path, monkeypatch):
+    """The guard must refuse the total wipeout and nothing less.
+
+    Seventeen of the 204 committed task runs never finished, and those
+    candidates are real measurements that the whole results table rests on.
+    Refusing a candidate because one task timed out would throw away most of
+    the population.
+    """
+    monkeypatch.setattr("esp.eval.runner.CACHE_DIR", tmp_path / "cache")
+    monkeypatch.setattr("esp.eval.runner.NETWORK_DIR", tmp_path / "networks")
+
+    state = {"n": 0}
+
+    def one_gives_up(hocon_path, question):
+        state["n"] += 1
+        if state["n"] == 1:
+            return "Agent timed out", {"totals": {"total_tokens": 900}}, 300.0
+        return "Brindle", {"totals": {"total_tokens": 4200}}, 4.0
+
+    monkeypatch.setattr("esp.eval.runner._ask", one_gives_up)
+    evaluation = evaluate(next(iter(SEEDS.values()))(), tasks=TASKS[:4],
+                          use_cache=False)
+
+    assert evaluation.incomplete == 1
+    assert len(list((tmp_path / "cache").glob("*.json"))) == 1
+
+
+def test_the_committed_measurements_all_answered_something():
+    """No candidate in the shipped population is a total wipeout -- otherwise
+    the guard would retroactively invalidate the results table."""
+    from esp.eval import measurements
+
+    for raw in measurements.raw():
+        results = raw.get("results") or []
+        if not results:
+            continue
+        assert not all(r.get("infrastructure") for r in results), (
+            f"{raw['genome_hash']} never answered a single task")

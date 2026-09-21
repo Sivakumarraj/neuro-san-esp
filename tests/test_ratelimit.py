@@ -165,3 +165,37 @@ def test_a_per_minute_limit_is_not_mistaken_for_a_per_day_cap():
     assert not failover.is_daily_quota_error(minute)
     assert failover.is_daily_quota_error(day)
     assert ratelimit._is_quota_error(minute)
+
+
+def test_the_fixed_sampling_notice_is_silenced_and_nothing_else_is():
+    """One library warning fired once per model call and buried real errors.
+
+    langchain-google-genai warns that a model "uses fixed sampling defaults"
+    whenever a temperature reaches a model that has none. This project never
+    sets a temperature -- neuro-san's own default llm_config does -- so there
+    is nothing to fix and the warning is accurate. It is also emitted on every
+    call: a live run against the newest Gemini models produced hundreds of
+    copies and buried the recursion errors that needed reading.
+
+    The filter has to be narrow. Swallowing warnings wholesale to quieten one
+    known-harmless notice is how a real one goes unseen later.
+    """
+    import warnings
+
+    from esp.eval.ratelimit import quieten_fixed_sampling_warning
+
+    with warnings.catch_warnings(record=True) as seen:
+        warnings.simplefilter("always")
+        quieten_fixed_sampling_warning()
+        warnings.warn(
+            "Model 'gemini-3.5-flash-lite' uses fixed sampling defaults; the "
+            "sampling parameter(s) temperature will be ignored.",
+            UserWarning, stacklevel=1)
+        warnings.warn("a deprecation that matters", UserWarning, stacklevel=1)
+        warnings.warn("a different category entirely", DeprecationWarning,
+                      stacklevel=1)
+
+    messages = [str(w.message) for w in seen]
+    assert not any("fixed sampling" in m for m in messages), messages
+    assert any("matters" in m for m in messages), messages
+    assert any("different category" in m for m in messages), messages

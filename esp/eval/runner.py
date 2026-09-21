@@ -341,6 +341,32 @@ def evaluate(genome: Genome, tasks: list[Task] | None = None,
             f"{CACHE_DIR}/ if earlier runs already stored zeros."
         )
 
+    # Every task gave up before answering. Not one wrong answer among them --
+    # seventeen timeouts, or seventeen blown recursion caps, which is what a
+    # live run against neuro-san 0.7.4 produces when langgraph's limit of 40 is
+    # reached on every question.
+    #
+    # None of the guards above sees this. neuro-san hands a blown cap back as
+    # an ordinary answer string, so `error` is empty and the all-errored check
+    # passes it; the agents burned real tokens on the way to giving up, so the
+    # zero-token check passes it too; and no 429 was involved. What lands in
+    # the cache is accuracy 0.00 with a plausible token count, filed against a
+    # topology that was never actually asked anything it could finish.
+    #
+    # `classify()` has always marked these `infrastructure`, and
+    # `answered_accuracy()` has always excluded them. Neither helps once the
+    # record is written: the cached `accuracy` is what trains the Predictor and
+    # what the champion resolver reads. A candidate with some unfinished tasks
+    # is still a measurement and is still cached -- only the total wipeout is
+    # refused, because that one is a fact about the environment.
+    if results and all(r.infrastructure for r in results):
+        raise OSError(
+            f"all {len(results)} tasks gave up before answering "
+            f"(timeout or recursion cap) -- refusing to cache. This measures "
+            f"the environment, not the topology. First: "
+            f"{(results[0].answer or results[0].error)[:200]}"
+        )
+
     # Quota exhaustion is not a property of the topology. A daily cap does not
     # fail every task at once -- it starts failing them part-way through a
     # candidate, so the all-errored check above does not catch it. What lands

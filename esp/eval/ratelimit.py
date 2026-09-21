@@ -19,6 +19,7 @@ import importlib
 import random
 import threading
 import time
+import warnings
 from collections import deque
 
 from esp.eval import failover
@@ -187,6 +188,31 @@ class Bucket:
             await asyncio.sleep(sleep_for)
 
 
+def quieten_fixed_sampling_warning() -> None:
+    """Silence one library warning that fires once per model call.
+
+    langchain-google-genai warns that a model "uses fixed sampling defaults;
+    the sampling parameter(s) temperature will be ignored" whenever a
+    temperature reaches a model that has none. This project never sets a
+    temperature -- neuro-san's own default llm_config does -- so there is
+    nothing here to fix, and the warning is accurate and harmless.
+
+    It is also emitted on every single call. A live run against the newest
+    Gemini models produced hundreds of copies, and they buried the recursion
+    errors that actually needed reading. An operator who cannot see a real
+    failure in their own terminal is the cost being paid for a notice about a
+    parameter nobody chose.
+
+    Narrow on purpose: this message, this category. Anything else the driver
+    has to say still gets through.
+    """
+    warnings.filterwarnings(
+        "ignore",
+        message=r".*fixed sampling defaults.*",
+        category=UserWarning,
+    )
+
+
 def bucket_for(model: str, rpm: int = DEFAULT_RPM) -> Bucket:
     """One bucket per model, paced at that model's own measured limit.
 
@@ -247,6 +273,7 @@ def _is_transient_server_error(exc: BaseException) -> bool:
 
 
 def install(rpm: int = DEFAULT_RPM) -> bool:
+    quieten_fixed_sampling_warning()
     """Patch the Google chat model. Idempotent; returns False if unavailable."""
     try:
         from langchain_google_genai import ChatGoogleGenerativeAI
