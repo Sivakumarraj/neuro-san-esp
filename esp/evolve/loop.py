@@ -1,13 +1,40 @@
 """The ESP loop.
 
     A  seed population is evaluated for real
-    B  a Predictor is trained on (genome, fitness)
+    B  a Predictor is trained on (genome -> each outcome objective)
     C  thousands of candidates are evolved against the Predictor, free
     D  only the elite are evaluated for real, and feed back into B
 
 Phase C is the point. A plain genetic algorithm would have to run every
 candidate through a language model; here the search is free and only the
 promising few are paid for.
+
+Three words get used loosely about this loop and mean different things:
+
+* **Predictor** -- the surrogate. One model per measured outcome objective
+  (accuracy, token cost), learned from real evaluations. It never sees the
+  weights below, and it never sees a fitness.
+* **Fitness** -- `scalarise` below. A fixed weighting, not a learned thing,
+  applied to outcomes. Over *measured* outcomes it scores Phase A and D; over
+  *predicted* outcomes it ranks Phase C. Same function either way.
+* **Prescription** -- what proposes the next candidate. In the ESP paper this
+  is a neural network evolved against the surrogate. Here it is not: it is
+  seven mutation operators and elite selection, run against the Predictor.
+  That departure is real and is stated in the README rather than smoothed over.
+
+**And there is a deeper departure than the missing Prescriptor, which explains
+it.** ESP is a *context to actions to outcomes* loop: a Prescriptor is a model
+mapping a **context** to the actions to take in it. This project has no context
+variable anywhere -- every candidate is evaluated against the same fixed task
+set, so the mapping a Prescriptor would learn has nothing to take as input.
+Mutation operators are not a lazy stand-in for a Prescriptor here; with no
+context they are the only thing that can occupy that slot at all. Adding a
+learned Prescriptor therefore starts with deciding what the context *is*, and
+that decision is the research, not the network.
+
+Phase B used to train one model directly on the scalarised fitness, which put
+the weighting inside the surrogate and made the three indistinguishable. See
+`esp/surrogate/outcomes.py` for why that was wrong and what it concealed.
 """
 
 from __future__ import annotations
@@ -23,7 +50,8 @@ from esp.eval.runner import Evaluation, QuotaExhausted, evaluate
 from esp.genome.definition import Genome
 from esp.genome.mutations import InvalidMutant, mutate
 from esp.genome.seeds import SEEDS
-from esp.surrogate.predictor import MIN_SAMPLES, Surrogate
+from esp.surrogate.outcomes import Outcome, OutcomeSurrogate
+from esp.surrogate.predictor import MIN_SAMPLES
 
 # Accuracy dominates: a cheap network that answers nothing is worthless. Cost
 # and size break ties between networks that are equally right, which is exactly
@@ -45,14 +73,48 @@ WEIGHTS = {"accuracy": 1.0, "tokens": 0.06, "agents": 0.02}
 TOKEN_SCALE = 600_000.0
 
 
+def scalarise(accuracy: float, tokens: int, agents: int) -> float:
+    """Outcomes in, fitness out. The one place the weighting lives.
+
+    Kept separate from `fitness` because the same weighting has to be applied
+    to *predicted* outcomes during Phase C, where there is no Evaluation to
+    hand -- only the Predictor's estimates. Three modules had grown their own
+    copy of this arithmetic; a weighting that disagrees with itself between the
+    surrogate that ranks and the loop that selects is the quietest way to make
+    a search meaningless.
+    """
+    return (
+        WEIGHTS["accuracy"] * accuracy
+        - WEIGHTS["tokens"] * min(tokens / TOKEN_SCALE, 1.0)
+        - WEIGHTS["agents"] * (agents / 9.0)
+    )
+
+
 def fitness(evaluation: Evaluation) -> float:
     """Scalarised for selection. The Pareto front is kept separately, because
     the trade-off is the honest result and a single number hides it."""
-    return (
-        WEIGHTS["accuracy"] * evaluation.accuracy
-        - WEIGHTS["tokens"] * min(evaluation.tokens / TOKEN_SCALE, 1.0)
-        - WEIGHTS["agents"] * (evaluation.agents / 9.0)
-    )
+    return scalarise(evaluation.accuracy, evaluation.tokens, evaluation.agents)
+
+
+def non_dominated(points: list[tuple[float, float, float]]) -> list[int]:
+    """Indices of the non-dominated points on (accuracy up, tokens down,
+    agents down).
+
+    Selection used pure scalarised fitness while the Pareto front was computed,
+    plotted in three documents, and never consulted. That is multi-objective in
+    the report and single-objective in the search: a candidate that is the
+    cheapest network measured gets no say in breeding if one weighting puts it
+    mid-table. The front is now what breeds.
+    """
+    front: list[int] = []
+    for i, (accuracy, tokens, agents) in enumerate(points):
+        dominated = any(
+            other_a >= accuracy and other_t <= tokens and other_g <= agents
+            and (other_a > accuracy or other_t < tokens or other_g < agents)
+            for j, (other_a, other_t, other_g) in enumerate(points) if j != i)
+        if not dominated:
+            front.append(i)
+    return front
 
 
 @dataclass
@@ -90,20 +152,14 @@ class History:
         return out
 
     def pareto(self) -> list[Record]:
-        """Non-dominated on (accuracy up, tokens down, agents down)."""
-        front: list[Record] = []
-        for candidate in self.records:
-            dominated = any(
-                other.accuracy >= candidate.accuracy
-                and other.tokens <= candidate.tokens
-                and other.agents <= candidate.agents
-                and (other.accuracy > candidate.accuracy
-                     or other.tokens < candidate.tokens
-                     or other.agents < candidate.agents)
-                for other in self.records
-            )
-            if not dominated:
-                front.append(candidate)
+        """Non-dominated on (accuracy up, tokens down, agents down).
+
+        Shares `non_dominated` with the selection step, so the front the
+        reports draw and the front the search breeds from cannot drift apart.
+        """
+        points = [(r.accuracy, float(r.tokens), float(r.agents))
+                  for r in self.records]
+        front = [self.records[i] for i in non_dominated(points)]
         seen: set[str] = set()
         unique = []
         for record in sorted(front, key=lambda r: (-r.accuracy, r.tokens)):
@@ -126,9 +182,13 @@ class Evolution:
         self.out_dir.mkdir(parents=True, exist_ok=True)
 
         self.history = History()
-        self.surrogate = Surrogate(seed=seed)
+        self.surrogate = OutcomeSurrogate(seed=seed)
         self.pool: dict[str, Genome] = {}       # hash -> genome, everything seen
         self.scored: dict[str, float] = {}      # hash -> real fitness
+        # What the Predictor actually learns. Fitness is derived from these,
+        # so it is not stored as a target -- storing it as one is the mistake
+        # this replaced.
+        self.outcomes: dict[str, Outcome] = {}  # hash -> measured outcomes
 
     # ------------------------------------------------------------------ phases
 
@@ -141,6 +201,8 @@ class Evolution:
 
         self.pool[digest] = genome
         self.scored[digest] = value
+        self.outcomes[digest] = Outcome(accuracy=evaluation.accuracy,
+                                        tokens=evaluation.tokens)
         if not evaluation.from_cache:
             self.history.real_evaluations += 1
 
@@ -157,6 +219,30 @@ class Evolution:
               f"acc={evaluation.accuracy:.2f} tok={evaluation.tokens:6d} "
               f"agents={evaluation.agents} fit={value:+.4f}{cached}", flush=True)
         return record
+
+    def _parents(self) -> list[Genome]:
+        """Who is allowed to breed: the Pareto front, then the best scalarised.
+
+        The front comes first because a network that is non-dominated is
+        provably not beaten on every objective at once, which is a stronger
+        claim than sitting high under one particular weighting. When the front
+        is smaller than `elite` the remaining slots go to the best fitness, so
+        a one-point front does not collapse the search onto a single parent.
+        """
+        digests = list(self.scored)
+        if not digests:
+            return []
+        points = [(self.outcomes[h].accuracy, float(self.outcomes[h].tokens),
+                   float(len(self.pool[h].reachable()))) for h in digests]
+        chosen = [digests[i] for i in non_dominated(points)][:self.elite]
+
+        if len(chosen) < self.elite:
+            for digest in sorted(digests, key=lambda h: -self.scored[h]):
+                if digest not in chosen:
+                    chosen.append(digest)
+                if len(chosen) >= self.elite:
+                    break
+        return [self.pool[h] for h in chosen]
 
     def _breed(self, parents: list[Genome], count: int) -> list[tuple[Genome, str]]:
         """Mutate parents until `count` distinct unseen genomes exist.
@@ -203,19 +289,28 @@ class Evolution:
         # --- Phases B, C, D, repeated
         for generation in range(1, generations + 1):
             genomes = [self.pool[h] for h in self.scored]
-            values = [self.scored[h] for h in self.scored]
+            outcomes = [self.outcomes[h] for h in self.scored]
 
             print(f"\nGeneration {generation}", flush=True)
-            quality = self.surrogate.report_quality(genomes, values, seed=self.seed)
+            quality = self.surrogate.report_quality(genomes, outcomes,
+                                                    seed=self.seed)
             print(f"  Phase B -- {quality}", flush=True)
+            # Named, not averaged away. An objective the Predictor ranks no
+            # better than chance still contributes its full weight to every
+            # Phase C decision, and the combined figure above will not show
+            # it: on the committed population the token model is reliably
+            # *anti*-correlated and the accuracy model carries the total.
+            for useless in quality.useless_outcomes():
+                print(f"  Phase B -- WARNING: the {useless} model ranks no "
+                      f"better than chance. Phase C is still weighting its "
+                      f"predictions, so that part of the objective is noise.",
+                      flush=True)
             self.history.surrogate_quality.append(
-                {"generation": generation, **asdict(quality)})
-            self.surrogate.fit(genomes, values)
+                {"generation": generation, **quality.as_record()})
+            self.surrogate.fit(genomes, outcomes)
 
             # Phase C: search wide, for free.
-            parents = [g for _, g in sorted(
-                ((self.scored[h], self.pool[h]) for h in self.scored),
-                key=lambda pair: -pair[0])[:self.elite]]
+            parents = self._parents()
             candidates = self._breed(parents, self.surrogate_pool)
             self.history.surrogate_evaluations += len(candidates)
             if not candidates:

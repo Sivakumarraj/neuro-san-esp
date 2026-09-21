@@ -64,9 +64,13 @@ NOTES: dict[str, str] = {
         "otherwise be scored as a bad topology.",
     "esp/eval/failover.py":
         "Moves to the next model when one model's daily quota is spent.",
+    "esp/surrogate/outcomes.py":
+        "The Predictor as ESP describes it: one model per outcome objective, "
+        "with fitness derived from their predictions rather than learned.",
     "esp/surrogate/predictor.py":
-        "The Predictor. Genome features to predicted fitness -- the part that "
-        "makes this ESP rather than a genetic algorithm.",
+        "Feature extraction and rank-quality measurement, plus the single "
+        "scalarised surrogate this replaced -- kept because the comparison "
+        "between the two is a published result.",
     "esp/evolve/loop.py":
         "Population, selection, elitism, the multi-objective fitness function "
         "and the Pareto front.",
@@ -317,10 +321,11 @@ class Dossier(Layout):
         self.h1("How it works", "Four phases. Phase C is the point.")
 
         self.terminal(
-            "Phase A   evaluate a few candidates for real       -->  (genome, fitness)\n"
+            "Phase A   evaluate a few candidates for real      -->  (genome, outcomes)\n"
             "               |                                             |\n"
             "               |                                             v\n"
-            "Phase B   train the Predictor on every pair measured so far\n"
+            "Phase B   train one Predictor per outcome objective, on every\n"
+            "          measurement so far\n"
             "                                                             |\n"
             "                                                             v\n"
             "Phase C   mutate thousands of candidates, rank them against the\n"
@@ -337,11 +342,15 @@ class Dossier(Layout):
              "used. This costs real money and real time: about eight minutes a "
              "network."),
             ("Phase B",
-             "Fit a small model that reads a network's shape &mdash; agent count, "
-             "depth, branching, which model each agent runs, how long its instructions "
-             "are &mdash; and predicts how well it will score. It is trained on tens of "
-             "samples, so it is weak. Its job is not to be right; its job is to "
-             "<i>rank</i>."),
+             "Fit a small model <i>per objective</i>. Each one reads a network's "
+             "shape &mdash; agent count, depth, branching, which model each agent "
+             "runs, how long its instructions are &mdash; and predicts one thing that "
+             "was actually measured: how accurate the network will be, or how many "
+             "tokens it will burn. Fitness is then <i>derived</i> from those "
+             "predictions by the same fixed weighting used to score a real "
+             "evaluation; no model is ever trained on a fitness. They are trained on "
+             "tens of samples, so they are weak. Their job is not to be right; their "
+             "job is to <i>rank</i>."),
             ("Phase C",
              "Generate thousands of mutated networks and score every one with the "
              "Predictor. No language model is called, so this is effectively free. "
@@ -593,6 +602,25 @@ class Dossier(Layout):
             "once.",
             bg=WARN_BG, bar=AMBER)
 
+        self.callout(
+            "One of the two predicted objectives is worse than useless",
+            "Splitting the surrogate into one model per outcome objective was done to "
+            "answer a reviewer&rsquo;s question about what the Predictor actually "
+            "predicts. It found a defect instead. Reported separately over "
+            f"{spelled(facts().measured)} measured networks and 20 cross-validation "
+            "seeds, <b>accuracy</b> ranks at <b>+0.31 to +0.72</b> and <b>token "
+            "cost</b> at <b>&minus;0.73 to &minus;0.48</b> &mdash; negative in every "
+            "seed tried. The Predictor orders candidates by cost <i>backwards</i>, and "
+            "Phase C is still weighting it. The combined figure is <b>+0.65</b> and "
+            "looks healthy, because the accuracy term is large enough to carry it "
+            "alone; the single scalarised model this replaced reported the same "
+            "<b>+0.65</b> and could not have shown the problem, having never been "
+            "trained on an objective. Thirteen structural features do not predict what "
+            "a network will spend. Nothing here yet says what would, and "
+            f"{spelled(facts().measured)} samples cannot settle whether this is a "
+            "property of the feature set or of these particular networks.",
+            bg=WARN_BG, bar=AMBER)
+
         self.h2("The framework really does wake it")
         self.proof("periodic_server",
                    "A real neuro-san server, started with this repository's "
@@ -774,6 +802,12 @@ class Dossier(Layout):
             "price. Its measured rank correlation is published in this document "
             "whatever it says, including when it says &lsquo;no better than "
             "chance&rsquo;.",
+            "<b>Token cost is predicted backwards.</b> Measured per objective, the "
+            "cost model&rsquo;s rank correlation is negative in every cross-validation "
+            "seed tried, and the search weights it anyway. The combined fitness ranks "
+            "well because accuracy carries it. This is a known defect, not a rounding "
+            "detail, and it is unfixed: diagnosing it needs more evaluations than have "
+            "been bought.",
             "<b>The designer baseline is a reconstruction.</b> It reproduces the shape "
             "<font face='Courier' size='9'>agent_network_designer</font> produces "
             "&mdash; one top agent, shallow DAG, fewest agents &mdash; not its literal "

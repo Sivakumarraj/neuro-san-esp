@@ -19,7 +19,13 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from esp.config import key_source, provider_keys, unusable_keys, verify_key
+from esp.config import (
+    key_name_for,
+    key_source,
+    provider_keys,
+    unusable_keys,
+    verify_key,
+)
 from esp.eval.failover import (
     EXCLUDED,
     LADDER,
@@ -27,6 +33,7 @@ from esp.eval.failover import (
     daily_budget,
 )
 from esp.eval.ratelimit import keyring
+from esp.genome.definition import DEFAULT_MODEL
 from esp.service.state import STATE_DIR
 
 
@@ -78,10 +85,36 @@ def run_checks(root: Path | None = None, live: bool = False) -> list[Check]:
     # generating anything, so it spends nothing from a daily budget that buys
     # three candidates. Non-fatal, because an unreachable provider is a
     # different problem from a bad key and must not be reported as one.
-    if live and present:
-        accepted, verdict = verify_key(present[0])
-        checks.append(Check("provider key accepted", accepted, verdict,
-                            fatal=accepted is False))
+    # The check that saves a whole run. neuro-san picks the client class from
+    # the model name, so a network configured for claude-sonnet-5 with only
+    # GOOGLE_API_KEY set does not fail at startup -- it fails on every call,
+    # inside every agent, and scores every candidate zero. The cache then keeps
+    # those zeros, and the search is taught that good topologies are bad.
+    wanted = key_name_for(DEFAULT_MODEL)
+    if wanted is None:
+        checks.append(Check(
+            "model provider", False,
+            f"nothing here claims {DEFAULT_MODEL!r} -- add its prefix to "
+            "PROVIDER_PREFIXES so the right key can be required",
+            fatal=False))
+    else:
+        matched = wanted in present
+        checks.append(Check(
+            "model provider", matched,
+            f"{DEFAULT_MODEL} needs {wanted}"
+            + ("" if matched else
+               f", which is not set. Present: {', '.join(present) or 'none'}"
+               ". Every call would fail and every candidate would score zero")))
+
+    # Verify the key the configured model will actually use, not whichever key
+    # happens to be first. With three providers set, checking the wrong one
+    # reports health for a key this run never touches.
+    if live:
+        target = wanted if wanted in present else (present[0] if present else None)
+        if target:
+            accepted, verdict = verify_key(target)
+            checks.append(Check(f"{target} accepted", accepted, verdict,
+                                fatal=accepted is False))
 
     tool_path = os.environ.get("AGENT_TOOL_PATH", "")
     checks.append(Check(

@@ -22,22 +22,62 @@ import random
 
 import numpy as np
 
+from esp.evolve.loop import scalarise
 from esp.genome.mutations import InvalidMutant, mutate
 from esp.genome.seeds import SEEDS
-from esp.service.optimizer import ELITE, _population, _propose, _seeds
+from esp.service.optimizer import ELITE, Proposal, _population, _propose, _seeds
 from esp.service.state import Evaluated, ServiceState
+from esp.surrogate.outcomes import (
+    PREDICTED_OUTCOMES,
+    Outcome,
+    OutcomeSurrogate,
+)
 from esp.surrogate.predictor import MIN_SAMPLES, Surrogate
 
 
 def measured(genome, fitness: float, origin: str = "mut:add_agent",
              store_genome: bool = True) -> Evaluated:
-    """One paid-for evaluation, recorded the way a wake records it."""
+    """One paid-for evaluation, recorded the way a wake records it.
+
+    Outcomes first, fitness derived from them -- not the other way round.
+
+    This used to record a constant accuracy and a constant token count beside a
+    fitness that varied, which is a record no real evaluation can produce:
+    fitness is a fixed function of the three outcomes, so identical outcomes
+    give identical fitness. The scalarised surrogate never noticed, because it
+    trained on the fitness column and never looked at the outcomes. The
+    per-objective Predictor trains on the outcomes, and correctly declines to
+    fit a population whose objectives never move -- which is how an
+    inconsistent fixture that had been passing for months surfaced.
+
+    Callers still say what fitness they want, because that is what the tests
+    below are about. The outcomes are chosen to produce it.
+    """
+    agents = len(genome.reachable())
+    # Spread across roughly the range the real measurements span, and
+    # correlated with fitness so that a better candidate is also a cheaper one
+    # -- an arbitrary fixture convention, not a claim about real networks.
+    tokens = 240_000 + round((1.0 - fitness) * 400_000)
+    accuracy = fitness - scalarise(0.0, tokens, agents)
     return Evaluated(
-        genome_hash=genome.genome_hash(), origin=origin, fitness=fitness,
-        accuracy=0.85, tokens=260_000, agents=len(genome.reachable()),
+        genome_hash=genome.genome_hash(), origin=origin,
+        fitness=round(scalarise(accuracy, tokens, agents), 4),
+        accuracy=accuracy, tokens=tokens, agents=agents,
         depth=genome.depth(), generation=1,
         measured_at="2026-08-24T00:00:00+00:00", model=genome.default_model,
         genome=genome.canonical() if store_genome else None)
+
+
+def test_the_fixture_records_a_consistent_evaluation():
+    """The fixture above has to be a record the system could actually have
+    written, or every test in this file is pinned against something impossible.
+    Fitness must be what scalarising its own outcomes gives."""
+    genome = next(iter(SEEDS.values()))()
+    record = measured(genome, 0.83)
+
+    assert record.fitness == 0.83
+    assert record.fitness == round(
+        scalarise(record.accuracy, record.tokens, record.agents), 4)
 
 
 def evolved(count: int, seed: int = 7):
@@ -303,3 +343,67 @@ def test_many_proposals_in_a_row_stay_distinct():
     assert len(digests) == len(set(digests))
     for digest in digests:
         assert digest not in state.seen()
+
+
+# ------------------------------- what the Predictor is trained on, and says
+
+def test_the_service_predictor_learns_outcomes_not_fitness():
+    """The shape ESP describes, pinned where the service uses it.
+
+    Asked in review by a co-author of the ESP paper: the surrogate should be
+    models predicting the outcome objectives, with fitness derived from them.
+    This trained one model on the already-scalarised fitness, so the weighting
+    lived inside the surrogate and no objective could be inspected on its own.
+    """
+    state = populated(6)
+    population = _population(state)
+    records = {e.genome_hash: e for e in state.evaluated}
+    trainable = [(g, records[g.genome_hash()]) for g in population
+                 if g.genome_hash() in records]
+    assert len(trainable) >= MIN_SAMPLES
+
+    surrogate = OutcomeSurrogate(seed=1)
+    surrogate.fit([g for g, _ in trainable],
+                  [Outcome(accuracy=r.accuracy, tokens=r.tokens)
+                   for _, r in trainable])
+
+    assert surrogate.ranks()
+    assert set(surrogate.models) == set(PREDICTED_OUTCOMES)
+    # Agent count is exact, so it is counted rather than estimated.
+    predicted = surrogate.predict_outcomes([g for g, _ in trainable])
+    assert list(predicted["agents"]) == [float(len(g.reachable()))
+                                         for g, _ in trainable]
+
+
+def test_a_wake_names_an_objective_its_predictor_gets_wrong():
+    """An unattended service is read through its wake report and nothing else.
+
+    A combined quality figure cannot say "one of the two objectives is being
+    ranked backwards" -- on the committed population that is exactly the case
+    for token cost, and the accuracy term carries the total regardless. If the
+    service is going to spend real budget on a ranking, it has to be able to
+    say which part of it is noise.
+    """
+    state = populated(6)
+    proposal = Proposal(candidates=[(next(iter(SEEDS.values()))(), "rewire")],
+                        ranked=True, samples=len(state.evaluated),
+                        useless=["tokens"])
+
+    assert "tokens" in proposal.how()
+    assert "no better than chance" in proposal.how()
+    # And says nothing of the sort when every objective is usable.
+    clean = Proposal(candidates=proposal.candidates, ranked=True,
+                     samples=proposal.samples)
+    assert "no better than chance" not in clean.how()
+
+
+def test_the_proposal_carries_the_verdict_it_measured():
+    """The field is populated by `_propose` from the wake's own population, not
+    copied from a figure in the README that cannot notice the population
+    changing underneath it."""
+    state = populated(6)
+    proposal = _propose(state, _population(state), random.Random(3), 3)
+
+    assert proposal.ranked
+    assert isinstance(proposal.useless, list)
+    assert set(proposal.useless) <= set(PREDICTED_OUTCOMES)

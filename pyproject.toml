@@ -16,6 +16,12 @@ dependencies = [
     # undeclared reportlab -- it works forever on a machine that happens to
     # have it, and only a fresh environment can notice.
     "langchain-google-genai>=2.0",
+    # Claude support. neuro-san ships an `anthropic` client class and picks it
+    # from the model name, but it requires langchain-openai and *not*
+    # langchain-anthropic -- so `ESP_DEFAULT_MODEL=claude-sonnet-5` works on a
+    # machine that happens to have the driver and fails on a clean install,
+    # which is the fourth time this repository would have made that mistake.
+    "langchain-anthropic>=1.0",
     "scikit-learn>=1.5",
     # Imported directly by the surrogate's rank correlation, so declared
     # directly. It arrives anyway as a hard requirement of scikit-learn, which
