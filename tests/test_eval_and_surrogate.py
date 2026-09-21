@@ -103,7 +103,10 @@ def test_cache_round_trips_and_is_reused(tmp_path, monkeypatch):
 
     def fake_ask(_path, _question):
         calls["n"] += 1
-        return "Brindle", {}, 0.01
+        # Real accounting, not an empty dict. A task that spends nothing is a
+        # task that never reached a provider, and the runner refuses to cache
+        # that -- so an empty payload here was testing the wrong thing.
+        return "Brindle", {"totals": {"total_tokens": 4200}}, 0.01
 
     monkeypatch.setattr(runner, "_ask", fake_ask)
 
@@ -135,7 +138,13 @@ def test_environment_failure_is_not_cached(tmp_path, monkeypatch):
 
 def test_a_single_task_failure_is_still_cached(tmp_path, monkeypatch):
     """One flaky task is a property of the candidate; every task failing is a
-    property of the machine. Only the second is refused."""
+    property of the machine. Only the second is refused.
+
+    The surviving tasks still spend tokens, which is what keeps this
+    distinguishable from the zero-token case in
+    `tests/test_zero_token_cache.py`: a partly-failed candidate is a real
+    measurement, a candidate that called nothing is not.
+    """
     monkeypatch.setattr(runner, "CACHE_DIR", tmp_path / "cache")
     monkeypatch.setattr(runner, "NETWORK_DIR", tmp_path / "networks")
 
@@ -145,7 +154,7 @@ def test_a_single_task_failure_is_still_cached(tmp_path, monkeypatch):
         state["n"] += 1
         if state["n"] == 1:
             raise RuntimeError("transient")
-        return "Brindle", {}, 0.01
+        return "Brindle", {"totals": {"total_tokens": 4200}}, 0.01
 
     monkeypatch.setattr(runner, "_ask", flaky)
     evaluation = runner.evaluate(solo(), tasks=TASKS[:3])

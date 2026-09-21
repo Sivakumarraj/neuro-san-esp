@@ -320,6 +320,27 @@ def evaluate(genome: Genome, tasks: list[Task] | None = None,
             + results[0].error
         )
 
+    # Nothing was measured. Every real evaluation burns tokens -- seventeen
+    # tasks through a language model cannot cost zero -- so a zero total means
+    # no model was ever called: a missing key, an unset AGENT_TOOL_PATH, a
+    # provider the driver could not reach. The tasks still "completed", just
+    # with whatever the agent says when it cannot work, so `accuracy` comes
+    # back 0.00 with no error attached and the all-errored check above waves it
+    # through.
+    #
+    # This is the single most expensive thing that can be written to the cache.
+    # It is indistinguishable from a real zero once stored, it never expires,
+    # and it poisons everything downstream: the seeds replay as 0.00 for ever,
+    # the Predictor trains on them, and the search concludes that networks
+    # which were never run are bad. A live run hit exactly this -- two seeds
+    # cached at acc=0.00 tok=0, replayed on every invocation afterwards.
+    if tokens == 0:
+        raise OSError(
+            "the whole evaluation cost zero tokens, so no model was called -- "
+            "refusing to cache. Check the API key in .env, then delete "
+            f"{CACHE_DIR}/ if earlier runs already stored zeros."
+        )
+
     # Quota exhaustion is not a property of the topology. A daily cap does not
     # fail every task at once -- it starts failing them part-way through a
     # candidate, so the all-errored check above does not catch it. What lands

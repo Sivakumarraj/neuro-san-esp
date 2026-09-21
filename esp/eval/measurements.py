@@ -170,6 +170,17 @@ def load(cache_dir: Path | None = None) -> list[Measurement]:
         except (KeyError, TypeError, ValueError):
             continue
 
+        # Nothing was measured here, whatever the file says. Seventeen tasks
+        # through a language model cannot cost zero tokens, so this record was
+        # written by a run that never reached a provider. The runner now
+        # refuses to cache these, but caches written before that guard existed
+        # are still on disk -- and one of them will happily train a Predictor
+        # and be served as a champion. Skipping on the way in means an old
+        # poisoned cache stops mattering without anybody having to know it is
+        # there.
+        if tokens == 0:
+            continue
+
         found.append(Measurement(
             genome_hash=digest, genome=genome,
             fitness=round(_fitness(accuracy, tokens, agents), 4),
