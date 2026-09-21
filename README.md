@@ -276,8 +276,8 @@ announcing which cache it used.
 
 ### With an API key
 
-Runs on **Gemini, Claude or GPT**. neuro-san picks the client class from the model name, so
-a provider is a model name plus its key:
+Runs on **Gemini, Claude or GPT**. neuro-san picks the client class from the model name, so a
+provider is a model name plus its key. Put one key in `.env` and the preflight does the rest.
 
 | Provider | Key | Example model |
 |---|---|---|
@@ -288,6 +288,8 @@ a provider is a model name plus its key:
 
 ```bash
 ESP_DEFAULT_MODEL=claude-haiku-4-5    # with ANTHROPIC_API_KEY in .env
+ESP_DEFAULT_MODEL=gpt-5-mini          # with OPENAI_API_KEY
+ESP_DEFAULT_MODEL=gemini-3.8-flash    # with GOOGLE_API_KEY
 ```
 
 The preflight refuses to start when the model and the key disagree, because that mismatch
@@ -296,12 +298,43 @@ cache keeps those zeros.
 
 **The model is part of the genome hash, so measurements do not cross providers.** The twelve
 committed results are all on `gemini-3.1-flash-lite`. Point this at Claude and every hash
-changes, the cache misses correctly, and the measurements start again. That is deliberate: a
-fitness measured on one model does not describe the same network on another.
+changes, the cache misses correctly, and the measurements start again. A fitness measured on
+one model does not describe the same network on another.
 
-Google's free tier gives 500 requests per day per model. Claude and GPT are paid APIs — the
-daily-cap failover in `esp/eval/failover.py` is a Google free-tier concept and does not
-apply to them; pacing and transient-fault retry apply to all three.
+#### Which Gemini model, and why the newest one is not the default
+
+Every model below works and is selectable. The constraint is arithmetic, not quality:
+**one candidate costs 165 provider requests**, so the free tier decides what a day buys.
+
+| Model | Requests/min | Requests/day | Candidates/day |
+|---|---|---|---|
+| `gemini-3.8-flash` — newest | **5** | ~20 | **0** — cannot finish one |
+| `gemini-flash-latest` | 5 | ~20 | 0 |
+| `gemini-flash-lite-latest` | 15 | 500 | 3 |
+| **`gemini-3.1-flash-lite` — default** | 15+ | 500 | **3** |
+
+Requests per minute measured 2026-09-21 by bursting against a live free-tier key until the
+429 names its own quota (`make probe` does this). Daily figures are Google's documented
+free-tier allowances. Both vary by account tier, so re-measure rather than trust this table.
+
+So `gemini-3.8-flash` is the newest and the best, and it **cannot complete a single
+evaluation** on the free tier — 20 requests a day against 165 needed, and at 5 a minute even
+an unlimited daily budget would take half an hour per candidate. Naming it gets you a
+preflight that says exactly that rather than a run of zeros.
+
+**Where the newest model does earn its place: on the front man.** The project's own headline
+result is that the winning networks put the stronger model on the router and left the
+specialists on the cheap one. That is a per-agent setting, and the router makes a small
+fraction of the calls:
+
+```bash
+ESP_DEFAULT_MODEL=gemini-3.1-flash-lite   # the specialists, where the volume is
+# then reassign the front man to gemini-3.8-flash in the genome
+```
+
+Pacing is per model, not global (`esp/eval/failover.py::MEASURED_RPM`). A single global rate
+was right for the lite tier and nearly three times too fast for the newest flash models, so
+selecting one produced 429s that the runner scored as candidate failures.
 
 ```bash
 cp .env.example .env      # paste the key in; .env is gitignored

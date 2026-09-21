@@ -44,8 +44,50 @@ MEASURED_CAPS: dict[str, int] = {
     "gemini-3.6-flash": 20,
     "gemini-3.7-flash": 20,
     "gemini-3-flash": 20,
+    # The newest flash model. Measured 2026-09-21 against a live free-tier key:
+    # 5 requests per minute, and Google documents roughly 20 per day. One
+    # candidate needs 165 requests, so this model cannot fund a single
+    # evaluation however long you wait -- which is why it is not the default
+    # and why asking for it by name lands it in EXCLUDED with that reason.
+    # It is still useful on the front man; see MEASURED_RPM below.
+    "gemini-3.8-flash": 20,
+    "gemini-flash-latest": 20,
+    "gemini-flash-lite-latest": 500,
     "gemini-3.1-pro": 0,          # no free-tier access at all
 }
+
+# Requests per minute, per model, measured the same way: burst until a 429 and
+# read the quota the payload names.
+#
+# This table exists because the pacing was a single global number. Every model
+# was paced at 14/minute, which is correct for the lite tier and nearly three
+# times too fast for the newest flash models -- so asking for one produced a
+# stream of 429s that the runner then had to treat as failures. A per-model
+# limit is not a refinement here; without it the newest models are unusable at
+# any daily budget.
+MEASURED_RPM: dict[str, int] = {
+    "gemini-3.8-flash": 5,          # measured 2026-09-21
+    "gemini-3.7-flash": 5,
+    "gemini-3.6-flash": 5,
+    "gemini-3.5-flash": 5,
+    "gemini-flash-latest": 5,
+    "gemini-flash-lite-latest": 15,  # measured 2026-09-21
+    "gemini-3.1-flash-lite": 15,
+    "gemini-3.5-flash-lite": 15,
+}
+
+
+def rpm_for(model: str, default: int = 14) -> int:
+    """Requests per minute this model tolerates.
+
+    Falls back to the caller's default for anything unmeasured, and shades one
+    under the measured figure so a burst that arrives on the same second as the
+    window rolls does not spend the last slot.
+    """
+    measured = MEASURED_RPM.get(model)
+    if measured is None:
+        return default
+    return max(1, measured - 1)
 
 
 def parse_models(spec: str) -> dict[str, int]:

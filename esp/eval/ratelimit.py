@@ -188,9 +188,17 @@ class Bucket:
 
 
 def bucket_for(model: str, rpm: int = DEFAULT_RPM) -> Bucket:
+    """One bucket per model, paced at that model's own measured limit.
+
+    `rpm` is the fallback for a model nobody has measured. It used to be the
+    rate for *every* model, which is right for the lite tier and far too fast
+    for the newest flash models -- 14 a minute against a measured 5. Selecting
+    one of those then produced 429s the runner scored as candidate failures.
+    """
     with _buckets_lock:
         if model not in _buckets:
-            _buckets[model] = Bucket(rpm)
+            from esp.eval.failover import rpm_for
+            _buckets[model] = Bucket(rpm_for(model, rpm))
         return _buckets[model]
 
 

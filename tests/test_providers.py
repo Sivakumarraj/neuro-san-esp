@@ -211,3 +211,57 @@ def test_a_missing_driver_is_skipped_rather_than_raising():
         assert ratelimit.install_others() == []
     finally:
         ratelimit._OTHER_PROVIDERS = original
+
+
+# ------------------------------------------- per-model rate limits, measured
+
+def test_the_newest_flash_models_are_paced_slower_than_the_lite_tier():
+    """The pacing was one global number for every model.
+
+    14 requests a minute is right for the lite tier and nearly three times too
+    fast for the newest flash models, which measured 5. Asking for one
+    therefore produced a stream of 429s that the runner scored as candidate
+    failures -- so a per-model limit is not a refinement, it is what makes
+    those models usable at all.
+    """
+    from esp.eval.failover import rpm_for
+
+    assert rpm_for("gemini-3.8-flash") < rpm_for("gemini-3.1-flash-lite")
+    assert rpm_for("gemini-3.8-flash") <= 5
+    # Anything unmeasured keeps the caller's default rather than guessing.
+    assert rpm_for("some-model-nobody-measured", default=11) == 11
+
+
+def test_a_measured_rpm_leaves_headroom():
+    """One under the measured figure, so a burst landing on the same second as
+    the window rolls does not spend the last slot."""
+    from esp.eval.failover import MEASURED_RPM, rpm_for
+
+    for model, measured in MEASURED_RPM.items():
+        assert rpm_for(model) < measured, model
+        assert rpm_for(model) >= 1, model
+
+
+def test_the_newest_flash_model_cannot_fund_a_candidate_and_says_so():
+    """The reason the default is still a lite model, pinned as arithmetic.
+
+    gemini-3.8-flash is the newest model and it is genuinely available on the
+    free tier. It is also capped at roughly 20 requests a day against the 165
+    one candidate needs, so it cannot complete a single evaluation. That is a
+    fact about budget, not about quality, and the docs say which.
+    """
+    from esp.eval.failover import DAILY_CAPS, REQUESTS_PER_CANDIDATE
+
+    assert DAILY_CAPS["gemini-3.8-flash"] < REQUESTS_PER_CANDIDATE
+    assert DAILY_CAPS["gemini-3.1-flash-lite"] >= REQUESTS_PER_CANDIDATE
+
+
+def test_the_buckets_use_the_measured_rate_not_the_default():
+    from esp.eval import ratelimit
+    from esp.eval.failover import rpm_for
+
+    ratelimit._buckets.clear()
+    assert ratelimit.bucket_for("gemini-3.8-flash").rpm == rpm_for("gemini-3.8-flash")
+    assert ratelimit.bucket_for("gemini-3.1-flash-lite").rpm == rpm_for(
+        "gemini-3.1-flash-lite")
+    ratelimit._buckets.clear()
