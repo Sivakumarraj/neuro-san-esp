@@ -234,3 +234,67 @@ def test_no_committed_file_holds_a_credential_shaped_string():
         "credential-shaped strings in committed files -- if any of these is "
         "real it is now published and must be rotated:\n  "
         + "\n  ".join(offences))
+
+
+def test_the_readme_counts_the_committed_measurements_correctly_everywhere():
+    """The count drifted and the existing check could not see it.
+
+    `test_the_readme_does_not_overstate_how_much_was_measured` matches the
+    exact phrase "N networks measured". The README also said "the eleven
+    measurements committed in tests/fixtures/cache/" and "the eleven committed
+    measurements", in a repository that ships twelve, and neither phrasing was
+    looked at. A reader following the quick start was told the wrong number
+    twice before reaching a command.
+
+    This counts what `measurements.load()` actually returns, which is the only
+    figure that cannot be stale, and checks every sentence in the README that
+    puts a number next to the committed cache.
+    """
+    from esp.eval import measurements
+
+    real = len(measurements.load())
+    assert real, "the committed measurements failed to load"
+
+    pattern = re.compile(
+        r"(\w+)\s+(?:measurements?|committed measurements?)\s+"
+        r"(?:committed|in `tests/fixtures/cache/`)",
+        re.IGNORECASE)
+    wrong = []
+    for word in pattern.findall(README):
+        lowered = word.lower()
+        value = WORDS.get(lowered, int(word) if word.isdigit() else None)
+        if value is not None and value != real:
+            wrong.append(word)
+
+    assert not wrong, (
+        f"the README says {wrong} where `tests/fixtures/cache/` holds {real}")
+
+
+def test_the_quick_start_never_presents_alternatives_as_a_sequence():
+    """`make baseline` and `adopt_measurements.py` are two ways to get a
+    population, not two steps.
+
+    They sat in one fenced block, three lines, with the only signal being a
+    trailing `# or:` on the middle line. A reader pasted all three and ran a
+    day of budget into a command they did not need. Alternatives get their own
+    blocks and a sentence that says so.
+    """
+    blocks = re.findall(r"```bash\n(.*?)```", README, re.DOTALL)
+    for block in blocks:
+        has_baseline = "make baseline" in block
+        has_adopt = "adopt_measurements" in block
+        assert not (has_baseline and has_adopt), (
+            "make baseline and adopt_measurements.py are alternatives and "
+            "must not share a runnable block:\n" + block)
+
+    # And the README has to say so in words, not only by layout.
+    assert re.search(r"alternatives, not steps", README, re.IGNORECASE), (
+        "nothing tells the reader those two commands are alternatives")
+
+
+def test_the_readme_says_how_to_recover_from_a_poisoned_cache():
+    """A live run replayed `acc=0.00 tok=0 (cached)` on every invocation. The
+    guard now refuses to write one, but zeros already on disk keep replaying,
+    and the reader has to be told the one command that clears them."""
+    assert "tok=0" in README, "the symptom is not described"
+    assert "rm -rf .esp-cache" in README, "the recovery is not given"

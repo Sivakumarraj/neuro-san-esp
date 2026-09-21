@@ -271,7 +271,7 @@ make offline     # phases B and C: breed and rank candidates, zero LLM calls
 ```
 
 Nothing above needs an account, a key, or a network. `make offline` trains the Predictor on
-the eleven measurements committed in `tests/fixtures/cache/` and evolves against them,
+the twelve measurements committed in `tests/fixtures/cache/` and evolves against them,
 announcing which cache it used.
 
 ### With an API key
@@ -374,11 +374,34 @@ alone.
 Then either re-measure the seeds yourself, or adopt the measurements already paid for and
 spend your budget on new candidates instead:
 
+You need a measured population before anything can be searched. There are two
+ways to get one. **They are alternatives, not steps — run one, not both.**
+
+**Option A — measure the seed topologies yourself**, on your own key. About
+1.5 days of free-tier budget before you have a population.
+
 ```bash
-make baseline                              # measure the seed topologies (~1.5 days of budget)
-python scripts/adopt_measurements.py       # or: start from the committed eleven
-python apps/optimizer/run_optimizer.py     # one wake: train, rank, pay for the elite
+make baseline
 ```
+
+**Option B — adopt the twelve measurements this repository already paid for**,
+and spend your budget on new candidates instead. Seconds, and no key needed.
+
+```bash
+python scripts/adopt_measurements.py
+```
+
+Then, with a population in place, run one wake — train the Predictor, rank a
+free pool, and pay only for the elite:
+
+```bash
+python apps/optimizer/run_optimizer.py
+```
+
+> **If a run ever reports `acc=0.00 tok=0 (cached)`**, an earlier run wrote
+> zeros before the key worked. `tok=0` means no model was called at all. Newer
+> builds refuse to cache that, but zeros already on disk keep replaying:
+> `rm -rf .esp-cache` and run the preflight again.
 
 ### Talk to the agents in a browser
 
@@ -465,7 +488,7 @@ the cron in `registries/manifest.hocon` with `user_id: system`, no client attach
 | `apps/optimizer/` | One wake, runnable by hand or from any scheduler |
 | `registries/` | neuro-san manifests: the optimiser agent, and the generated champion |
 | `scripts/` | Offline search, model probe, champion and studio serving, report and proof generation |
-| `tests/` | The suite, plus the eleven committed measurements in `tests/fixtures/cache/` |
+| `tests/` | The suite, plus the twelve committed measurements in `tests/fixtures/cache/` |
 | `results/` | `results/history.json` and the figures the reports read |
 
 ## Testing and verification
