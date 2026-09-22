@@ -94,14 +94,22 @@ Full numbers, the failure analysis and the prior art are in
   −0.333, worse than chance. Both facts are published. Which of the two the loop deserves
   credit for needs a run that searches with the Predictor and without it on the same
   budget, and that has not been bought.
-- **One of the two predicted objectives does not beat its own null.** Token cost
-  cross-validates at −0.61 against a permutation null of −0.13, so it sits **0.47 below the
-  no-signal baseline**, negative in all 20 seeds tried, and the Predictor orders candidates
-  by cost backwards. Phase C still weights it. The combined fitness ranks well regardless
-  because accuracy carries it, which is what made this invisible until the surrogate was
-  split per objective. Thirteen structural features do not predict what a network will
-  spend; nothing here yet says what would, and twelve samples cannot say how much of the
-  −0.47 is real.
+- **One of the two predicted objectives does not beat its own null, and is now excluded.**
+  Token cost cross-validates at −0.61 against a permutation null of −0.23, so it sits
+  **0.37 below the no-signal baseline**, negative in every seed tried, and the Predictor
+  orders candidates by cost backwards. Phase C used to weight it at full strength anyway.
+  It no longer does: each generation measures every objective against its own permutation
+  null, and an objective that loses to that null is held at the population mean, so it
+  stays on the fitness scale but cannot order anything. Steering a search with a predictor
+  that ranks backwards is worse than not predicting that objective at all.
+
+  The gate is a measurement, not a hardcoded exclusion — the objective returns on its own
+  the generation it starts predicting — and it only fires where the null was actually
+  measured, because against an assumed baseline of zero a twelve-sample procedure would
+  drop objectives for being small-sample rather than for being wrong. Accuracy clears its
+  null by +0.96 and is untouched. **What this does not do is fix the prediction.** Thirteen
+  structural features still do not predict what a network will spend, nothing here says
+  what would, and twelve samples cannot say how much of the −0.37 is real.
 - **There is no context, so this is not ESP's loop.** ESP prescribes *actions for a context*
   and the Prescriptor is the model that maps one to the other. This project has **no context
   variable at all** — every candidate is scored against the same fixed task set. That is the

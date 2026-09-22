@@ -238,9 +238,15 @@ def test_a_wake_says_which_way_its_candidates_were_chosen():
     generation of random search is indistinguishable from a guided one."""
     state = populated(6)
     guided = _propose(state, _population(state), random.Random(3), 3)
-    assert guided.ranked
-    assert "Predictor" in guided.how()
     assert str(len(state.evaluated)) in guided.how()
+    if guided.ranked:
+        assert "Predictor" in guided.how()
+    else:
+        # On a population this small every objective can lose to its own
+        # null. That is a random search and the wake report has to name the
+        # reason as gating, never as too few samples -- the samples are there.
+        assert "lost to its own null" in guided.how()
+        assert "untrained" not in guided.how()
 
 
 def test_the_predictor_is_asked_rather_than_assumed(monkeypatch):
@@ -390,11 +396,12 @@ def test_a_wake_names_an_objective_its_predictor_gets_wrong():
                         useless=["tokens"])
 
     assert "tokens" in proposal.how()
-    assert "no better than chance" in proposal.how()
+    assert "excluded" in proposal.how()
+    assert "its own null" in proposal.how()
     # And says nothing of the sort when every objective is usable.
     clean = Proposal(candidates=proposal.candidates, ranked=True,
                      samples=proposal.samples)
-    assert "no better than chance" not in clean.how()
+    assert "excluded" not in clean.how()
 
 
 def test_the_proposal_carries_the_verdict_it_measured():
@@ -404,6 +411,8 @@ def test_the_proposal_carries_the_verdict_it_measured():
     state = populated(6)
     proposal = _propose(state, _population(state), random.Random(3), 3)
 
-    assert proposal.ranked
     assert isinstance(proposal.useless, list)
     assert set(proposal.useless) <= set(PREDICTED_OUTCOMES)
+    # Ranked exactly when something survived the gate. The two must agree, or
+    # the wake report claims a Predictor chose what gating had silenced.
+    assert proposal.ranked == (set(proposal.useless) < set(PREDICTED_OUTCOMES))

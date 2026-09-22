@@ -34,7 +34,7 @@ from esp.surrogate.outcomes import (
     OutcomeSurrogate,
     scalarise,
 )
-from esp.surrogate.predictor import MIN_SAMPLES, Surrogate
+from esp.surrogate.predictor import MIN_SAMPLES, Surrogate, _spearman
 
 MEASURED = measurements.load()
 GENOMES = [m.genome for m in MEASURED]
@@ -394,3 +394,98 @@ def test_the_record_carries_the_null_and_the_margin():
     tokens = record["per_outcome"]["tokens"]
     assert tokens["null"] is not None
     assert tokens["margin"] == tokens["spearman"] - tokens["null"]
+
+
+# --- Gating: an objective that loses to its own null stops steering Phase C ---
+#
+# Naming the defect was the first half. Until the gate below, Phase C still
+# weighted the token prediction at full strength every generation, so the
+# search was actively steered by a model that orders candidates backwards.
+# These pin that it now stops, that it only stops on evidence, and that it
+# starts again on its own if the objective ever begins to predict.
+
+
+def test_a_gated_objective_is_held_at_the_population_mean():
+    surrogate = OutcomeSurrogate(seed=0)
+    surrogate.fit(GENOMES, OUTCOMES, gated=["tokens"])
+    predicted = surrogate.predict_outcomes(GENOMES)
+
+    assert len(set(np.round(predicted["tokens"], 6))) == 1, (
+        "a gated objective must be constant across the batch, or it still "
+        "carries ordering")
+    assert predicted["tokens"][0] == pytest.approx(
+        float(np.mean([o.tokens for o in OUTCOMES])))
+    # The objective that does predict is untouched.
+    assert len(set(np.round(predicted["accuracy"], 6))) > 1
+
+
+def test_gating_actually_changes_what_phase_c_would_pick():
+    """A gate nobody can observe is a comment, not a fix."""
+    ungated = OutcomeSurrogate(seed=0)
+    ungated.fit(GENOMES, OUTCOMES)
+    gated = OutcomeSurrogate(seed=0)
+    gated.fit(GENOMES, OUTCOMES, gated=["tokens"])
+
+    before = np.argsort(-ungated.predict(GENOMES))
+    after = np.argsort(-gated.predict(GENOMES))
+    assert not np.array_equal(before, after), (
+        "excluding an anti-correlated objective left the ordering identical, "
+        "which would mean it was never steering anything")
+
+
+def test_gating_needs_a_measured_null_not_a_suspicion():
+    """Without a null, +0.2 is a floor twelve samples cannot reach.
+
+    Gating on it would drop objectives for being small-sample rather than for
+    being wrong, so `gated_outcomes` stays empty and the loop only warns.
+    """
+    quality = OutcomeSurrogate(seed=0).report_quality(GENOMES, OUTCOMES, seed=0)
+    assert quality.useless_outcomes(), "expected the token model to look bad"
+    assert quality.gated_outcomes() == [], (
+        "an objective was gated without its null ever being measured")
+
+
+def test_the_token_model_is_gated_once_its_null_is_measured():
+    quality = OutcomeSurrogate(seed=0).report_quality(
+        GENOMES, OUTCOMES, seed=0, null_trials=12)
+    assert "tokens" in quality.nulls, "the null was not measured"
+    assert "tokens" in quality.gated_outcomes(), (
+        "token cost loses to its own null on this population and must be "
+        "excluded from the derived fitness")
+    assert "accuracy" not in quality.gated_outcomes()
+
+
+def test_gating_every_objective_leaves_only_the_term_that_is_counted():
+    """With both *learned* objectives gated, what remains is parsimony.
+
+    Not a constant, and the first version of this test wrongly asserted one.
+    Agent count is read off the genome exactly rather than predicted, so it
+    keeps ordering candidates -- correctly. What is gone is every contribution
+    the surrogate *learned*, which is why `ranks` is False: sorting by a count
+    anyone could take by hand is not the Predictor earning its place, and
+    Phase C must not report it as a surrogate score.
+    """
+    surrogate = OutcomeSurrogate(seed=0)
+    surrogate.fit(GENOMES, OUTCOMES, gated=list(PREDICTED_OUTCOMES))
+
+    assert not surrogate.ranks(), (
+        "no learned model contributes, so Phase C is selecting on parsimony "
+        "alone and must say so rather than print a best predicted score")
+
+    predicted = surrogate.predict(GENOMES)
+    agents = np.array([float(len(g.reachable())) for g in GENOMES])
+    # Fitness penalises agent count, so the order is exactly its reverse.
+    assert _spearman(predicted, -agents) == pytest.approx(1.0), (
+        "with both learned terms held constant the only signal left should "
+        "be the exact agent-count penalty")
+
+
+def test_a_gate_is_recomputed_every_generation_not_remembered():
+    """Gating is a measurement. An objective that starts predicting returns."""
+    surrogate = OutcomeSurrogate(seed=0)
+    surrogate.fit(GENOMES, OUTCOMES, gated=["tokens"])
+    assert surrogate.gated == {"tokens"}
+
+    surrogate.fit(GENOMES, OUTCOMES)
+    assert surrogate.gated == set()
+    assert len(set(np.round(surrogate.predict_outcomes(GENOMES)["tokens"], 6))) > 1

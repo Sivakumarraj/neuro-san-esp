@@ -50,7 +50,7 @@ from esp.eval.runner import Evaluation, QuotaExhausted, evaluate
 from esp.genome.definition import Genome
 from esp.genome.mutations import InvalidMutant, mutate
 from esp.genome.seeds import SEEDS
-from esp.surrogate.outcomes import Outcome, OutcomeSurrogate
+from esp.surrogate.outcomes import NULL_TRIALS, Outcome, OutcomeSurrogate
 from esp.surrogate.predictor import MIN_SAMPLES
 
 # Accuracy dominates: a cheap network that answers nothing is worthless. Cost
@@ -292,22 +292,38 @@ class Evolution:
             outcomes = [self.outcomes[h] for h in self.scored]
 
             print(f"\nGeneration {generation}", flush=True)
+            # The null costs `NULL_TRIALS` extra cross-validations per
+            # objective -- seconds of CPU against a generation that costs
+            # real money and minutes. It is measured here because without it
+            # the gate below has no evidence to act on.
             quality = self.surrogate.report_quality(genomes, outcomes,
-                                                    seed=self.seed)
+                                                    seed=self.seed,
+                                                    null_trials=NULL_TRIALS)
             print(f"  Phase B -- {quality}", flush=True)
-            # Named, not averaged away. An objective the Predictor ranks no
-            # better than chance still contributes its full weight to every
-            # Phase C decision, and the combined figure above will not show
-            # it: on the committed population the token model is reliably
-            # *anti*-correlated and the accuracy model carries the total.
+            # Named *and* acted on. Until this gate existed, an objective the
+            # Predictor ranked worse than its own null still contributed its
+            # full weight to every Phase C decision, and the combined figure
+            # above did not show it: on the committed population the token
+            # model is reliably *anti*-correlated and the accuracy model
+            # carries the total. Steering by a predictor that orders
+            # backwards is worse than not predicting that objective at all.
+            gated = quality.gated_outcomes()
             for useless in quality.useless_outcomes():
-                print(f"  Phase B -- WARNING: the {useless} model ranks no "
-                      f"better than chance. Phase C is still weighting its "
-                      f"predictions, so that part of the objective is noise.",
-                      flush=True)
-            self.history.surrogate_quality.append(
-                {"generation": generation, **quality.as_record()})
-            self.surrogate.fit(genomes, outcomes)
+                margin = quality.margin(useless)
+                if useless in gated:
+                    print(f"  Phase B -- the {useless} model ranks no better "
+                          f"than its own null ({margin:+.3f} against it). "
+                          f"EXCLUDED from Phase C; held at the population "
+                          f"mean so it cannot order candidates.", flush=True)
+                else:
+                    print(f"  Phase B -- WARNING: the {useless} model ranks "
+                          f"no better than chance, but its own null was not "
+                          f"measured, so it is not safe to exclude. Phase C "
+                          f"is still weighting it.", flush=True)
+            record = {"generation": generation, **quality.as_record()}
+            record["gated_outcomes"] = gated
+            self.history.surrogate_quality.append(record)
+            self.surrogate.fit(genomes, outcomes, gated=gated)
 
             # Phase C: search wide, for free.
             parents = self._parents()

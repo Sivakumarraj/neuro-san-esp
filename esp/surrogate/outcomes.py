@@ -42,6 +42,7 @@ own permutation null.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -116,6 +117,22 @@ class OutcomeQuality:
             if quality.spearman <= floor:
                 out.append(name)
         return out
+
+    def gated_outcomes(self) -> list[str]:
+        """Objectives to drop from the derived fitness, not merely warn about.
+
+        Deliberately stricter than `useless_outcomes`: an objective is gated
+        only when its own permutation null was actually measured. Without a
+        measured null the comparison falls back to a flat +0.2, and on twelve
+        samples that is a baseline the procedure cannot reach -- gating on it
+        would drop an objective for being small-sample rather than for being
+        wrong. Warn on suspicion; act only on evidence.
+
+        Gating is a measurement, never a hardcoded list. An objective that
+        starts predicting comes back on its own at the next generation,
+        because this is recomputed from the data every time.
+        """
+        return [name for name in self.useless_outcomes() if name in self.nulls]
 
     def as_record(self) -> dict:
         """The history entry, shaped so older readers keep working.
@@ -251,8 +268,22 @@ class OutcomeSurrogate:
         self.models: dict[str, GradientBoostingRegressor] = {}
         self.trained = False
         self._fallback: dict[str, float] = {}
+        # Objectives whose model is measurably worse than its own null. Their
+        # predictions are replaced by the population mean, so the term stays
+        # on the fitness scale but carries no ordering.
+        self.gated: set[str] = set()
 
-    def fit(self, genomes: list[Genome], outcomes: list[Outcome]) -> None:
+    def fit(self, genomes: list[Genome], outcomes: list[Outcome],
+            gated: Iterable[str] | None = None) -> None:
+        """Train one model per objective.
+
+        `gated` names objectives to exclude from `predict`, normally
+        `OutcomeQuality.gated_outcomes()` from the quality report computed on
+        this same population. The models are still fitted and kept, so the
+        exclusion is a prediction-time decision that reverses itself the
+        moment the objective starts ranking.
+        """
+        self.gated = set(gated or ())
         matrix = np.vstack([features(g) for g in genomes])
         targets = {
             "accuracy": np.array([o.accuracy for o in outcomes], dtype=float),
@@ -279,7 +310,11 @@ class OutcomeSurrogate:
         matrix = np.vstack([features(g) for g in genomes])
         predicted: dict[str, np.ndarray] = {}
         for name in PREDICTED_OUTCOMES:
-            model = self.models.get(name)
+            # A gated objective takes the same path as one that never fitted:
+            # the training mean. Constant across the batch, so it drops out of
+            # the ranking while keeping the derived fitness comparable in
+            # magnitude to a measured one.
+            model = None if name in self.gated else self.models.get(name)
             predicted[name] = (
                 model.predict(matrix) if model is not None
                 else np.full(len(genomes), self._fallback.get(name, 0.0)))
@@ -294,8 +329,16 @@ class OutcomeSurrogate:
                          outcomes["agents"])
 
     def ranks(self) -> bool:
-        """Whether `predict` carries ordering information at all."""
-        return self.trained
+        """Whether `predict` carries ordering information at all.
+
+        Gating every objective leaves `predict` returning a constant, and a
+        search that sorts by a constant is a random search. Phase C prints
+        that fact rather than a meaningless "best predicted" score, so it has
+        to be visible here.
+        """
+        usable = [name for name in PREDICTED_OUTCOMES
+                  if name in self.models and name not in self.gated]
+        return self.trained and bool(usable)
 
     def report_quality(self, genomes: list[Genome], outcomes: list[Outcome],
                        seed: int = 0,

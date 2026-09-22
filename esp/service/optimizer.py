@@ -24,7 +24,12 @@ from esp.genome.definition import DEFAULT_MODEL, Genome
 from esp.genome.mutations import InvalidMutant, mutate
 from esp.genome.seeds import SEEDS
 from esp.service.state import Evaluated, Lease, ServiceState
-from esp.surrogate.outcomes import Outcome, OutcomeSurrogate
+from esp.surrogate.outcomes import (
+    NULL_TRIALS,
+    PREDICTED_OUTCOMES,
+    Outcome,
+    OutcomeSurrogate,
+)
 from esp.surrogate.predictor import MIN_SAMPLES
 
 # How many real evaluations one wake will attempt before stopping voluntarily.
@@ -125,23 +130,33 @@ class Proposal:
     candidates: list[tuple[Genome, str]] = field(default_factory=list)
     ranked: bool = False
     samples: int = 0
-    # Outcome objectives whose model ranked no better than chance on this
-    # wake's own population. Carried because a service nobody is watching has
-    # no other way to say it: the fitness the ranking used still weights a
-    # prediction that is worthless, and the combined figure hides which one.
+    # Outcome objectives whose model ranked no better than its own null on
+    # this wake's own population, and were therefore excluded from the
+    # fitness the ranking used. Carried because a service nobody is watching
+    # has no other way to say which objective stopped contributing, and the
+    # combined figure will not show it.
     useless: list[str] = field(default_factory=list)
 
     def how(self) -> str:
         """One line for the wake report."""
         if not self.candidates:
             return "no unseen candidate could be bred"
+        if set(self.useless) >= set(PREDICTED_OUTCOMES):
+            # Trained, and gated to nothing. Distinct from untrained, and the
+            # report has to say which: "untrained, N of MIN_SAMPLES" would be
+            # false here and would send a reader looking for more samples when
+            # the samples are there and the features are the problem.
+            return (f"{len(self.candidates)} taken in the order they were "
+                    f"bred -- every predicted objective lost to its own null "
+                    f"on these {self.samples} measurements, so none of them "
+                    f"is ordering anything and this is a random search")
         if self.ranked:
             line = (f"{len(self.candidates)} chosen by the Predictor, trained "
                     f"on {self.samples} measurements")
             if self.useless:
-                line += (f" -- but its {'/'.join(self.useless)} model ranks no "
-                         f"better than chance, so that part of the objective "
-                         f"is noise")
+                line += (f" -- with {'/'.join(self.useless)} excluded, that "
+                         f"model having ranked no better than its own null "
+                         f"on this population")
             return line
         return (f"{len(self.candidates)} taken in the order they were bred -- "
                 f"the Predictor is untrained ({self.samples} of "
@@ -178,13 +193,18 @@ def _propose(state: ServiceState, population: list[Genome], rng: random.Random,
     surrogate = OutcomeSurrogate(seed=len(state.evaluated) or 1)
     useless: list[str] = []
     if len(trainable) >= 2:
-        surrogate.fit(genomes, outcomes)
-        if surrogate.ranks():
-            # Cross-validated on the wake's own population, because an
-            # objective can stop being predictable as the population grows and
-            # a figure copied from the README would not notice.
-            useless = surrogate.report_quality(
-                genomes, outcomes, seed=len(state.evaluated)).useless_outcomes()
+        seed = len(state.evaluated)
+        # Cross-validated on the wake's own population, because an objective
+        # can stop being predictable as the population grows and a figure
+        # copied from the README would not notice. The permutation null is
+        # measured here despite costing extra cross-validations: it is a few
+        # seconds of CPU on an hourly wake, and without it the gate below has
+        # no evidence and the service would go on ranking by a prediction
+        # known to be backwards -- unattended, with nobody reading the warning.
+        quality = surrogate.report_quality(genomes, outcomes, seed=seed,
+                                           null_trials=NULL_TRIALS)
+        useless = quality.gated_outcomes()
+        surrogate.fit(genomes, outcomes, gated=useless)
 
     # The elite breed; everything measured trains. Unmeasured genomes cannot be
     # ranked, so they only breed when nothing has been measured yet.
