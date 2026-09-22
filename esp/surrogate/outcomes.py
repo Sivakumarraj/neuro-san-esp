@@ -89,8 +89,10 @@ class OutcomeQuality:
 
         This is the number that means something, and the reason the raw
         spearman alone was misleading: an objective at -0.61 against a null of
-        -0.21 is not "anti-predicted at -0.61", it is 0.4 below a baseline
-        that was already negative.
+        about -0.13 is not "anti-predicted at -0.61", it is roughly 0.47 below
+        a baseline that was already negative. Both halves of that subtraction
+        move with the fold seed, so the margin is worth quoting as a range
+        (-0.47 to -0.48 over 20 seeds) and never to three decimals.
         """
         quality = self.per_outcome.get(name)
         if quality is None or quality.spearman is None:
@@ -379,8 +381,11 @@ class OutcomeSurrogate:
             if null_trials > 0:
                 report.nulls[name] = permutation_null(
                     matrix, values, folds, seed=seed, trials=null_trials)
-            # Beating the null, not beating zero. On this population the two
-            # differ by 0.4 for token cost.
+            # Beating the null, not beating zero. The two thresholds differ by
+            # the null itself -- about 0.13 for token cost on this population,
+            # and enough to change the verdict. (Not 0.4: that is the margin,
+            # which an earlier version of this comment confused with the gap
+            # between the two baselines.)
             floor = report.nulls.get(name, 0.0) + 0.2
             report.per_outcome[name] = Quality(samples, rho, mae, rho > floor)
 

@@ -270,14 +270,27 @@ measurable — which is how the next section exists at all.
 
 Reported per objective over the twelve measured networks:
 
-| Objective | spearman | permutation null | margin over null | margin sign |
-|---|---|---|---|---|
-| accuracy | +0.610 [+0.306 … +0.724] | **−0.032** | **+0.628** | positive 20 / 20 |
-| **token cost** | **−0.608** [−0.725 … −0.476] | **−0.125** | **−0.472** | **negative 20 / 20** |
-| derived fitness | +0.648 | — | — | — |
-| *(the old single model, same data)* | *+0.648* | *—* | *—* | *—* |
+| Objective | spearman | permutation null | margin over null | margin sign | excluded |
+|---|---|---|---|---|---|
+| accuracy | +0.610 [+0.306 … +0.724] | **−0.032** [−0.313 … +0.251] | **+0.628** [+0.367 … +0.989] | positive 20 / 20 | 0 / 20 |
+| **token cost** | **−0.608** [−0.725 … −0.476] | **−0.125** [−0.388 … −0.011] | **−0.472** [−0.661 … −0.238] | **negative 20 / 20** | **20 / 20** |
+| derived fitness | +0.648 | — | — | — | — |
+| *(the old single model, same data)* | *+0.648* | *—* | *—* | *—* | *—* |
 
-Medians over 20 cross-validation seeds; each null is itself the median of 12 shuffles.
+Medians over 20 cross-validation seeds, per-seed range in brackets; each null is itself the
+median of 12 shuffles.
+
+Re-run at 40 shuffles per null, the medians move — accuracy's null to −0.092 and token
+cost's to −0.143, margins to +0.696 and −0.483 — and **nothing that matters moves**: both
+margin signs hold at 20 / 20 and both exclusion counts are identical. The spearman column is
+unchanged to three decimals, as it must be, since the shuffle count cannot touch it.
+
+**The last column is the load-bearing one.** A margin is a difference of two noisy
+quantities, and the null is the noisier: one seed can place token cost's anywhere between
+−0.39 and −0.01. No point estimate of it should be quoted. What replicates is the decision —
+token cost loses to its own null under every seed and shuffle count tried, accuracy under
+none. That is what the gate acts on, and it is why the gate is recomputed per generation
+rather than written down as a constant.
 
 **The null column was not in the first version of this table, and leaving it out overstated
 the finding.** That version reported −0.608 as though zero were the no-signal baseline.
@@ -292,12 +305,15 @@ shuffles.
 
 Measuring it corrected the record in both directions:
 
-* **Accuracy's null is −0.03, effectively zero.** That figure was always sound, and the
-  worry that it too might be inflated was unfounded.
-* **Token cost's null is −0.13, so the real effect is −0.47, not −0.61.** About 20% smaller
-  than published. The finding survives — the margin is negative in every one of 20 seeds,
-  and the Predictor genuinely orders candidates by cost backwards — but the dramatic version
-  of the number does not.
+* **Accuracy's margin clears the null under every seed** — +0.63 at 12 shuffles, +0.70 at
+  40, never below +0.37. The accuracy finding is not at risk. Its *null*, however, is not the
+  settled −0.03 this bullet first claimed: it drifts to −0.09 when measured over more
+  shuffles and individual seeds reach +0.25, for the tie reason below. The margin survives
+  because it is large, not because the baseline is known precisely.
+* **Token cost's null is about −0.13, so the real effect is −0.47, not −0.61.** About 20%
+  smaller than published. The finding survives — the margin is negative in every one of 20
+  seeds at both shuffle counts, and the Predictor genuinely orders candidates by cost
+  backwards — but the dramatic version of the number does not.
 
 **A limit on the null itself, which decides which objective it can be trusted on.** A
 permutation destroys a relationship only if permuting moves the values. Accuracy takes

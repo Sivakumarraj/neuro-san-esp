@@ -95,21 +95,29 @@ Full numbers, the failure analysis and the prior art are in
   credit for needs a run that searches with the Predictor and without it on the same
   budget, and that has not been bought.
 - **One of the two predicted objectives does not beat its own null, and is now excluded.**
-  Token cost cross-validates at −0.61 against a permutation null of −0.23, so it sits
-  **0.37 below the no-signal baseline**, negative in every seed tried, and the Predictor
-  orders candidates by cost backwards. Phase C used to weight it at full strength anyway.
-  It no longer does: each generation measures every objective against its own permutation
-  null, and an objective that loses to that null is held at the population mean, so it
-  stays on the fitness scale but cannot order anything. Steering a search with a predictor
-  that ranks backwards is worse than not predicting that objective at all.
+  Token cost cross-validates at −0.61 against a permutation null of about −0.13, so it sits
+  **roughly 0.47 below the no-signal baseline**, and the Predictor orders candidates by cost
+  backwards. Phase C used to weight it at full strength anyway. It no longer does: each
+  generation measures every objective against its own permutation null, and an objective
+  that loses to that null is held at the population mean, so it stays on the fitness scale
+  but cannot order anything. Steering a search with a predictor that ranks backwards is
+  worse than not predicting that objective at all.
+
+  **The exclusion is stable even though the number under it is noisy**, and the two have to
+  be reported separately. Across 20 cross-validation seeds the token margin is negative in
+  **20 of 20** and the objective is excluded in **20 of 20**, at both 12 and 40 shuffles per
+  null. The null itself is far less settled: its median moves from −0.125 to −0.143 between
+  those shuffle counts, and individual seeds range from −0.39 to +0.02. So the margin is a
+  range, **−0.47 to −0.48**, and any single-seed figure — an earlier draft of this bullet
+  quoted one, −0.37 — is one draw from that spread rather than the result.
 
   The gate is a measurement, not a hardcoded exclusion — the objective returns on its own
   the generation it starts predicting — and it only fires where the null was actually
   measured, because against an assumed baseline of zero a twelve-sample procedure would
   drop objectives for being small-sample rather than for being wrong. Accuracy clears its
-  null by +0.96 and is untouched. **What this does not do is fix the prediction.** Thirteen
-  structural features still do not predict what a network will spend, nothing here says
-  what would, and twelve samples cannot say how much of the −0.37 is real.
+  null by +0.63 and is untouched, in 20 of 20 seeds. **What this does not do is fix the
+  prediction.** Thirteen structural features still do not predict what a network will spend,
+  nothing here says what would, and twelve samples cannot say how much of the −0.47 is real.
 - **There is no context, so this is not ESP's loop.** ESP prescribes *actions for a context*
   and the Prescriptor is the model that maps one to the other. This project has **no context
   variable at all** — every candidate is scored against the same fixed task set. That is the
@@ -229,12 +237,20 @@ Spearman rank correlation, because the Predictor's job is ordering, not pricing.
 version trained a single model directly on the scalarised fitness, which put the weighting
 inside the surrogate. Reported per objective instead, on the twelve measured networks:
 
-| Objective | Spearman | Permutation null | Margin over null |
-|---|---|---|---|
-| accuracy | **+0.61** [+0.31 … +0.72] | −0.03 | **+0.63**, positive in 20/20 seeds |
-| token cost | **−0.61** [−0.73 … −0.48] | −0.13 | **−0.47**, negative in 20/20 seeds |
+| Objective | Spearman | Permutation null | Margin over null | Excluded from Phase C |
+|---|---|---|---|---|
+| accuracy | **+0.61** [+0.31 … +0.72] | −0.03 [−0.31 … +0.25] | **+0.63**, positive in 20/20 seeds | 0/20 seeds |
+| token cost | **−0.61** [−0.73 … −0.48] | −0.13 [−0.39 … −0.01] | **−0.47**, negative in 20/20 seeds | **20/20 seeds** |
 
-Medians over 20 cross-validation seeds; each null is the median of 12 shuffles.
+Medians over 20 cross-validation seeds, with the per-seed range in brackets; each null is
+the median of 12 shuffles. Repeating the sweep at 40 shuffles moves the medians to −0.09 and
+−0.14 and leaves both margin signs and both exclusion counts unchanged.
+
+**Read the last column, not the third.** The null is the noisiest quantity here — a single
+seed can put token cost's anywhere from −0.39 to −0.01 — so no point estimate of it is worth
+quoting. What is stable is the decision it feeds: token cost loses to its own null under
+every seed and every shuffle count tried, and accuracy under none. `make null-sweep`
+reproduces the whole table from committed data, no key needed.
 
 **The null column is the point, and the first version of this table did not have it.** A rank
 correlation only means something against the baseline the same procedure produces when there
@@ -243,11 +259,13 @@ Cross-validation can manufacture negative correlation on its own: hold out a hig
 training mean drops, the model predicts low. `permutation_null()` measures it by shuffling
 the targets and re-running the identical cross-validation.
 
-Two things came out of measuring it. **Accuracy's null is about −0.03 — essentially zero — so
-that figure was always sound.** **Token cost's null is −0.13, so the real effect is −0.47,
-not −0.61.** The finding holds: the margin is negative in every seed tried, and the Predictor
-does order candidates by cost backwards. It is just about 20% smaller than first published,
-and twelve samples cannot cleanly separate the real part from the artifact.
+Two things came out of measuring it. **Accuracy's margin survives it comfortably** — at worst
++0.37 across the seeds tried — though its null is not the settled −0.03 an earlier draft
+claimed: it drifts to −0.09 at 40 shuffles and single seeds reach +0.25, for the tie reason
+below. **Token cost's null is about −0.13, so the real effect is −0.47, not −0.61.** The
+finding holds: the margin is negative in every seed tried, and the Predictor does order
+candidates by cost backwards. It is just about 20% smaller than first published, and twelve
+samples cannot cleanly separate the real part from the artifact.
 
 **Two caveats the tests record.** The null is only trustworthy on an untied objective — a
 permutation destroys a relationship only if permuting moves the values, and accuracy takes
@@ -495,7 +513,7 @@ the cron in `registries/manifest.hocon` with `user_id: system`, no client attach
 | `apps/web/` | The single-process browser front end |
 | `apps/optimizer/` | One wake, runnable by hand or from any scheduler |
 | `registries/` | neuro-san manifests: the optimiser agent, and the generated champion |
-| `scripts/` | Offline search, model probe, champion and studio serving, report and proof generation |
+| `scripts/` | Offline search, model probe, null sweep, champion and studio serving, report and proof generation |
 | `tests/` | The suite, plus the twelve committed measurements in `tests/fixtures/cache/` |
 | `results/` | `results/history.json` and the figures the reports read |
 

@@ -40,6 +40,12 @@ holdout:
 offline:
 	PYTHONPATH=$$PWD python scripts/offline_search.py --pool 2000
 
+# Is the gate's verdict stable, or an artifact of one fold seed? Sweeps seeds
+# and shuffle counts over the committed measurements. Costs nothing, and exists
+# because two different nulls for one objective were once documented at once.
+null-sweep:
+	PYTHONPATH=$$PWD python scripts/null_sweep.py
+
 # Start a real neuro-san server and prove it fires the optimiser by itself.
 # The one claim in this repository a unit test cannot check: that an
 # invocation:"event" agent on a cron schedule is started by the framework with
