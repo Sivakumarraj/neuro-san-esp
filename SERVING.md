@@ -5,7 +5,7 @@ other end and no request to answer. neuro-san fires it on a schedule, it spends
 what the day's provider budget allows, writes down where it got to, and stops.
 
 Verified end to end against **neuro-san 0.6.95** on Python 3.12 — the transcript
-of that run is in [What "verified" means here](#what-verified-means-here) below.
+of that run is in [What verification means here](#what-verification-means-here) below.
 
 ## Requirements
 
@@ -42,7 +42,8 @@ export AGENT_MANIFEST_FILE=$PWD/registries/manifest.hocon
 export AGENT_TOOL_PATH=$PWD
 export PYTHONPATH=$PWD
 export ESP_STATE=$PWD/state          # population and budget live here
-export GOOGLE_API_KEY=...
+export ANTHROPIC_API_KEY=...         # or OPENAI_API_KEY / GOOGLE_API_KEY
+export ESP_DEFAULT_MODEL=claude-haiku-4-5
 
 python -m neuro_san.service.main_loop.server_main_loop
 ```
@@ -57,8 +58,10 @@ the whole deployment: from then on it fires `optimizer` on the cron in
 python apps/optimizer/run_optimizer.py --check
 ```
 
-```
-  [ok  ] provider key: GOOGLE_API_KEY is set
+```text
+  [ok  ] provider key: set, ANTHROPIC_API_KEY, from the environment
+  [ok  ] model provider: claude-haiku-4-5 needs ANTHROPIC_API_KEY
+  [ok  ] model tiers: claude-haiku-4-5, claude-sonnet-5
   [ok  ] AGENT_TOOL_PATH: /srv/neuro-san-esp
   [ok  ] PYTHONPATH: /srv/neuro-san-esp
   [ok  ] state directory writable: /srv/neuro-san-esp/state
@@ -82,9 +85,9 @@ Same code path, no gRPC, no HTTP. Use it under `cron`, a Kubernetes `CronJob`, a
 systemd timer, or by hand. Exit codes are meant for a scheduler:
 
 | Code | Meaning |
-|---|---|
+| --- | --- |
 | `0` | did something, **or correctly did nothing** |
-| `1` | could not run at all (no `GOOGLE_API_KEY`) |
+| `1` | could not run at all (the preflight failed, e.g. no key for the configured model) |
 
 A declined lease is exit `0`. A scheduler overlapping a wake that is still
 evaluating is normal operation, not a failure.
@@ -92,7 +95,7 @@ evaluating is normal operation, not a failure.
 ## Configuration
 
 | Variable | Default | What it does |
-|---|---|---|
+| --- | --- | --- |
 | `ESP_STATE` | `state` | population, per-day spend, exhausted models, lease |
 | `ESP_OPTIMIZER_CRON` | `0 * * * *` | overrides the schedule in the manifest |
 | `ESP_LEASE_SECONDS` | `3600` | how long a wake may hold the lease before it is considered dead |
@@ -102,13 +105,14 @@ evaluating is normal operation, not a failure.
 
 ### Why hourly, and not more often
 
-A wake evaluates at most three candidates. The free tier allows 500 requests per
-day per model and one candidate costs about 165 of them, so the day's budget is
-about three candidates. A fifteen-minute schedule would produce three wakes that
-work and ninety-three that find the budget already spent and decline. **The
-cadence is set by what the provider allows, not by how often we would like
-news.** On a paid tier, raise both the cron frequency and `MAX_PER_WAKE` in
-`esp/service/optimizer.py` together — raising one alone does nothing.
+A wake evaluates at most three candidates, about 500 model calls. The schedule
+was set on Google's free tier, where a model's daily cap buys about three
+candidates, so a faster cron only produced wakes that found the budget spent.
+**The cadence is set by what the provider allows, not by how often we would
+like news.** On a paid key the limit is your spend, not a cap: raise both the
+cron frequency and `MAX_PER_WAKE` in `esp/service/optimizer.py` together —
+raising one alone does nothing — and set `ESP_RPM` to your account's
+per-minute limit.
 
 ## State, and what survives a restart
 
@@ -156,12 +160,12 @@ It is also instructed to stay **silent** unless something improved. Most wakes
 find nothing, and a service that announces every wake trains its operator to
 ignore it — and then the one wake that matters is ignored too.
 
-## What "verified" means here
+## What verification means here
 
 The scheduling path was run against a real neuro-san server, not reasoned about.
 With `ESP_OPTIMIZER_CRON="*/1 * * * *"` to shorten the wait:
 
-```
+```text
 Starting PeriodicEventInitiator with 1.000000 seconds period
 Found 1 periodic agent interactions
 HealthProbeServer started on port 8081

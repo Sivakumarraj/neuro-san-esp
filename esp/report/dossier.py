@@ -74,6 +74,9 @@ NOTES: dict[str, str] = {
     "esp/evolve/loop.py":
         "Population, selection, elitism, the multi-objective fitness function "
         "and the Pareto front.",
+    "esp/serving.py":
+        "The network a person talks to: the measured topology with its front man "
+        "asked to explain, moved to the configured provider with promotions kept.",
     "esp/service/state.py":
         "The population and today's budget, written to disk after every single "
         "evaluation so an interruption costs nothing.",
@@ -92,7 +95,14 @@ NOTES: dict[str, str] = {
     "scripts/offline_search.py":
         "Phases B and C only. Zero provider calls, so it runs with no key at all.",
     "scripts/probe_models.py":
-        "Which models are usable today and what budget is left.",
+        "Google's free tier only: which Gemini models answer today, and each "
+        "one's daily cap.",
+    "scripts/smoke_live.py":
+        "The whole path on a real key: preflight, then four questions put to the "
+        "champion as the web page serves it.",
+    "scripts/null_sweep.py":
+        "Whether the objective gate's verdict survives a change of fold seed and "
+        "shuffle count. No key.",
     "scripts/baseline_report.py": "The seed measurements, as text.",
     "scripts/smoke_inprocess.py":
         "Proves a network can be run in-process with no server.",
@@ -864,8 +874,9 @@ class Dossier(Layout):
             "make check            # lint + the full test suite\n"
             "make offline          # phases B and C -- no key needed, no calls made\n"
             "\n"
-            "export GOOGLE_API_KEY=...\n"
-            "make probe            # which models have budget today\n"
+            "cp .env.example .env  # paste an Anthropic, OpenAI or Gemini key\n"
+            "make check-key        # does the provider accept it\n"
+            "make smoke            # four real questions, end to end\n"
             "make baseline         # measure the seed topologies\n"
             "make search           # the batch loop\n"
             "\n"

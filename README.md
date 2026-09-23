@@ -41,7 +41,7 @@ found a better topology than the one neuro-san's designer produces, twice, and b
 came from the same knob.**
 
 | | Accuracy | Tokens | Agents | Fitness |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `seed:designer_shaped` — the shape the designer produces | 0.8235 | 385,280 | 4 | 0.7761 |
 | `seed:flat_pair` | 0.8235 | 316,074 | 3 | 0.7852 |
 | `seed:solo` — one agent, one tool | 0.8235 | 377,716 | 1 | 0.7835 |
@@ -125,10 +125,13 @@ Full numbers, the failure analysis and the prior art are in
   mutation operators are the only thing that can fill that slot. What this implements is
   surrogate-assisted architecture search, which is nearer to LEAF than to ESP.
 - **Twelve real evaluations, two generations of search.** No repeat run, no second random
-  seed, no held-out task set. A candidate costs about 165 provider requests against a free
-  tier of 500 per day per model — three candidates a day, so eleven is about four days of
-  budget. The 118 candidates the surrogate scored in between cost nothing, which is the part
-  of ESP that does work as advertised.
+  seed, no held-out task set. A candidate costs about 165 model calls and a quarter to half a
+  million tokens, which is why there are twelve and not twelve hundred. The 118 candidates the
+  surrogate scored in between cost nothing, which is the part of ESP that does work as
+  advertised.
+- **Every measurement was taken on one provider.** All twelve ran on Gemini. The code runs
+  unchanged on Anthropic and OpenAI, and the champion is served there with its promotion
+  intact, but nothing here says how the ranking holds on another provider's models.
 - **Seventeen of the 204 task runs never finished** — a timeout or a blown recursion cap
   rather than a wrong answer. They concentrate on two full-corpus aggregation questions.
   `accuracy` counts them as wrong; `answered_accuracy()` excludes them. Both are reported.
@@ -151,7 +154,7 @@ Full numbers, the failure analysis and the prior art are in
 
 Four phases, repeated. Phase C is the point: it is free, so the search can be wide.
 
-```
+```text
 Phase A   measure the seed topologies for real        ->  (genome, outcomes) pairs
 Phase B   train one Predictor per outcome objective   ->  cheap outcome estimates
 Phase C   breed candidates, rank by derived fitness   ->  zero LLM calls
@@ -177,7 +180,7 @@ model must not be mistaken for the same network on another.
 Each candidate answers all 17 tasks through a real neuro-san session. Three objectives are
 recorded, then scalarised for selection while the Pareto front is kept separately:
 
-```
+```text
 fitness = accuracy − 0.06 · min(tokens / 600000, 1) − 0.02 · (agents / 9)
 ```
 
@@ -208,7 +211,7 @@ Three words get used loosely about a loop like this, and conflating them is how 
 comes to optimise something nobody chose. In this repository they are three separate things:
 
 | | What it is | Where it lives |
-|---|---|---|
+| --- | --- | --- |
 | **Predictor** | The surrogate. **One `GradientBoostingRegressor` per outcome objective**, learned from real evaluations. It predicts *accuracy* and *token cost*. It never sees a fitness and never sees the weights below. | `esp/surrogate/outcomes.py` |
 | **Fitness** | A fixed weighting applied to outcomes — not learned, not fitted, just arithmetic. Over **measured** outcomes it scores Phases A and D. Over **predicted** outcomes it ranks Phase C. Same function both times. | `esp/evolve/loop.py::scalarise` |
 | **Prescription** | What proposes the next candidate. Seven mutation operators plus Pareto-front selection, run against the Predictor. **Not** a learned model — see the departure noted at the top. | `esp/genome/mutations.py` |
@@ -238,7 +241,7 @@ version trained a single model directly on the scalarised fitness, which put the
 inside the surrogate. Reported per objective instead, on the twelve measured networks:
 
 | Objective | Spearman | Permutation null | Margin over null | Excluded from Phase C |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | accuracy | **+0.61** [+0.31 … +0.72] | −0.03 [−0.31 … +0.25] | **+0.63**, positive in 20/20 seeds | 0/20 seeds |
 | token cost | **−0.61** [−0.73 … −0.48] | −0.13 [−0.39 … −0.01] | **−0.47**, negative in 20/20 seeds | **20/20 seeds** |
 
@@ -277,12 +280,12 @@ the right statistic; it is not a precise one. Full account in
 
 ### It runs as a service, not a batch job
 
-The first version was a script that planned forty evaluations and died at the daily cap every
-time. The cap is not an obstacle to a service — it is its rhythm. An hourly
-`invocation: "event"` agent (`registries/manifest.hocon`) spends what today allows, writes the
-population down **after every candidate**, and stops. Budget-aware failover across models
-keeps the measured daily caps as data (`esp/eval/failover.py`), and a preflight refuses to
-start on a configuration that would produce wrong numbers.
+The first version was a script that planned forty evaluations and died when the provider
+stopped it. A budget is not an obstacle to a service — it is its rhythm. An hourly
+`invocation: "event"` agent (`registries/manifest.hocon`) spends what the budget allows,
+writes the population down **after every candidate**, and stops, so an interruption costs at
+most the candidate in flight. A preflight refuses to start on a configuration that would
+produce wrong numbers.
 
 ## Quick start
 
@@ -302,116 +305,80 @@ announcing which cache it used.
 
 ### With an API key
 
-Runs on **Gemini, Claude or GPT**. neuro-san picks the client class from the model name, so a
-provider is a model name plus its key. Put one key in `.env` and the preflight does the rest.
+Runs on **Anthropic, OpenAI or Google Gemini**. neuro-san picks the client class from the model
+name, so a provider is its key plus a default model. Every provider has a two-rung ladder, the
+cheap model for the workers and a stronger one the search can promote a router to, because that
+promotion is the one change the measurements found worth making.
 
-| Provider | Key | Example model |
-|---|---|---|
-| Google | `GOOGLE_API_KEY` | `gemini-3.1-flash-lite` |
-| Anthropic | `ANTHROPIC_API_KEY` | `claude-haiku-4-5` |
-| OpenAI | `OPENAI_API_KEY` | `gpt-5-mini` |
-| OpenRouter | `OPENROUTER_API_KEY` | `openrouter/free` |
-
-```bash
-ESP_DEFAULT_MODEL=claude-haiku-4-5    # with ANTHROPIC_API_KEY in .env
-ESP_DEFAULT_MODEL=gpt-5-mini          # with OPENAI_API_KEY
-ESP_DEFAULT_MODEL=gemini-3.8-flash    # with GOOGLE_API_KEY
-```
-
-The preflight refuses to start when the model and the key disagree, because that mismatch
-does not fail at startup — it fails inside every agent, scores every candidate zero, and the
-cache keeps those zeros.
-
-**The model is part of the genome hash, so measurements do not cross providers.** The twelve
-committed results are all on `gemini-3.1-flash-lite`. Point this at Claude and every hash
-changes, the cache misses correctly, and the measurements start again. A fitness measured on
-one model does not describe the same network on another.
-
-#### Which Gemini model, and why the newest one is not the default
-
-Every model below works and is selectable. The constraint is arithmetic, not quality:
-**one candidate costs 165 provider requests**, so the free tier decides what a day buys.
-
-| Model | Requests/min | Requests/day | Candidates/day |
-|---|---|---|---|
-| `gemini-3.8-flash` — newest | **5** | ~20 | **0** — cannot finish one |
-| `gemini-flash-latest` | 5 | ~20 | 0 |
-| `gemini-flash-lite-latest` | 15 | 500 | 3 |
-| **`gemini-3.1-flash-lite` — default** | 15+ | 500 | **3** |
-
-Requests per minute measured 2026-09-21 by bursting against a live free-tier key until the
-429 names its own quota (`make probe` does this). Daily figures are Google's documented
-free-tier allowances. Both vary by account tier, so re-measure rather than trust this table.
-
-So `gemini-3.8-flash` is the newest and the best, and it **cannot complete a single
-evaluation** on the free tier — 20 requests a day against 165 needed, and at 5 a minute even
-an unlimited daily budget would take half an hour per candidate. Naming it gets you a
-preflight that says exactly that rather than a run of zeros.
-
-**Where the newest model does earn its place: on the front man.** The project's own headline
-result is that the winning networks put the stronger model on the router and left the
-specialists on the cheap one. That is a per-agent setting, and the router makes a small
-fraction of the calls:
+| Provider | Key | Workers (default) | Router, when promoted |
+| --- | --- | --- | --- |
+| Anthropic | `ANTHROPIC_API_KEY` | `claude-haiku-4-5` | `claude-sonnet-5` |
+| OpenAI | `OPENAI_API_KEY` | `gpt-5-mini` | `gpt-5` |
+| Google Gemini | `GOOGLE_API_KEY` | `gemini-3.1-flash-lite` | `gemini-3.5-flash` |
 
 ```bash
-ESP_DEFAULT_MODEL=gemini-3.1-flash-lite   # the specialists, where the volume is
-# then reassign the front man to gemini-3.8-flash in the genome
+cp .env.example .env      # paste your key in; .env is gitignored
+make check-key            # asks the provider whether the key works
+python apps/optimizer/run_optimizer.py --check   # the full preflight
 ```
 
-Pacing is per model, not global (`esp/eval/failover.py::MEASURED_RPM`). A single global rate
-was right for the lite tier and nearly three times too fast for the newest flash models, so
-selecting one produced 429s that the runner scored as candidate failures.
+`.env.example` is set up for Anthropic; for another provider, uncomment its block instead. The
+ladder follows the default model's provider unless `ESP_MODEL_TIERS` sets it, so choosing a
+Claude model can never leave the search handing agents a model the run holds no key for.
 
-```bash
-cp .env.example .env      # paste the key in; .env is gitignored
-python apps/optimizer/run_optimizer.py --check   # preflight
-make probe                                       # which models answer today
-```
-
-The preflight reports where the key came from and what the budget buys:
-
-```
-[ok  ] provider key: set, GOOGLE_API_KEY, from .env
-[ok  ] model ladder: gemini-3.5-flash-lite, gemini-3.1-flash-lite
-       -- 1000 requests/day = about 6 candidate(s)
+```text
+[ok  ] provider key: set, ANTHROPIC_API_KEY, from .env
+[ok  ] model provider: claude-haiku-4-5 needs ANTHROPIC_API_KEY
+[ok  ] model tiers: claude-haiku-4-5, claude-sonnet-5
+[ok  ] population provider: all anthropic
+[ok  ] pacing: 14 requests/minute per model (ESP_RPM); paid API, no daily cap
 ```
 
 **Run the preflight first.** A misconfigured evaluator does not crash. It scores every
 candidate zero, and the cache keeps that answer forever, so the search is taught that good
-topologies are bad.
+topologies are bad. The preflight asks the provider whether the key works, rather than whether
+the variable is set, and refuses to start on the mistakes that otherwise surface from inside an
+agent:
 
-The preflight asks Google whether the key actually works, rather than whether the variable
-is set — one free call, because listing models costs nothing. It refuses to start on the
-mistakes that otherwise surface as `API key not valid` from inside an agent:
-
+```text
+[FAIL] provider key: ANTHROPIC_API_KEY still the placeholder from .env.example
+[FAIL] model tiers: gemini-3.5-flash needs GOOGLE_API_KEY -- set ESP_MODEL_TIERS to models
+       of the provider you hold a key for
+[FAIL] population provider: state holds measurements taken on gemini, and this run is
+       configured for anthropic. Measurements do not cross providers
 ```
-[FAIL] provider key: GOOGLE_API_KEY still the placeholder from .env.example
-[FAIL] provider key accepted: rejected by Google (401) -- the key is wrong, revoked,
-       or from a project without the Generative Language API enabled
-```
 
-`python scripts/check_key.py` runs just that check on its own.
+**What a run costs.** One candidate is seventeen questions and about 165 model calls. The twelve
+committed measurements used between 242,670 and 473,450 tokens each; those were taken on
+Gemini, and another provider's tokenizer and verbosity will land in the same range rather than
+on the same number. `ESP_RPM` sets the pace. The default of 14 requests a minute is safe on any
+account and slow on a paid one, at about twelve minutes of queueing per candidate. Set it to one
+under the per-minute limit your provider's console shows.
 
-**The key is read once, at launch.** Editing `.env` under a running server
-changes nothing until it restarts, and `.env.example` is the committed template
-— it is not read for a key, so put the key in `.env` and leave the example
-alone.
+**The model is part of the genome hash, so measurements do not cross providers.** The twelve
+committed results are all on `gemini-3.1-flash-lite`. On Claude every hash changes, the cache
+misses correctly, and the population starts again from the seeds. A fitness measured on one
+model does not describe the same network on another. The web page and the studio still serve
+the measured champion on your provider: the same topology, with the same agent promoted to the
+stronger model. Each surface says that the score on your provider has not been measured.
 
-Then either re-measure the seeds yourself, or adopt the measurements already paid for and
-spend your budget on new candidates instead:
+**The key is read once, at launch.** Editing `.env` under a running server changes nothing
+until it restarts, and `.env.example` is the committed template. It is not read for a key, so
+put the key in `.env` and leave the example alone.
 
 You need a measured population before anything can be searched. There are two
 ways to get one. **They are alternatives, not steps — run one, not both.**
 
-**Option A — measure the seed topologies yourself**, on your own key. About
-1.5 days of free-tier budget before you have a population.
+**Option A — measure the seed topologies on your own provider.** Three networks, about 500
+model calls.
 
 ```bash
 make baseline
 ```
 
-**Option B — adopt the twelve measurements this repository already paid for**,
-and spend your budget on new candidates instead. Seconds, and no key needed.
+**Option B — adopt the twelve measurements this repository already paid for.** Only on
+Gemini, where they were taken: `adopt_measurements.py` refuses to mix them into a run on
+another provider. Seconds, and no key needed.
 
 ```bash
 python scripts/adopt_measurements.py
@@ -424,10 +391,24 @@ free pool, and pay only for the elite:
 python apps/optimizer/run_optimizer.py
 ```
 
+Check the whole path end to end on your key, from preflight to four answered questions:
+
+```bash
+make smoke
+```
+
 > **If a run ever reports `acc=0.00 tok=0 (cached)`**, an earlier run wrote
 > zeros before the key worked. `tok=0` means no model was called at all. Newer
 > builds refuse to cache that, but zeros already on disk keep replaying:
 > `rm -rf .esp-cache` and run the preflight again.
+
+#### On Google's free tier
+
+Gemini's free tier caps requests per model per day, and some models cannot fund a single
+candidate. For that case only, the runner fails over between models as each cap is reached,
+with measured caps and per-model pacing kept as data in `esp/eval/failover.py`. `make probe`
+re-measures them against your key. None of this machinery engages on Anthropic or OpenAI,
+which have per-minute limits and no daily cap.
 
 ### Talk to the agents in a browser
 
@@ -436,15 +417,24 @@ python apps/web/serve.py  # then open http://localhost:7860
 ```
 
 One process, no separate backend, no second repository. The page runs questions through the
-measured champion on neuro-san's direct session — the same code path the evaluator measures
-with, so what you talk to is exactly what was scored. Questions from the graded task set are
-**marked against the known answer in front of you**:
+measured champion on neuro-san's direct session, the same code path the evaluator measures
+with. It changes one line, and says so: the benchmark tells the front man to reply with the
+bare value so it can be scored, and the page asks it instead to **explain its answer**. It
+gives the answer first, then every identifier it followed, what each document said, and any
+calculation written out. The topology, tools and models are the ones that earned the score.
+
+Four questions are offered as one click each, one per kind of difficulty. They are a direct
+lookup, a two-document hop, the deepest four-document chain in the set, and one that hops and
+then calculates. Any other question about Meridian Logistics works too. Benchmark questions are
+**marked against the known answer in front of you**, and full answers are never truncated:
 
 ```json
-{"answer": "R. Delacroix", "expected": "R. Delacroix", "correct": true, "seconds": 48.4}
+{"answer": "The total penalty owed for incident INC-4401 is 4500. ...",
+ "expected": "4500", "correct": true, "provider": "anthropic",
+ "router_model": "claude-sonnet-5", "worker_model": "claude-haiku-4-5", "seconds": 48.4}
 ```
 
-Expect **30–60 seconds** for a multi-hop question: four documents have to be found and
+Expect **30–90 seconds** for a multi-hop question: up to four documents have to be found and
 chained, and anything faster would mean it did not really look.
 
 ### Open every measured network in the accelerator UI
@@ -466,17 +456,19 @@ alternatives, and to the network that beat them — and the answers, the routing
 and the agent count differ in front of you. Reading that off a table is not the
 same as watching two topologies answer.
 
-```
+```text
 studio_evolved_reassign_model
-  "Rank 1 of 11 by measured fitness (+0.8453): evolved by the reassign_model
-   operator. Scored 88.24% on 17 multi-hop questions using 260,052 tokens
-   across 5 agent(s). Genome 6859dda0dfabcf2d."
+  "Rank 1 of 12 by measured fitness (+0.8941): evolved by the reassign_model
+   operator. Scored 94.12% on 17 multi-hop questions using 359,600 tokens
+   across 5 agent(s), measured on gemini-3.1-flash-lite. Genome 3bf9c008d880c3fc."
 ```
 
 Each agent is the genome that earned its score, rebuilt from the measurement
-rather than described, with its numbers in the description the UI shows. The
-optimiser is served and stays **private**: it spends the day's whole evaluation
-budget when poked.
+rather than described, with its numbers in the description the UI shows, and
+the same four one-click questions the web page offers. As on the web page, the
+front man explains its answer, and on another provider the models move to that
+provider's ladder with the promotion kept; each description says which. The
+optimiser is served and stays **private**: poking it starts a paid evaluation.
 
 ### Serve the champion as an ordinary agent
 
@@ -503,7 +495,7 @@ the cron in `registries/manifest.hocon` with `user_id: system`, no client attach
 ## Repository layout
 
 | Path | What lives there |
-|---|---|
+| --- | --- |
 | `esp/genome/` | The genome: neuro-san network definitions, the seven mutation operators, three seed topologies |
 | `esp/eval/` | The measured world, the 17 scored tasks, the runner, budget-aware model failover |
 | `esp/surrogate/` | The Predictor and its honest quality reporting |
@@ -539,7 +531,7 @@ optimiser on a shortened cron, and a browser reaching the champion through the r
 ## Documentation
 
 | | |
-|---|---|
+| --- | --- |
 | [docs/FINDINGS.md](docs/FINDINGS.md) | Measurements, failure analysis, what the Predictor is, prior art |
 | [SERVING.md](SERVING.md) | Deployment, state, budget, and what the agent may do |
 | [SECURITY.md](SECURITY.md) | Reporting a vulnerability |

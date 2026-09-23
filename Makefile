@@ -1,4 +1,4 @@
-.PHONY: install test lint check probe baseline search report proofs dossier primer explainer verify service-report champion docker clean
+.PHONY: install test lint lint-docs check check-key smoke probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -9,34 +9,48 @@ test:
 lint:
 	ruff check esp tests scripts apps
 
-# Everything CI enforces, in one command.
-check: lint test
+# The docs, with the markdown linter and settings neuro-san-studio gates on.
+lint-docs:
+	pymarkdown --config .pymarkdownlint.yaml scan *.md docs/*.md
 
-# Which models are usable, and what daily budget is left. Costs one call per
-# model, and is worth running before any search: the free tier caps requests
-# per day per model, and a search that starts on an exhausted model scores
-# every candidate zero.
+# Everything CI enforces, in one command.
+check: lint lint-docs test
+
+# Does the configured provider accept the key? One free call -- listing models
+# costs nothing -- asked before anything long or public starts.
+check-key:
+	PYTHONPATH=$$PWD python scripts/check_key.py
+
+# The whole path on your key: preflight, then the four showcase questions put
+# to the champion as the web page serves it. Real calls, real cost -- a few
+# dozen model calls in all. Everything else here is offline by design.
+smoke:
+	PYTHONPATH=$$PWD AGENT_TOOL_PATH=$$PWD python scripts/smoke_live.py
+
+# Google's free tier only: which Gemini models answer today, and what each one's
+# daily cap is. A search that starts on an exhausted model scores every
+# candidate zero. Paid providers have no daily cap, so there is nothing to probe.
 probe:
 	PYTHONPATH=$$PWD AGENT_TOOL_PATH=$$PWD python scripts/probe_models.py
 
-# Measure the seed topologies only. Three candidates, roughly 500 provider
-# requests -- one model's entire daily free-tier allowance.
+# Measure the seed topologies only, on the configured provider. Three
+# candidates, roughly 500 model calls.
 baseline:
 	PYTHONPATH=$$PWD AGENT_TOOL_PATH=$$PWD python scripts/run_esp.py --generations 0 --out results
 
-# The full loop. Needs budget on at least one model in esp/eval/failover.py.
+# The full loop: measure, train, search free, pay for the elite.
 search:
 	PYTHONPATH=$$PWD AGENT_TOOL_PATH=$$PWD python scripts/run_esp.py --generations 3 --elite 3 --out results
 
-# Phase B and C only: train the Predictor on whatever real evaluations are
-# cached, then evolve against it. Zero provider calls, so this runs with no
-# budget and no key at all.
 # Select a winner on half the tasks, then judge it on the half it was not
 # selected on. Costs nothing: every evaluation recorded the outcome of each
 # individual task, so the question is already answerable from what is committed.
 holdout:
 	PYTHONPATH=$$PWD python scripts/holdout_report.py
 
+# Phase B and C only: train the Predictor on whatever real evaluations are
+# cached, then evolve against it. Zero provider calls, so this runs with no
+# budget and no key at all.
 offline:
 	PYTHONPATH=$$PWD python scripts/offline_search.py --pool 2000
 
@@ -60,10 +74,6 @@ verify:
 proofs:
 	PYTHONPATH=$$PWD AGENT_TOOL_PATH=$$PWD python scripts/capture_proofs.py
 
-# The same project explained to somebody who has never seen it: no neuro-san,
-# no evolutionary computation, no jargon. Makes the same admissions as the
-# dossier -- a beginner's version that drops the parts that did not work is not
-# a simpler document, it is a less true one.
 # The same project for a reader who knows nothing at all -- not agents, not
 # models, not tokens. Every idea anchored to something ordinary: a restaurant
 # kitchen, a wind tunnel, an electricity bill. Makes the same admissions as
@@ -72,6 +82,10 @@ proofs:
 explainer:
 	PYTHONPATH=$$PWD python -m esp.report.explainer
 
+# The same project explained to somebody who has never seen it: no neuro-san,
+# no evolutionary computation, no jargon. Makes the same admissions as the
+# dossier -- a beginner's version that drops the parts that did not work is not
+# a simpler document, it is a less true one.
 primer:
 	PYTHONPATH=$$PWD python -m esp.report.primer
 

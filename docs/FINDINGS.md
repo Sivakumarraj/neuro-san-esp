@@ -11,7 +11,7 @@ and nine mutants, every one of them cached with its per-task outcomes and its ge
 `tests/fixtures/cache/`, summarised in `results/history.json`.
 
 | Origin | Accuracy | Of what it answered | Never finished | Tokens | Agents | Fitness |
-|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- |
 | **`mut:reassign_model`** | **0.9412** | **0.94 (16/17)** | **0** | 359,600 | 5 | **0.8941** |
 | `mut:reassign_model` | 0.8824 | 1.00 (15/15) | 2 | **260,052** | 5 | 0.8453 |
 | `mut:split_agent` | 0.8824 | 0.94 (15/16) | 1 | 272,068 | 5 | 0.8441 |
@@ -108,7 +108,7 @@ quietly stop being true.
 Seventeen of the 204 task runs never finished, all of them among the first eleven networks. They are not spread evenly:
 
 | Task | Shape | Networks that never finished it |
-|---|---|---|
+| --- | --- | --- |
 | T08 | 3-hop full-corpus aggregation | 9 of 12 |
 | T06 | 3-hop full-corpus aggregation | 6 of 12 |
 | T03 | 2-hop | 1 of 12 |
@@ -181,7 +181,7 @@ It gives two answers, and they point in opposite directions.
 **No, half of seventeen tasks cannot identify which network is best.**
 
 | | |
-|---|---|
+| --- | --- |
 | Selection winner also ranked first on the held-out half | 0% of splits |
 | Selection winner ranked in the held-out top three | 0% of splits |
 | Its mean held-out rank | 7.2 of 12 |
@@ -206,7 +206,7 @@ sample size does not contain.
 **Yes, searching beat not searching, and that does hold out of sample.**
 
 | | |
-|---|---|
+| --- | --- |
 | Searched winner beat the designer's shape on held-out tasks | 90% of splits |
 | Mean held-out fitness margin over it | +0.0224 |
 | The designer's shape, mean held-out rank | 10.4 of 12 |
@@ -252,7 +252,7 @@ around it would have made them distinct.
 ### The three things, separated
 
 | | What it is | Learned? | Where |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **Predictor** | One `GradientBoostingRegressor` per outcome objective — 200 trees, depth 3, learning rate 0.05, subsample 0.9 — fitted on `(genome → outcome)`. Predicts **accuracy** and **token cost**. | Yes, from real evaluations | `esp/surrogate/outcomes.py` |
 | **Fitness** | `accuracy − 0.06·min(tokens/600000, 1) − 0.02·(agents/9)`. A fixed weighting. Applied to *measured* outcomes it scores Phases A and D; applied to *predicted* outcomes it ranks Phase C. | No — arithmetic | `esp/evolve/loop.py::scalarise` |
 | **Prescription** | Seven mutation operators plus elite selection, run against the Predictor. | No | `esp/genome/mutations.py` |
@@ -271,7 +271,7 @@ measurable — which is how the next section exists at all.
 Reported per objective over the twelve measured networks:
 
 | Objective | spearman | permutation null | margin over null | margin sign | excluded |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | accuracy | +0.610 [+0.306 … +0.724] | **−0.032** [−0.313 … +0.251] | **+0.628** [+0.367 … +0.989] | positive 20 / 20 | 0 / 20 |
 | **token cost** | **−0.608** [−0.725 … −0.476] | **−0.125** [−0.388 … −0.011] | **−0.472** [−0.661 … −0.238] | **negative 20 / 20** | **20 / 20** |
 | derived fitness | +0.648 | — | — | — | — |
@@ -305,12 +305,12 @@ shuffles.
 
 Measuring it corrected the record in both directions:
 
-* **Accuracy's margin clears the null under every seed** — +0.63 at 12 shuffles, +0.70 at
+- **Accuracy's margin clears the null under every seed** — +0.63 at 12 shuffles, +0.70 at
   40, never below +0.37. The accuracy finding is not at risk. Its *null*, however, is not the
   settled −0.03 this bullet first claimed: it drifts to −0.09 when measured over more
   shuffles and individual seeds reach +0.25, for the tie reason below. The margin survives
   because it is large, not because the baseline is known precisely.
-* **Token cost's null is about −0.13, so the real effect is −0.47, not −0.61.** About 20%
+- **Token cost's null is about −0.13, so the real effect is −0.47, not −0.61.** About 20%
   smaller than published. The finding survives — the margin is negative in every one of 20
   seeds at both shuffle counts, and the Predictor genuinely orders candidates by cost
   backwards — but the dramatic version of the number does not.
@@ -320,8 +320,10 @@ permutation destroys a relationship only if permuting moves the values. Accuracy
 **four distinct values across twelve networks**, so a shuffle frequently maps a value onto an
 identical one and leaves the ordering largely intact — one shuffled draw came back at +0.88.
 Its null is therefore weak, and its +0.63 margin should be read as indicative rather than
-measured — though since that null came out near zero anyway, little rests on it. Token cost is distinct in all twelve, so its null is sound — and token cost is the
-objective the finding is about. `test_the_null_is_only_meaningful_on_an_untied_objective`
+measured. The sweep shows it: accuracy's null drifts from −0.03 to −0.09 with the shuffle
+count, and single seeds reach +0.25. The margin survives because it is large, never below
++0.37, not because the baseline is known. Token cost is distinct in all twelve, so its null
+is sound — and token cost is the objective the finding is about. `test_the_null_is_only_meaningful_on_an_untied_objective`
 pins this so nobody moves the check to the tied objective.
 
 **And the spread is wide even where the null is sound.** The median is stable; a single draw
@@ -353,7 +355,7 @@ fix that cannot be validated would be worse than reporting the defect.
 configuration, and nothing that was measured:**
 
 | | |
-|---|---|
+| --- | --- |
 | Shape | `agents`, `depth`, `edges`, `mean_branching`, `max_branching`, `leaves`, `top_degree` |
 | Tools | `searchers`, `searcher_fraction` |
 | Models | `mean_model_tier`, `max_model_tier` |

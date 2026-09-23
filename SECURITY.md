@@ -24,8 +24,9 @@ an agent obeyed it, because there is nothing of value there.
 
 ## Credentials
 
-`GOOGLE_API_KEY` is read from the environment and never written to disk, never
-logged, and never placed in a genome, a HOCON file, a cache entry or a report.
+The provider key -- `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `GOOGLE_API_KEY` --
+is read from the environment or a gitignored `.env` and never written anywhere
+else, never logged, and never placed in a genome, a HOCON file, a cache entry or a report.
 The repository contains no key material; `.gitignore` excludes the cache and
 generated networks.
 
@@ -61,3 +62,10 @@ behind the rate limiter.
 
 Open an issue. There is no production deployment and no user data here, so
 please just describe the problem in the open.
+
+## Reporting a vulnerability
+
+Please report a vulnerability privately, through GitHub's private vulnerability
+reporting on this repository (**Security → Report a vulnerability**), not in a
+public issue. Include what an attacker controls, what they reach, and the
+smallest reproduction you have. Reports are acknowledged within a week.
