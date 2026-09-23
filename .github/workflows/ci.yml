@@ -1,20 +1,42 @@
 name: ci
-on: [push, pull_request]
+
+on:
+  push:
+  pull_request:
+
+# Read-only. Nothing in CI writes to the repository, and a token that cannot
+# is one less thing a compromised dependency could use.
+permissions:
+  contents: read
+
+# A newer push to the same branch makes the running check moot.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
+          cache: pip
       - run: pip install -e ".[dev]" pyhocon
       # scripts/ is linted too: probe_models.py and offline_search.py are
       # entry points people actually run, not scratch files.
       - run: ruff check esp tests scripts apps
+      # The docs carry every published figure, so they are linted like code,
+      # with the linter and settings neuro-san-studio gates its own docs on.
+      - run: pymarkdown --config .pymarkdownlint.yaml scan *.md docs/*.md
       # No API key in CI: every test here is an offline property of the
       # genome, the scorer, the cache or the surrogate.
-      - run: python -m pytest tests -q
+      - run: python -m pytest tests -q --cov --cov-report=term
       # The offline half of ESP needs no key, no budget and no network, so CI
       # proves it still works on every push rather than taking it on trust. It
       # runs against the committed measurements in tests/fixtures/cache, so the
