@@ -24,6 +24,7 @@ from esp.config import (
     configured_provider,
     cost_tier,
     default_model_for,
+    llm_config,
     provider_for,
 )
 
@@ -73,7 +74,10 @@ def _default_ladder(model: str) -> str:
     """
     provider = provider_for(model) or "gemini"
     cheap, strong = DEFAULT_LADDERS.get(provider, DEFAULT_LADDERS["gemini"])
-    if provider != "gemini" and model not in (cheap, strong):
+    # Only the measured default keeps its ladder untouched, so committed genome
+    # hashes still match. Any other Gemini model used to keep it too: a run on
+    # gemini-3.8-flash promoted its router to the older gemini-3.5-flash.
+    if model not in (cheap, strong) and model != default_model_for(provider):
         # The chosen model takes the rung it belongs on: a cheap one becomes
         # what the workers run, a strong one what a router is promoted to.
         # Putting claude-opus below claude-sonnet would make every promotion
@@ -266,7 +270,7 @@ class Genome:
 
             if agent.model:
                 lines.append('            "llm_config": '
-                             f'{{"model_name": "{agent.model}"}},')
+                             f'{json.dumps(llm_config(agent.model))},')
 
             lines.append("        },")
             blocks.append("\n".join(lines))
@@ -276,7 +280,7 @@ class Genome:
 
         return (
             "{\n"
-            f'    "llm_config": {{"model_name": "{self.default_model}"}},\n'
+            f'    "llm_config": {json.dumps(llm_config(self.default_model))},\n'
             '    "metadata": {"description": "ESP candidate network."},\n'
             f'    "max_steps": {MAX_STEPS},\n'
             f'    "max_execution_seconds": {MAX_EXECUTION_SECONDS},\n'
