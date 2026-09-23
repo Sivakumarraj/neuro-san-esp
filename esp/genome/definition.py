@@ -73,7 +73,10 @@ def _default_ladder(model: str) -> str:
     """
     provider = provider_for(model) or "gemini"
     cheap, strong = DEFAULT_LADDERS.get(provider, DEFAULT_LADDERS["gemini"])
-    if provider != "gemini" and model not in (cheap, strong):
+    # Only the measured default keeps its ladder untouched, so committed genome
+    # hashes still match. Any other Gemini model used to keep it too: a run on
+    # gemini-3.8-flash promoted its router to the older gemini-3.5-flash.
+    if model not in (cheap, strong) and model != default_model_for(provider):
         # The chosen model takes the rung it belongs on: a cheap one becomes
         # what the workers run, a strong one what a router is promoted to.
         # Putting claude-opus below claude-sonnet would make every promotion

@@ -314,6 +314,15 @@ def test_an_explicit_ladder_still_wins():
     assert out == "claude-haiku-4-5,claude-opus-5"
 
 
+def test_a_newer_gemini_default_is_never_promoted_to_an_older_model():
+    out = _in_subprocess(
+        "from esp.genome.definition import MODEL_TIERS\nprint(','.join(MODEL_TIERS))",
+        ESP_DEFAULT_MODEL="gemini-3.8-flash")
+    assert out == "gemini-3.5-flash-lite,gemini-3.8-flash", (
+        "the Gemini ladder ignored the chosen model, so a router promoted from "
+        "gemini-3.8-flash got gemini-3.5-flash")
+
+
 def test_the_gemini_default_is_unchanged_so_committed_hashes_still_match():
     from esp.genome.definition import DEFAULT_MODEL, MODEL_TIERS
     assert DEFAULT_MODEL == "gemini-3.1-flash-lite"
