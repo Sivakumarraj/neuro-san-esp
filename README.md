@@ -607,6 +607,8 @@ optimiser on a shortened cron, and a browser reaching the champion through the r
 | --- | --- |
 | [docs/FINDINGS.md](docs/FINDINGS.md) | Measurements, failure analysis, what the Predictor is, prior art |
 | [SERVING.md](SERVING.md) | Deployment, state, budget, and what the agent may do |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup, checks and pull requests |
+| [SUPPORT.md](SUPPORT.md) | Where to ask and how to report a bug |
 | [SECURITY.md](SECURITY.md) | Reporting a vulnerability |
 | [Dossier](docs/neuro-san-esp-Dossier.pdf) | The technical report, with captured evidence |
 | [Primer](docs/neuro-san-esp-Primer.pdf) | The same result without the jargon |

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Sivakumarraj/neuro-san-esp/security/advisories/new
+    about: Report privately. Please do not open a public issue.
+  - name: Questions about neuro-san itself
+    url: https://github.com/cognizant-ai-lab/neuro-san
+    about: The agent framework this project measures and optimizes.
