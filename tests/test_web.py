@@ -157,3 +157,68 @@ def test_the_caveat_reports_the_real_measurement_count(client):
         assert f"needs {MIN_SAMPLES} measurements" in body
     else:
         assert "has not trained" not in body
+
+
+# ------------------------------------------- full answers, any provider
+
+def test_a_long_explained_answer_reaches_the_visitor_whole(client, monkeypatch):
+    """The page used to cut every answer at 2,000 characters -- exactly the
+    explanation a person came to read."""
+    long_answer = "The total penalty owed is 4500. " + "Evidence line. " * 400
+    monkeypatch.setattr(serve, "_ask", lambda *a: (long_answer, {}, 1.0))
+    body = client.post("/ask", json={"question": "anything"}).json()
+    assert body["answer"] == long_answer
+
+
+def test_the_page_offers_the_four_showcase_questions(client):
+    import html
+
+    from esp.serving import SHOWCASE, display_question
+
+    text = client.get("/").text
+    for task in SHOWCASE:
+        # Escaped, as the page must: "depot's" arrives as "depot&#x27;s".
+        assert html.escape(display_question(task)) in text
+    assert "Answer with the number only" not in text
+
+
+def test_a_showcase_question_as_displayed_is_graded(client, monkeypatch):
+    from esp.serving import SHOWCASE, display_question
+
+    task = SHOWCASE[3]
+    explained = f"The total penalty owed is {task.answer}. It was worked out as follows."
+    monkeypatch.setattr(serve, "_ask", lambda *a: (explained, {}, 1.0))
+    body = client.post("/ask", json={"question": display_question(task)}).json()
+    assert body["expected"] == task.answer
+    assert body["correct"] is True
+
+
+def test_the_answer_names_the_models_it_ran_on(client, monkeypatch):
+    monkeypatch.setattr(serve, "_ask", lambda *a: ("x", {}, 1.0))
+    body = client.post("/ask", json={"question": "q"}).json()
+    assert body["provider"] == serve.SERVED.provider
+    assert body["router_model"] and body["worker_model"]
+
+
+def test_the_page_says_how_the_served_network_differs_from_the_measured_one(client):
+    assert "reply format" in client.get("/").text or "not been measured" in client.get("/").text
+
+
+def test_the_question_limit_message_is_not_about_one_providers_free_tier(client,
+                                                                        monkeypatch):
+    monkeypatch.setattr(serve, "MAX_QUESTIONS", 0)
+    error = client.post("/ask", json={"question": "q"}).json()["error"]
+    assert "free" not in error.lower() and "500 requests" not in error
+
+
+def test_startup_asks_for_the_serving_providers_key_not_googles(monkeypatch, capsys):
+    """A deployment holding only a Claude key refused to start at all."""
+    from esp.serving import Served
+
+    claude = serve.SERVED.genome.clone()
+    claude.default_model = "claude-haiku-4-5"
+    monkeypatch.setattr(serve, "SERVED", Served(claude, "anthropic", True))
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("GOOGLE_API_KEY", "AQ.EXAMPLE-not-a-real-key-0000000000000000000000")
+    assert serve.main() == 1
+    assert "ANTHROPIC_API_KEY" in capsys.readouterr().err

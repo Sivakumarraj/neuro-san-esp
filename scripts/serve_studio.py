@@ -10,7 +10,12 @@ comparison is visible, and the comparison is the entire result of this project.
 
 Nothing here is a mock-up. Each agent is the genome that earned its score,
 rendered to the HOCON neuro-san serves, and the scores quoted in each agent's
-description are the measured ones.
+description are the measured ones. Two things differ from the measured form, and
+both are stated in the description the UI shows (`esp/serving.py`): the front
+man explains its answer instead of returning the bare value the scorer needs,
+and on a deployment configured for another provider the models move rung for
+rung. Each network also carries the four showcase questions, which the UI
+offers as one-click prompts.
 
     python scripts/serve_studio.py          # write the registries
     make studio                             # write them, then launch the UI
@@ -32,6 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from esp.config import bootstrap
 from esp.eval import measurements
 from esp.eval.tasks import TASKS
+from esp.serving import SHOWCASE, display_question, presentable
 
 ROOT = Path(__file__).resolve().parent.parent
 REGISTRY = ROOT / "registries"
@@ -95,10 +101,19 @@ def write(records, include_optimizer: bool = True) -> tuple[list[Path], Path]:
     for rank, (record, name) in enumerate(zip(records, names, strict=True),
                                          start=1):
         path = REGISTRY / f"{PREFIX}{name}.hocon"
-        body = record.genome.to_hocon().replace(
+        served = presentable(record.genome)
+        metadata = {
+            "description": (describe(record, rank, len(records)) + " "
+                            + served.note(record.genome.default_model)),
+            # What nsflow offers as one-click prompts. Without it the UI shows
+            # only its own generic "What all can you help us with?", which this
+            # network -- built to answer questions about one invented company
+            # -- cannot usefully answer.
+            "sample_queries": [display_question(task) for task in SHOWCASE],
+        }
+        body = served.genome.to_hocon().replace(
             '"metadata": {"description": "ESP candidate network."},',
-            '"metadata": {"description": '
-            + json.dumps(describe(record, rank, len(records))) + "},")
+            '"metadata": ' + json.dumps(metadata) + ",")
         path.write_text(body, encoding="utf-8")
         written.append(path)
         entries.append(f'    "{path.name}": {{"serve": true, "public": true}},')
@@ -117,9 +132,8 @@ def write(records, include_optimizer: bool = True) -> tuple[list[Path], Path]:
     if include_optimizer:
         lines += [
             "",
-            "    # Private, as in the deployed manifest. This one spends the",
-            "    # day's whole evaluation budget when poked, and the day buys",
-            "    # about three evaluations.",
+            "    # Private, as in the deployed manifest. Poking it starts a",
+            "    # real evaluation, which is about 165 paid model calls.",
             '    "optimizer.hocon": {"serve": true, "public": false},',
         ]
     lines += ["}", ""]

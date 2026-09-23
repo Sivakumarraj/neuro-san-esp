@@ -34,6 +34,13 @@ from esp.eval import measurements
 from esp.genome.definition import DEFAULT_MODEL, Genome
 from esp.genome.seeds import SEEDS
 from esp.service.state import Evaluated, ServiceState
+from esp.serving import (
+    SHOWCASE,
+    conversational,
+    display_question,
+    presentable,
+    retarget,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 REGISTRY = ROOT / "registries"
@@ -148,23 +155,33 @@ def write_registry(name: str, genome, record, model: str | None = None
         # Serving on a different model than the one that earned the score is a
         # real change: the model is part of the genome hash precisely because it
         # changes both the answers and the cost. It is allowed because a spent
-        # daily quota should not make the winner unreachable, but what is served
-        # is then the topology, not the measurement.
-        genome = genome.clone()
-        genome.default_model = model
+        # quota should not make the winner unreachable, but what is served is
+        # then the topology, not the measurement. Every agent moves, the
+        # promoted router included -- setting only the default left it on its
+        # measured model, a second provider the run might hold no key for.
+        genome = conversational(retarget(genome, model, model))
+        served_note = (f"Being served on {model}, which is not the model it was "
+                       "measured on, so its score does not apply; the front man "
+                       "explains its answer.")
+    else:
+        # The configured provider's ladder, promotions kept; the front man
+        # explains its answer. Same rules as the web page and the studio.
+        served = presentable(genome)
+        genome = served.genome
+        served_note = served.note(record.model)
 
-    served_on = model or record.model
-    body = genome.to_hocon().replace(
-        '"metadata": {"description": "ESP candidate network."},',
-        '"metadata": {"description": '
-        + json.dumps(
+    metadata = {
+        "description": (
             f"The best-measured topology so far: {name}, "
             f"{record.accuracy:.0%} correct on 17 multi-hop questions using "
             f"{record.tokens:,} tokens across {record.agents} agent(s), "
-            f"measured on {record.model}. Chosen by measurement, not guessing."
-            + (f" Being served on {served_on}, which is not the model it was "
-               "measured on." if served_on != record.model else ""))
-        + "},")
+            f"measured on {record.model}. Chosen by measurement, not guessing. "
+            + served_note),
+        "sample_queries": [display_question(task) for task in SHOWCASE],
+    }
+    body = genome.to_hocon().replace(
+        '"metadata": {"description": "ESP candidate network."},',
+        '"metadata": ' + json.dumps(metadata) + ",")
     hocon.write_text(body, encoding="utf-8")
 
     manifest = REGISTRY / "champion_manifest.hocon"
@@ -172,7 +189,7 @@ def write_registry(name: str, genome, record, model: str | None = None
         "{\n"
         "    # Public on purpose: this one answers questions and spends only\n"
         "    # what the person asking spends. The optimiser stays private --\n"
-        "    # it spends the day's whole evaluation budget when poked.\n"
+        "    # poking it starts a paid evaluation of about 165 model calls.\n"
         '    "champion.hocon": {"serve": true, "public": true},\n'
         "}\n", encoding="utf-8")
     return hocon, manifest

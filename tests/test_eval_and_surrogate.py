@@ -71,6 +71,13 @@ def test_multi_hop_tasks_really_need_more_than_one_document():
     ("31", "312", False),
     ("Brindle", "Ashford", False),
     ("Brindle", "", False),
+    # A number that ends a sentence mid-answer. The matcher refused any "."
+    # after the number, so an explained answer scored wrong whenever it said
+    # anything after the figure -- invisible while networks replied with the
+    # bare value, and wrong on every answer the web page now asks for.
+    ("4500", "The total penalty owed is 4500. INC-4401 affected it.", True),
+    ("4500", "4500.5", False),
+    ("4500", "a ratio of 1.4500", False),
 ])
 def test_score(expected, produced, want):
     assert score(expected, produced) is want
