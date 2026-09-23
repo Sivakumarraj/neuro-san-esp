@@ -1,4 +1,4 @@
-.PHONY: install test lint lint-docs check check-key smoke measure figures probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
+.PHONY: install test lint lint-docs check check-key smoke measure figures ablation probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -37,6 +37,12 @@ measure:
 # Every published figure about the Predictor, regenerated from committed data.
 figures:
 	PYTHONPATH=$$PWD python scripts/surrogate_figures.py
+
+# Does the Predictor pick better networks than chance? Every way of holding out
+# three of the committed measurements, trained on the rest exactly as a wake
+# is. About 45 CPU-minutes, spread over every core; no key, no calls.
+ablation:
+	PYTHONPATH=$$PWD python scripts/selection_ablation.py
 
 # Google's free tier only: which Gemini models answer today, and what each one's
 # daily cap is. A search that starts on an exhausted model scores every

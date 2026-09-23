@@ -88,11 +88,12 @@ class OutcomeQuality:
         """How far an objective beats its own no-signal baseline.
 
         This is the number that means something, and the reason the raw
-        spearman alone was misleading: an objective at -0.61 against a null of
-        about -0.13 is not "anti-predicted at -0.61", it is roughly 0.47 below
+        spearman alone was misleading: an objective at -0.53 against a null of
+        about -0.17 is not "anti-predicted at -0.53", it is roughly 0.35 below
         a baseline that was already negative. Both halves of that subtraction
         move with the fold seed, so the margin is worth quoting as a range
-        (-0.47 to -0.48 over 20 seeds) and never to three decimals.
+        (medians -0.35 and -0.37 over 20 seeds at 12 and 40 shuffles; `make
+        figures`) and never to three decimals.
         """
         quality = self.per_outcome.get(name)
         if quality is None or quality.spearman is None:

@@ -159,6 +159,24 @@ It is also instructed to stay **silent** unless something improved. Most wakes
 find nothing, and a service that announces every wake trains its operator to
 ignore it — and then the one wake that matters is ignored too.
 
+### The evaluator agent
+
+`registries/evaluator.hocon` has the opposite arrangement, because choosing what
+to measure is its job. Its model does pick networks, but only from the ones the
+deployment already knows: the committed twelve and any HOCON an operator places
+in `ESP_NETWORKS`. A path or a network definition from a chat message is never
+accepted, since a network names Python classes to import. It has two tools:
+
+- `ListNetworks` lists what can be measured, with the scores recorded for each.
+- `MeasureNetworks` puts the same questions to up to four of them. Every run is
+  a paid model call, so a request that would pass `ESP_EVAL_MAX_RUNS` (68 by
+  default, per server process) is refused before anything is asked.
+
+The deployed manifest keeps it private unless `ESP_EVALUATOR_PUBLIC=true`;
+`make studio` serves it publicly, because that UI is the operator's own. Both
+agents' own models come from neuro-san's `llm_config` fallbacks, in
+neuro-san-studio's order, so either runs on whichever provider has a key.
+
 ## What verification means here
 
 The scheduling path was run against a real neuro-san server, not reasoned about.

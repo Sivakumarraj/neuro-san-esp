@@ -317,7 +317,7 @@ def test_the_token_effect_is_smaller_than_it_was_published_as():
     """Part artifact, part real -- and twelve samples cannot separate them.
 
     This stops the dramatic version of the claim coming back. The raw median
-    is about -0.61; the margin over the null is about -0.47. Both negative, so
+    is about -0.53; the margin over the null is about -0.35. Both negative, so
     the finding survives; only its size changes.
     """
     raws, margins = [], []

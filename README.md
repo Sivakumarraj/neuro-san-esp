@@ -34,6 +34,38 @@ Predictor and the sample-efficiency argument. In shape this is nearer to **LEAF*
 (*Evolutionary Neural AutoML for Deep Learning*, GECCO 2019), which evolves architectures
 and size, with agents where LEAF had layers.
 
+## Measure your own network
+
+The measurement is not tied to the networks this repository evolved. **Any network neuro-san
+can load can be scored on any questions you can check the answers to**, from three places:
+
+```bash
+# 1. A terminal. NETWORK is a HOCON path or a name in your manifest.
+make measure NETWORK=registries/my_network.hocon TASKS=my_questions.jsonl
+
+# 2. A browser: the "Measure networks" tab, side by side, with a Pareto front.
+python apps/web/serve.py                     # http://localhost:7860
+
+# 3. Inside neuro-san: the evaluator agent, in the studio chat panel.
+make studio                                  # then ask it "which networks can you measure?"
+```
+
+A question file is JSON Lines, one question per line; `answers` may list several accepted
+forms, and `id` and `hops` are optional:
+
+```json
+{"question": "Which city is depot D08 in?", "answer": "Pickering"}
+{"id": "Q2", "question": "Which contract has the highest penalty?", "answers": ["C-2139", "C2139"]}
+```
+
+Each network gets accuracy; accuracy over the questions it finished, because a timeout or a
+blown recursion cap is not a wrong answer; the unfinished count; tokens; cost where the
+provider reports it; and time. Every answer is kept whole, and `--json` writes the full
+report. The file is validated before anything is paid for. A run that measured the
+environment rather than the network is refused, not reported: no model called, every
+question erroring, or a provider quota. With no question file, the built-in
+seventeen-question benchmark below is used.
+
 ## Results
 
 **Twelve networks measured on real model calls, 17 tasks each, 204 task runs. The search
@@ -95,8 +127,8 @@ Full numbers, the failure analysis and the prior art are in
   credit for needs a run that searches with the Predictor and without it on the same
   budget, and that has not been bought.
 - **One of the two predicted objectives does not beat its own null, and is now excluded.**
-  Token cost cross-validates at −0.61 against a permutation null of about −0.13, so it sits
-  **roughly 0.47 below the no-signal baseline**, and the Predictor orders candidates by cost
+  Token cost cross-validates at −0.53 against a permutation null of about −0.17, so it sits
+  **roughly 0.35 below the no-signal baseline**, and the Predictor orders candidates by cost
   backwards. Phase C used to weight it at full strength anyway. It no longer does: each
   generation measures every objective against its own permutation null, and an objective
   that loses to that null is held at the population mean, so it stays on the fitness scale
@@ -106,25 +138,25 @@ Full numbers, the failure analysis and the prior art are in
   **The exclusion is stable even though the number under it is noisy**, and the two have to
   be reported separately. Across 20 cross-validation seeds the token margin is negative in
   **20 of 20** and the objective is excluded in **20 of 20**, at both 12 and 40 shuffles per
-  null. The null itself is far less settled: its median moves from −0.125 to −0.143 between
-  those shuffle counts, and individual seeds range from −0.39 to +0.02. So the margin is a
-  range, **−0.47 to −0.48**, and any single-seed figure — an earlier draft of this bullet
-  quoted one, −0.37 — is one draw from that spread rather than the result.
+  null. The null itself is far less settled: its median moves from −0.17 to −0.16 between
+  those shuffle counts, and individual seeds range from −0.42 to +0.03. So the margin is a
+  range — medians **−0.35 and −0.37**, single seeds from −0.12 to −0.70 — and any
+  single-seed figure is one draw from that spread rather than the result.
 
   The gate is a measurement, not a hardcoded exclusion — the objective returns on its own
   the generation it starts predicting — and it only fires where the null was actually
   measured, because against an assumed baseline of zero a twelve-sample procedure would
   drop objectives for being small-sample rather than for being wrong. Accuracy clears its
-  null by +0.63 and is untouched, in 20 of 20 seeds. **What this does not do is fix the
+  null by +0.73 and is untouched, in 20 of 20 seeds. **What this does not do is fix the
   prediction.** Thirteen structural features still do not predict what a network will spend,
-  nothing here says what would, and twelve samples cannot say how much of the −0.47 is real.
-- **One feature is mislabelled, and correcting it moves figures but no conclusion.** The
-  model-tier feature ranks the workers' cheapest model above the strongest one. With the
-  ordering corrected the token margin moves from −0.47 to −0.35, and every exclusion verdict
-  stays the same. Both sets of figures are recorded in
-  [docs/FINDINGS.md](docs/FINDINGS.md#a-known-defect-in-the-model-tier-feature-measured-and-left-in-place),
-  rather than changing the Predictor the published figures describe ahead of re-deriving
-  them.
+  nothing here says what would, and twelve samples cannot say how much of the −0.35 is real.
+- **One feature was mislabelled; it is fixed, and no conclusion moved.** The model-tier
+  feature placed a model by its position on the configured ladder, so the workers' cheapest
+  model read as the most expensive. It is now a property of the model — rung, then release.
+  The token margin moved from −0.47 to −0.35, accuracy's from +0.63 to +0.73, and every
+  exclusion verdict stayed the same. Every Predictor figure here is after the fix, and `make
+  figures` regenerates them all from committed data; the before-and-after table is in
+  [docs/FINDINGS.md](docs/FINDINGS.md#a-defect-in-the-model-tier-feature-measured-and-fixed).
 - **There is no context, so this is not ESP's loop.** ESP prescribes *actions for a context*
   and the Prescriptor is the model that maps one to the other. This project has **no context
   variable at all** — every candidate is scored against the same fixed task set. That is the
@@ -249,17 +281,17 @@ inside the surrogate. Reported per objective instead, on the twelve measured net
 
 | Objective | Spearman | Permutation null | Margin over null | Excluded from Phase C |
 | --- | --- | --- | --- | --- |
-| accuracy | **+0.61** [+0.31 … +0.72] | −0.03 [−0.31 … +0.25] | **+0.63**, positive in 20/20 seeds | 0/20 seeds |
-| token cost | **−0.61** [−0.73 … −0.48] | −0.13 [−0.39 … −0.01] | **−0.47**, negative in 20/20 seeds | **20/20 seeds** |
+| accuracy | **+0.63** [+0.27 … +0.72] | −0.07 [−0.36 … +0.30] | **+0.73**, positive in 20/20 seeds | 0/20 seeds |
+| token cost | **−0.53** [−0.80 … −0.38] | −0.17 [−0.42 … +0.03] | **−0.35**, negative in 20/20 seeds | **20/20 seeds** |
 
 Medians over 20 cross-validation seeds, with the per-seed range in brackets; each null is
-the median of 12 shuffles. Repeating the sweep at 40 shuffles moves the medians to −0.09 and
-−0.14 and leaves both margin signs and both exclusion counts unchanged.
+the median of 12 shuffles. Repeating the sweep at 40 shuffles moves the null medians to
+−0.13 and −0.16 and leaves both margin signs and both exclusion counts unchanged.
 
 **Read the last column, not the third.** The null is the noisiest quantity here — a single
-seed can put token cost's anywhere from −0.39 to −0.01 — so no point estimate of it is worth
+seed can put token cost's anywhere from −0.42 to +0.03 — so no point estimate of it is worth
 quoting. What is stable is the decision it feeds: token cost loses to its own null under
-every seed and every shuffle count tried, and accuracy under none. `make null-sweep`
+every seed and every shuffle count tried, and accuracy under none. `make figures`
 reproduces the whole table from committed data, no key needed.
 
 **The null column is the point, and the first version of this table did not have it.** A rank
@@ -270,18 +302,18 @@ training mean drops, the model predicts low. `permutation_null()` measures it by
 the targets and re-running the identical cross-validation.
 
 Two things came out of measuring it. **Accuracy's margin survives it comfortably** — at worst
-+0.37 across the seeds tried — though its null is not the settled −0.03 an earlier draft
-claimed: it drifts to −0.09 at 40 shuffles and single seeds reach +0.25, for the tie reason
-below. **Token cost's null is about −0.13, so the real effect is −0.47, not −0.61.** The
-finding holds: the margin is negative in every seed tried, and the Predictor does order
-candidates by cost backwards. It is just about 20% smaller than first published, and twelve
++0.40 across the seeds tried — though its null is not the settled −0.03 an earlier draft
+claimed: it is −0.07 at 12 shuffles and −0.13 at 40, and single seeds reach +0.30, for the tie
+reason below. **Token cost's null is about −0.17, so the real effect is −0.35, not −0.53.**
+The finding holds: the margin is negative in every seed tried, and the Predictor does order
+candidates by cost backwards. It is a third smaller than the raw correlation, and twelve
 samples cannot cleanly separate the real part from the artifact.
 
 **Two caveats the tests record.** The null is only trustworthy on an untied objective — a
 permutation destroys a relationship only if permuting moves the values, and accuracy takes
 just four distinct values across twelve networks, so its null is weak. Token cost is distinct
 in all twelve, so its null is sound, and token cost is what the finding is about. And the
-spread is wide: the token null itself ranges from −0.39 to −0.01 across seeds. The margin is
+spread is wide: the token null itself ranges from −0.42 to +0.03 across seeds. The margin is
 the right statistic; it is not a precise one. Full account in
 [docs/FINDINGS.md](docs/FINDINGS.md#what-the-predictor-is-exactly).
 
@@ -424,11 +456,19 @@ with measured caps and per-model pacing kept as data in `esp/eval/failover.py`. 
 re-measures them against your key. None of this machinery engages on Anthropic or OpenAI,
 which have per-minute limits and no daily cap.
 
-### Talk to the agents in a browser
+### Talk to the agents, and measure them, in a browser
 
 ```bash
 python apps/web/serve.py  # then open http://localhost:7860
 ```
+
+The page has two tabs. **Ask a network** is described below. **Measure networks** puts the
+same questions to up to four networks at once: the twelve committed ones, plus any HOCON you
+place in `ESP_NETWORKS`. It uses the built-in benchmark or a JSON Lines file you paste, shows
+progress, and marks the Pareto front. It also gives a question-by-question grid and a JSON
+download. Measuring is paid for, so a deployment caps the total runs (`ESP_WEB_MAX_MEASURE`)
+and runs one measurement at a time. A network is never uploaded: it names Python classes to
+import.
 
 One process, no separate backend, no second repository. The page runs questions through the
 measured champion on neuro-san's direct session, the same code path the evaluator measures
@@ -439,7 +479,8 @@ calculation written out. The topology, tools and models are the ones that earned
 
 Four questions are offered as one click each, one per kind of difficulty. They are a direct
 lookup, a two-document hop, the deepest four-document chain in the set, and one that hops and
-then calculates. Any other question about Meridian Logistics works too. Benchmark questions are
+then calculates. **All seventeen benchmark questions** are listed beneath them, easiest
+first, and any other question about Meridian Logistics works too. Benchmark questions are
 **marked against the known answer in front of you**, and full answers are never truncated:
 
 ```json
@@ -481,8 +522,13 @@ Each agent is the genome that earned its score, rebuilt from the measurement
 rather than described, with its numbers in the description the UI shows, and
 the same four one-click questions the web page offers. As on the web page, the
 front man explains its answer, and on another provider the models move to that
-provider's ladder with the promotion kept; each description says which. The
-optimiser is served and stays **private**: poking it starts a paid evaluation.
+provider's ladder with the promotion kept; each description says which.
+
+The **evaluator** is served beside them, so a measurement is a chat message: "measure the
+designer's shape against the best evolved network". It can only measure networks the
+deployment already knows. It is told to state no number its tools did not return, and
+`ESP_EVAL_MAX_RUNS` caps what it may spend. The optimiser is served and stays **private**:
+poking it starts a paid evaluation.
 
 ### Serve the champion as an ordinary agent
 
@@ -511,15 +557,16 @@ the cron in `registries/manifest.hocon` with `user_id: system`, no client attach
 | Path | What lives there |
 | --- | --- |
 | `esp/genome/` | The genome: neuro-san network definitions, the seven mutation operators, three seed topologies |
+| `esp/measure.py` | Measure any neuro-san network on any question file — the library behind `make measure`, the web page and the evaluator |
 | `esp/eval/` | The measured world, the 17 scored tasks, the runner, budget-aware model failover |
 | `esp/surrogate/` | The Predictor and its honest quality reporting |
 | `esp/evolve/` | The batch ESP loop — phases A through D in one sitting |
-| `esp/service/` | The same loop as an interruptible service: persistent population, budget, lease |
+| `esp/service/` | The same loop as an interruptible service: persistent population, budget, lease; the evaluator's tools |
 | `esp/report/` | The generated PDFs, and figures from the run history |
-| `apps/web/` | The single-process browser front end |
+| `apps/web/` | The single-process browser front end: ask a network, measure networks |
 | `apps/optimizer/` | One wake, runnable by hand or from any scheduler |
-| `registries/` | neuro-san manifests: the optimiser agent, and the generated champion |
-| `scripts/` | Offline search, model probe, null sweep, champion and studio serving, report and proof generation |
+| `registries/` | neuro-san manifests: the optimiser and evaluator agents, and the generated champion |
+| `scripts/` | Offline search, Predictor figures and the selection ablation, model probe, champion and studio serving, report and proof generation |
 | `tests/` | The suite, plus the twelve committed measurements in `tests/fixtures/cache/` |
 | `results/` | `results/history.json` and the figures the reports read |
 
@@ -530,6 +577,8 @@ make check      # ruff + the full suite, exactly what CI runs
 make verify     # start a real neuro-san server and prove it fires the optimiser
 make offline    # the free half of ESP, end to end, no key
 make holdout    # select on half the tasks, judge on the other half, no key
+make figures    # every published Predictor figure, regenerated, no key
+make ablation   # does the Predictor pick better than chance? no key
 ```
 
 The suite covers the genome and its validity gate, the scored tasks, outcome
