@@ -70,10 +70,13 @@ artefact of a seed** — which is why a range is given here and nowhere is one v
 
 **The twelfth network is the first the Predictor actually chose.** A service wake trained on
 eleven real samples, ranked a pool of mutants, paid for the top of it, and the candidate it
-picked beat everything measured before. That is the ESP loop working end to end, once. It is
-not evidence that the surrogate beats picking at random, because nothing in this repository
-has yet run both on the same budget — and until that exists, the honest attribution for the
-improvement is the evolutionary search with the Predictor unproven alongside it.
+picked beat everything measured before. That is the ESP loop working end to end, once. On
+its own it is not evidence that the surrogate beats picking at random. The offline selection
+test [below](#does-the-predictor-pick-better-than-chance) is: trained on nine networks, it
+picks the best of three unseen ones 62% of the time against 33% for chance. A search with the
+Predictor and one without it, on the same budget, has still not been run. So the
+improvement is credited to the evolutionary search, with the Predictor's contribution
+measured offline only.
 
 `esp/surrogate/predictor.py` reports `spearman` as `None` rather than `0.000` when there
 are too few samples to cross-validate, because a placeholder printed in a measurement's
@@ -351,6 +354,59 @@ of allowing it to go quietly stale.
 **What has not been done:** nothing here diagnoses *why*, and no feature has been added to
 try to fix it. Both need more than twelve evaluations to be worth doing, and inventing a
 fix that cannot be validated would be worse than reporting the defect.
+
+### Does the Predictor pick better than chance?
+
+Every figure above describes the Predictor. The search uses it to **choose**: of the
+candidates it could pay to measure, which one. `make ablation` asks that directly, with no
+key and no calls. There are 220 ways to hold out three of the twelve measurements. For each
+one it trains on the other nine exactly as a service wake does: cross-validate, gate, fit.
+Then it picks the held-out network it predicts best and looks up how that network actually
+scored.
+
+| Picker | Picked the best of three | Mean regret (fitness) | Could rank |
+| --- | --- | --- | --- |
+| random (exact expectation) | 33.3% | 0.0387 | — |
+| **Predictor, as a wake runs it** | **62.1%** | **0.0162** | 212 / 220 |
+| Predictor, gate switched off | 71.8% | 0.0066 | 220 / 220 |
+| Predictor, token cost always excluded | 62.3% | 0.0144 | 220 / 220 |
+
+Regret is the fitness the pick left behind against the best network in its three. Where
+the Predictor could not rank, because the gate excluded both objectives, its pick is scored
+as chance.
+
+**The Predictor picks better than chance.** It picks the best network nearly twice as often
+as a random picker does, with well under half the regret. Of 20,000 simulated random
+pickers on the same held-out sets, none did as well (p < 0.0001). The sets overlap, since
+each network is in 55 of them, so this is not 220 independent trials. It says nothing about
+networks outside this population. It is still the first direct evidence in this repository
+that the surrogate helps the search choose.
+
+**The gate makes the choice worse, and why is not understood.** The gate excluded token cost
+in 205 of the 220 training sets, as the per-objective figures predict, and accuracy in 11.
+Excluding token cost costs about ten points of "picked the best" and more than doubles
+regret. The tokens-excluded row shows that exclusion alone accounts for nearly all of it.
+Yet on these same held-out networks the token model is backwards. It puts a held-out pair
+in the right order only 28.8% of the time (660 pairs), where chance is 50%, while the
+accuracy model manages 84.8% (460 pairs). A term that ranks its own objective backwards is
+improving the choice on fitness. Token spend and accuracy are uncorrelated across the twelve networks (Spearman
+−0.08), so the obvious explanation, that spending tracks accuracy, does not hold. Twelve
+networks cannot separate a mechanism from a coincidence.
+
+**The gate stays on, and this is recorded against it.** The gate asks whether a model
+predicts its own objective. On held-out networks the answer for token cost is no, as it is
+in cross-validation. The ablation asks the question the search actually depends on, and on
+that question the gate loses. Keeping a term because it helps for no known reason is how a
+search comes to rest on an accident of twelve samples. Removing a safeguard on the same
+evidence would be the same mistake the other way round. The gate is one argument to `fit`,
+and `make ablation` will show when the evidence moves. The change this points to is gating
+an objective on held-out *selection* rather than on its own rank correlation. Testing that
+needs more measurements than exist.
+
+**What this still does not show** is that a search using the Predictor finds better networks
+than one that does not, for the same budget. Picking the best of three measured networks is
+the step the search depends on, not the search itself. The online comparison needs paid runs
+on both arms, and they have not been bought.
 
 ### The feature set
 

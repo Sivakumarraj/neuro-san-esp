@@ -606,7 +606,11 @@ class Dossier(Layout):
             f"measurement taken after the fact, and at {spelled(facts().measured)} "
             "samples the figure moves "
             "with the cross-validation split, so no single value from it is worth "
-            "quoting. The machinery is correct and the ranking is free; whether the "
+            "quoting. Asked directly to choose, trained on nine networks to pick "
+            "the best of three it has never seen, it picks the best <b>62%</b> of "
+            "the time against <b>33%</b> for chance; with its gate switched off, "
+            "<b>72%</b>, a disagreement the findings record rather than resolve. "
+            "The machinery is correct and the ranking is free; whether the "
             "ranking is any good is a function of how many real evaluations have "
             "accumulated, which is exactly why the service runs every hour instead of "
             "once.",
@@ -841,13 +845,13 @@ class Dossier(Layout):
             "arrives at three candidates a day, which is the reason the service "
             "exists and the reason this is measured in weeks rather than "
             "afternoons.",
-            "<b>The surrogate has not been shown to beat picking at random.</b> "
+            "<b>The surrogate beats picking at random offline, not yet online.</b> "
             "The generation that produced the first winner ranked with a Predictor "
-            "measured at &minus;0.333, worse than chance. The most recent network "
-            "is the first the Predictor actually chose, and it is the best "
-            "measured. Settling which of those the loop deserves credit for needs "
-            "a run that searches with the Predictor and without it on the same "
-            "budget, and that has not been bought.",
+            "measured at &minus;0.333, worse than chance. Offline, trained on nine "
+            "networks, it now picks the best of three unseen ones 62% of the time "
+            "against 33% for chance. Whether a search that uses it beats one that "
+            "does not, on the same budget, needs paid runs of both, and those have "
+            "not been bought.",
             "<b>Automated agent architecture search is an active field.</b> The idea "
             "is not new. What is absent from all of it is neuro-san, and what is absent "
             "from neuro-san is any fitness function at all.",

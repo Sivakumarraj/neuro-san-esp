@@ -108,32 +108,40 @@ splits**, and evolved networks outrank the hand-written ones by two and a half p
 [docs/FINDINGS.md](docs/FINDINGS.md#held-out-tasks-what-this-task-set-can-and-cannot-support)
 works through it.
 
-**The Predictor has started to earn its place, and has not finished.** At the generation the
-first search used it — nine measurements — cross-validated rank correlation was **−0.333**,
-worse than chance, and `results/history.json` records that. Refitted over all twelve it is
-positive on every split tried, **+0.28 to +0.76**, median near +0.67, and the twelfth
-network was the first one it actually chose: a wake trained on eleven real samples ranked a
-pool and paid for the top of it. That is the loop working as designed, once. It is not yet
-evidence that the surrogate beats picking at random, which needs a run that does both.
+**The Predictor now has direct evidence behind it, and one result nobody predicted.** At the
+generation the first search used it, with nine measurements, its cross-validated rank
+correlation was **−0.333**, worse than chance, and `results/history.json` records that.
+Refitted over all twelve it is positive on every split tried, **+0.26 to +0.73**, median
++0.62. The twelfth network was the first one it chose. The test that matters is the choice
+the search depends on: trained on nine networks, pick the best of three it has never seen.
+It **picks the best 62% of the time, against 33% for chance**, with less than half the
+regret (`make ablation`, 220 held-out sets, no key). The surprise is its safety gate. With
+the gate switched off it picks the best **72%** of the time, although the objective the gate
+removes, token cost, is predicted backwards on those same networks. That is reported, not
+resolved; [docs/FINDINGS.md](docs/FINDINGS.md#does-the-predictor-pick-better-than-chance)
+works through it.
 
 Full numbers, the failure analysis and the prior art are in
 [docs/FINDINGS.md](docs/FINDINGS.md).
 
 ## Limitations
 
-- **The surrogate has never been compared against random selection.** It chose the
-  twelfth network, and at the generation the first search used it it cross-validated at
-  −0.333, worse than chance. Both facts are published. Which of the two the loop deserves
-  credit for needs a run that searches with the Predictor and without it on the same
-  budget, and that has not been bought.
+- **The surrogate beats chance offline. Online it is untested, and its gate costs it.**
+  On held-out networks it picks the best of three 62% of the time against 33% for a random
+  picker, and 72% with the gate off (`make ablation`). The held-out sets overlap, so these
+  are not 220 independent trials. Whether a search that uses it finds better networks for
+  the same budget than one that does not needs paid runs of both, and those have not been
+  bought.
 - **One of the two predicted objectives does not beat its own null, and is now excluded.**
   Token cost cross-validates at −0.53 against a permutation null of about −0.17, so it sits
   **roughly 0.35 below the no-signal baseline**, and the Predictor orders candidates by cost
   backwards. Phase C used to weight it at full strength anyway. It no longer does: each
   generation measures every objective against its own permutation null, and an objective
   that loses to that null is held at the population mean, so it stays on the fitness scale
-  but cannot order anything. Steering a search with a predictor that ranks backwards is
-  worse than not predicting that objective at all.
+  but cannot order anything. Steering a search with a predictor that ranks backwards
+  looked worse than not predicting that objective at all. The selection ablation says
+  otherwise on these twelve networks, for no reason yet understood (see the bullet above),
+  and the gate stays on until that is explained.
 
   **The exclusion is stable even though the number under it is noisy**, and the two have to
   be reported separately. Across 20 cross-validation seeds the token margin is negative in

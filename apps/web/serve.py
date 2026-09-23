@@ -258,9 +258,10 @@ def caveat() -> str:
                 f"when the search first used the surrogate it had "
                 f"{quality.get('samples', measured)} samples and ranked worse "
                 f"than chance (Spearman {quality.get('spearman', float('nan')):+.3f}); "
-                f"cross-validated on the twelve committed measurements it is "
-                f"positive on every split tried (make figures), but twelve "
-                f"networks is too few to call it a reliable selector")
+                f"trained on nine of the twelve committed networks it picks the "
+                f"best of three unseen ones 62% of the time against 33% for chance "
+                f"(make ablation), but twelve networks is too few to call it a "
+                f"reliable selector")
 
     if not parts:
         parts.append("the search has run few generations, so the Pareto front "

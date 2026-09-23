@@ -11,9 +11,12 @@ question directly, on networks the Predictor was not trained on:
       network it predicts best, and see how that pick really scored.
 
 Against the same held-out triples it reports a random picker (exact, not
-simulated) and the Predictor with the gate switched off, so the gate's own
-contribution is visible. Regret is the fitness the pick left on the table
-against the best network in its triple.
+simulated), the Predictor with the gate switched off, and with token cost
+always excluded, so the gate's own contribution is visible. Regret is the
+fitness the pick left on the table against the best network in its triple.
+It also counts how often the ungated models put two held-out networks in the
+right order on each objective -- the per-objective question the gate asks,
+asked on networks the models never saw.
 
 The 220 triples overlap -- each network appears in 55 of them -- so they are
 not 220 independent trials, and nothing here is a claim about networks outside
@@ -48,21 +51,33 @@ from esp.surrogate.outcomes import NULL_TRIALS, Outcome, OutcomeSurrogate
 _records: list = []
 
 
-def pick(train, held, gate: bool, seed: int) -> tuple[int | None, list[str]]:
-    """Index into `held` of the Predictor's choice (None if it cannot rank),
-    and the objectives the gate excluded."""
+def pick(train, held, gate, seed: int):
+    """The Predictor's choice among `held` (None if it cannot rank), the
+    objectives excluded, and the fitted Predictor.
+
+    `gate` is "measured" for the gate as a wake runs it, or a fixed list of
+    objectives to exclude.
+    """
     genomes = [r.genome for r in train]
     outcomes = [Outcome(accuracy=r.accuracy, tokens=r.tokens) for r in train]
     surrogate = OutcomeSurrogate(seed=seed)
-    gated = []
-    if gate:
-        quality = surrogate.report_quality(genomes, outcomes, seed=seed,
-                                           null_trials=NULL_TRIALS)
-        gated = quality.gated_outcomes()
+    gated = list(gate) if gate != "measured" else surrogate.report_quality(
+        genomes, outcomes, seed=seed, null_trials=NULL_TRIALS).gated_outcomes()
     surrogate.fit(genomes, outcomes, gated=gated)
     if not surrogate.ranks():
-        return None, gated
-    return int(np.argmax(surrogate.predict([r.genome for r in held]))), gated
+        return None, gated, surrogate
+    return (int(np.argmax(surrogate.predict([r.genome for r in held]))), gated,
+            surrogate)
+
+
+def ordered(held, predicted, objective: str) -> list[bool]:
+    """For each held-out pair that truly differs, whether the prediction
+    puts it the right way round. Predicted ties count as wrong."""
+    truth = [getattr(r, objective) for r in held]
+    return [bool(np.sign(truth[a] - truth[b])
+                 == np.sign(predicted[a] - predicted[b]))
+            for a, b in itertools.combinations(range(len(held)), 2)
+            if truth[a] != truth[b]]
 
 
 def _load() -> None:
@@ -78,10 +93,15 @@ def one_split(work) -> dict:
     best = fitness.max()
     chance = (float(np.mean(fitness == best)), float(best - fitness.mean()))
     out = {"random": chance}
-    for name, gate in (("gated", True), ("ungated", False)):
-        chosen, gated = pick(train, held, gate, seed)
-        if gate:
+    for name, gate in (("gated", "measured"), ("ungated", ()),
+                       ("no_tokens", ("tokens",))):
+        chosen, gated, surrogate = pick(train, held, gate, seed)
+        if name == "gated":
             out["excluded"] = gated
+        if name == "ungated":
+            predicted = surrogate.predict_outcomes([r.genome for r in held])
+            out["pairs"] = {k: ordered(held, predicted[k], k)
+                            for k in ("accuracy", "tokens")}
         # A Predictor that cannot rank leaves the choice to chance, so it is
         # scored as the random picker would be.
         out[name] = ((*chance, False) if chosen is None else
@@ -109,16 +129,18 @@ def main() -> int:
 
     random_hit = [r["random"][0] for r in results]
     random_regret = [r["random"][1] for r in results]
-    rows = {name: [r[name] for r in results] for name in ("gated", "ungated")}
+    rows = {name: [r[name] for r in results]
+            for name in ("gated", "ungated", "no_tokens")}
 
     n = len(splits)
     print(f"{len(records)} committed measurements, {n} held-out sets of "
           f"{args.holdout}, trained on the other {len(records) - args.holdout}\n")
-    print(f"  {'picker':28} {'picked the best':>16} {'mean regret':>12} {'ranked':>8}")
+    print(f"  {"picker":30} {'picked the best':>16} {'mean regret':>12} {'ranked':>8}")
     print(f"  {'random (exact expectation)':28} {np.mean(random_hit):>16.1%} "
           f"{np.mean(random_regret):>12.4f} {'-':>8}")
-    for name, label in (("gated", "Predictor, as the service runs it"),
-                        ("ungated", "Predictor, gate switched off")):
+    for name, label in (("gated", "Predictor, as a wake runs it"),
+                        ("ungated", "Predictor, gate switched off"),
+                        ("no_tokens", "Predictor, tokens excluded")):
         hits, regret, ranked = zip(*rows[name], strict=True)
         print(f"  {label:28} {np.mean(hits):>16.1%} {np.mean(regret):>12.4f} "
               f"{sum(ranked):>5}/{n}")
@@ -126,11 +148,15 @@ def main() -> int:
     excluded = [name for r in results for name in r["excluded"]]
     print("\n  the gate excluded: " + ", ".join(
         f"{name} in {excluded.count(name)}/{n}" for name in ("accuracy", "tokens")))
+    for objective in ("accuracy", "tokens"):
+        pairs = [ok for r in results for ok in r["pairs"][objective]]
+        print(f"  held-out pairs the ungated {objective} model orders correctly: "
+              f"{np.mean(pairs):.1%} of {len(pairs)}")
 
     # How often a random picker on these same triples does at least as well.
     rng = np.random.default_rng(args.seed)
     draws = (rng.random((20_000, n)) < np.array(random_hit)).sum(axis=1)
-    for name in ("gated", "ungated"):
+    for name in ("gated", "ungated", "no_tokens"):
         hits = sum(h for h, _, _ in rows[name])
         print(f"  P(a random picker does at least as well as the {name} Predictor) "
               f"= {float(np.mean(draws >= hits)):.4f}")
