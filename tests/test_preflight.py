@@ -322,3 +322,12 @@ def test_a_paid_provider_is_shown_its_pace_not_a_free_tier_budget(monkeypatch):
     monkeypatch.setattr(preflight, "DEFAULT_MODEL", "claude-haiku-4-5")
     names = [c.name for c in preflight.run_checks()]
     assert "pacing" in names and "model ladder" not in names
+
+
+def test_an_unreadable_state_file_is_reported_not_raised(tmp_path, monkeypatch):
+    from esp.service import preflight
+
+    (tmp_path / "state.json").write_text("{ not json", encoding="utf-8")
+    monkeypatch.setattr(preflight, "STATE_DIR", tmp_path)
+    check = next(c for c in preflight.run_checks() if c.name == "population provider")
+    assert not check.ok and "unreadable" in check.detail

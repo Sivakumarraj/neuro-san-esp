@@ -170,15 +170,23 @@ def run_checks(root: Path | None = None, live: bool = False) -> list[Check]:
     from esp.service.state import ServiceState
 
     configured = provider_for(DEFAULT_MODEL)
-    foreign = sorted({provider_for(record.model) or record.model
-                      for record in ServiceState.load(STATE_DIR).evaluated
-                      if record.model and provider_for(record.model) != configured})
-    checks.append(Check(
-        "population provider", not foreign,
-        f"all {configured}" if not foreign else
-        f"{STATE_DIR} holds measurements taken on {', '.join(foreign)}, and this "
-        f"run is configured for {configured}. Measurements do not cross "
-        "providers -- point ESP_STATE at a fresh directory and run make baseline"))
+    try:
+        population = ServiceState.load(STATE_DIR).evaluated
+    except (OSError, ValueError, TypeError) as exc:
+        # Reported, not raised: a preflight that dies on the thing it exists to
+        # check tells the reader less than the check would have.
+        checks.append(Check("population provider", False,
+                            f"{STATE_DIR}/state.json is unreadable: {exc}"[:200]))
+    else:
+        foreign = sorted({provider_for(record.model) or record.model
+                          for record in population
+                          if record.model and provider_for(record.model) != configured})
+        checks.append(Check(
+            "population provider", not foreign,
+            f"all {configured}" if not foreign else
+            f"{STATE_DIR} holds measurements taken on {', '.join(foreign)}, and this "
+            f"run is configured for {configured}. Measurements do not cross "
+            "providers -- point ESP_STATE at a fresh directory and run make baseline"))
 
     # The demo mode in neuro-san-studio instructs generated agents to invent a
     # realistic-looking answer. Fitness would be measuring fabrication quality.
