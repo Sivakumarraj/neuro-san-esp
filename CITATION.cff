@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "neuro-san-esp: a fitness function and evolutionary search for neuro-san agent networks"
+type: software
+authors:
+  - given-names: Siva Kumar
+    family-names: Raju
+repository-code: "https://github.com/Sivakumarraj/neuro-san-esp"
+license: Apache-2.0
+version: 0.1.0
+keywords:
+  - neuro-san
+  - multi-agent systems
+  - evolutionary search
+  - surrogate models
+  - evaluation
+references:
+  - type: conference-paper
+    title: "Effective Reinforcement Learning through Evolutionary Surrogate-Assisted Prescription"
+    authors:
+      - family-names: Francon
+        given-names: Olivier
+      - family-names: Gonzalez
+        given-names: Santiago
+      - family-names: Hodjat
+        given-names: Babak
+      - family-names: Meyerson
+        given-names: Elliot
+      - family-names: Miikkulainen
+        given-names: Risto
+      - family-names: Qiu
+        given-names: Xin
+      - family-names: Shahrzad
+        given-names: Hormoz
+    collection-title: "Proceedings of the Genetic and Evolutionary Computation Conference (GECCO)"
+    year: 2020
+    url: "https://arxiv.org/abs/2002.05368"
