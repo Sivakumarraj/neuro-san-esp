@@ -43,7 +43,6 @@ export AGENT_TOOL_PATH=$PWD
 export PYTHONPATH=$PWD
 export ESP_STATE=$PWD/state          # population and budget live here
 export ANTHROPIC_API_KEY=...         # or OPENAI_API_KEY / GOOGLE_API_KEY
-export ESP_DEFAULT_MODEL=claude-haiku-4-5
 
 python -m neuro_san.service.main_loop.server_main_loop
 ```
@@ -60,8 +59,8 @@ python apps/optimizer/run_optimizer.py --check
 
 ```text
   [ok  ] provider key: set, ANTHROPIC_API_KEY, from the environment
-  [ok  ] model provider: claude-haiku-4-5 needs ANTHROPIC_API_KEY
-  [ok  ] model tiers: claude-haiku-4-5, claude-sonnet-5
+  [ok  ] model provider: claude-haiku needs ANTHROPIC_API_KEY
+  [ok  ] model tiers: claude-haiku, claude-sonnet
   [ok  ] AGENT_TOOL_PATH: /srv/neuro-san-esp
   [ok  ] PYTHONPATH: /srv/neuro-san-esp
   [ok  ] state directory writable: /srv/neuro-san-esp/state

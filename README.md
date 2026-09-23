@@ -118,6 +118,13 @@ Full numbers, the failure analysis and the prior art are in
   null by +0.63 and is untouched, in 20 of 20 seeds. **What this does not do is fix the
   prediction.** Thirteen structural features still do not predict what a network will spend,
   nothing here says what would, and twelve samples cannot say how much of the −0.47 is real.
+- **One feature is mislabelled, and correcting it moves figures but no conclusion.** The
+  model-tier feature ranks the workers' cheapest model above the strongest one. With the
+  ordering corrected the token margin moves from −0.47 to −0.35, and every exclusion verdict
+  stays the same. Both sets of figures are recorded in
+  [docs/FINDINGS.md](docs/FINDINGS.md#a-known-defect-in-the-model-tier-feature-measured-and-left-in-place),
+  rather than changing the Predictor the published figures describe ahead of re-deriving
+  them.
 - **There is no context, so this is not ESP's loop.** ESP prescribes *actions for a context*
   and the Prescriptor is the model that maps one to the other. This project has **no context
   variable at all** — every candidate is scored against the same fixed task set. That is the
@@ -305,16 +312,27 @@ announcing which cache it used.
 
 ### With an API key
 
-Runs on **Anthropic, OpenAI or Google Gemini**. neuro-san picks the client class from the model
-name, so a provider is its key plus a default model. Every provider has a two-rung ladder, the
-cheap model for the workers and a stronger one the search can promote a router to, because that
-promotion is the one change the measurements found worth making.
+Runs on **Anthropic, OpenAI or Google Gemini**, chosen the way neuro-san-studio chooses: by
+provider, not by model. Put a key in `.env` and that provider is used. With several keys set,
+studio's order decides (OpenAI, then Anthropic, then Gemini), and `ESP_PROVIDER` forces one.
+neuro-san picks the client class from the model name, so nothing else changes.
 
-| Provider | Key | Workers (default) | Router, when promoted |
+Each provider has a two-rung ladder, a model for the workers and a stronger one the search can
+promote a router to, because that promotion is the one change the measurements found worth
+making. Wherever neuro-san has a version-free alias the ladder uses it, as studio's own config
+does with `claude-sonnet`, so a new release is picked up without an edit:
+
+| Provider | Key | Workers | Router, when promoted |
 | --- | --- | --- | --- |
-| Anthropic | `ANTHROPIC_API_KEY` | `claude-haiku-4-5` | `claude-sonnet-5` |
-| OpenAI | `OPENAI_API_KEY` | `gpt-5-mini` | `gpt-5` |
+| Anthropic | `ANTHROPIC_API_KEY` | `claude-haiku` (newest Haiku) | `claude-sonnet` (newest Sonnet) |
+| OpenAI | `OPENAI_API_KEY` | `gpt-5.4-mini` | `gpt-5.5` |
 | Google Gemini | `GOOGLE_API_KEY` | `gemini-3.1-flash-lite` | `gemini-3.5-flash` |
+
+**Any model neuro-san resolves works.** `ESP_DEFAULT_MODEL=claude-opus` runs the workers on
+Opus, and the model takes the rung it belongs on, so a strong choice becomes the top of the
+ladder rather than sitting under Sonnet. `ESP_MODEL_TIERS` sets both rungs outright. OpenAI has
+no version-free alias in neuro-san's registry, so its rungs are the newest named there. Gemini's
+are the ones the committed measurements were taken on.
 
 ```bash
 cp .env.example .env      # paste your key in; .env is gitignored
@@ -322,14 +340,10 @@ make check-key            # asks the provider whether the key works
 python apps/optimizer/run_optimizer.py --check   # the full preflight
 ```
 
-`.env.example` is set up for Anthropic; for another provider, uncomment its block instead. The
-ladder follows the default model's provider unless `ESP_MODEL_TIERS` sets it, so choosing a
-Claude model can never leave the search handing agents a model the run holds no key for.
-
 ```text
 [ok  ] provider key: set, ANTHROPIC_API_KEY, from .env
-[ok  ] model provider: claude-haiku-4-5 needs ANTHROPIC_API_KEY
-[ok  ] model tiers: claude-haiku-4-5, claude-sonnet-5
+[ok  ] model provider: claude-haiku needs ANTHROPIC_API_KEY
+[ok  ] model tiers: claude-haiku, claude-sonnet
 [ok  ] population provider: all anthropic
 [ok  ] pacing: 14 requests/minute per model (ESP_RPM); paid API, no daily cap
 ```
@@ -431,7 +445,7 @@ then calculates. Any other question about Meridian Logistics works too. Benchmar
 ```json
 {"answer": "The total penalty owed for incident INC-4401 is 4500. ...",
  "expected": "4500", "correct": true, "provider": "anthropic",
- "router_model": "claude-sonnet-5", "worker_model": "claude-haiku-4-5", "seconds": 48.4}
+ "router_model": "claude-sonnet", "worker_model": "claude-haiku", "seconds": 48.4}
 ```
 
 Expect **30–90 seconds** for a multi-hop question: up to four documents have to be found and

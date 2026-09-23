@@ -19,7 +19,13 @@ import os
 from dataclasses import dataclass, field
 from typing import Any
 
-from esp.config import DEFAULT_LADDERS, provider_for
+from esp.config import (
+    DEFAULT_LADDERS,
+    configured_provider,
+    cost_tier,
+    default_model_for,
+    provider_for,
+)
 
 # A candidate's step and time budget.
 #
@@ -35,30 +41,47 @@ MAX_EXECUTION_SECONDS = int(os.environ.get("ESP_MAX_EXECUTION_SECONDS", "600"))
 
 # The network default, and the models a genome may carry, cheapest first.
 #
-# Configurable because the provider is: neuro-san resolves the client class from
-# the model name, so `claude-haiku-4-5` reaches Anthropic, `gpt-5-mini` reaches
-# OpenAI and `gemini-3.1-flash-lite` reaches Google, with no other change.
+# Chosen the way neuro-san-studio chooses: by provider, not by model. The
+# provider is ESP_PROVIDER if set, otherwise whichever of OpenAI, Anthropic or
+# Google holds a usable key, in studio's order (`esp.config.configured_provider`).
+# Its default ladder uses neuro-san's version-free aliases wherever they exist,
+# so a new release is picked up without an edit. Any model neuro-san resolves
+# can be named instead with ESP_DEFAULT_MODEL -- the workers then run exactly
+# that, and a promoted router gets the same provider's stronger rung.
 #
-# With nothing set, both describe the Gemini population the committed
-# measurements were taken on, so the offline half of the project -- search,
-# held-out analysis, the null sweep -- runs on a fresh clone with no key.
-#
-# The ladder follows the default model's provider unless it is set itself.
-# Setting ESP_DEFAULT_MODEL=claude-haiku-4-5 alone used to leave the ladder on
-# Gemini, and a `reassign_model` mutation would then hand an agent a model the
-# run held no key for: every call inside that agent fails, the candidate scores
-# zero, and the search learns that a good topology is bad.
+# With no key and nothing set, both describe the Gemini population the
+# committed measurements were taken on, so the offline half of the project --
+# search, held-out analysis, the null sweep -- runs on a fresh clone with no key
+# and every committed genome hash still matches.
 #
 # Position in the ladder is what `reassign_model` moves along. Changing either
 # setting changes every genome hash, because the model is part of the genome --
 # which is deliberate. A fitness measured on one model does not describe a
 # network running on another, so the cache must miss.
-DEFAULT_MODEL = os.environ.get("ESP_DEFAULT_MODEL", "gemini-3.1-flash-lite")
+DEFAULT_MODEL = (os.environ.get("ESP_DEFAULT_MODEL", "").strip()
+                 or default_model_for(configured_provider()))
 
 
 def _default_ladder(model: str) -> str:
-    provider = provider_for(model)
-    cheap, strong = DEFAULT_LADDERS.get(provider or "gemini", DEFAULT_LADDERS["gemini"])
+    """The configured provider's two rungs, with the chosen worker model first.
+
+    The ladder follows the default model's provider. Setting a Claude default
+    used to leave the ladder on Gemini, and a `reassign_model` mutation then
+    handed an agent a model the run held no key for: every call inside that
+    agent failed, the candidate scored zero, and the search learned that a good
+    topology is bad.
+    """
+    provider = provider_for(model) or "gemini"
+    cheap, strong = DEFAULT_LADDERS.get(provider, DEFAULT_LADDERS["gemini"])
+    if provider != "gemini" and model not in (cheap, strong):
+        # The chosen model takes the rung it belongs on: a cheap one becomes
+        # what the workers run, a strong one what a router is promoted to.
+        # Putting claude-opus below claude-sonnet would make every promotion
+        # a downgrade.
+        if cost_tier(model):
+            strong = model
+        else:
+            cheap = model
     return f"{cheap},{strong}"
 
 

@@ -21,6 +21,7 @@ from scipy.stats import spearmanr
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import KFold
 
+from esp.config import DEFAULT_LADDERS, provider_for
 from esp.genome.definition import MODEL_TIERS, Genome
 
 FEATURE_NAMES = [
@@ -42,10 +43,18 @@ def _tier(model: str) -> int:
     Unknown models sort after the known ones, which is the honest ordering: we
     do not know what they cost.
     """
-    try:
+    if model in MODEL_TIERS:
         return MODEL_TIERS.index(model)
-    except ValueError:
-        return len(MODEL_TIERS)
+    # A model off the configured ladder is placed on its own provider's. The
+    # committed measurements are Gemini networks; read on a machine configured
+    # for Claude they would otherwise all fall off the ladder at once, the
+    # feature would go constant, and `make offline` would print different
+    # figures from the ones this repository publishes -- for a reason that has
+    # nothing to do with the networks.
+    ladder = DEFAULT_LADDERS.get(provider_for(model) or "", ())
+    if model in ladder:
+        return ladder.index(model)
+    return len(MODEL_TIERS)
 
 
 def features(genome: Genome) -> np.ndarray:

@@ -71,24 +71,71 @@ def key_name_for(model: str) -> str | None:
 
 
 # Each provider's two-rung ladder, cheap first: what the workers run and what a
-# router is promoted to. Every name is one neuro-san's own model registry
-# resolves -- `tests/test_providers.py` checks that, because a name it does not
-# know fails inside every agent rather than at startup.
+# router is promoted to. Version-free wherever neuro-san allows it: `claude-haiku`
+# and `claude-sonnet` are aliases neuro-san keeps pointed at the newest release
+# of each line, the way neuro-san-studio's own config names `claude-sonnet`, so
+# a new Claude release is picked up without an edit here. OpenAI has no such
+# alias in neuro-san's registry, so its rungs are the newest named ones there.
+# Any model neuro-san resolves can replace either rung (ESP_DEFAULT_MODEL,
+# ESP_MODEL_TIERS); `tests/test_serving.py` checks every name below against the
+# registry, because a name it does not know fails inside every agent rather
+# than at startup.
 #
-# Two rungs because that is what the measurements support. Both evolved
-# networks that beat the designer's shape did it the same way: the stronger
-# model on the router, the cheap one on every worker. A longer ladder would
-# give the search more to try and nothing measured to justify it.
+# Two rungs because that is what the measurements support: both evolved
+# networks that beat the designer's shape put the stronger model on the router
+# and left every worker on the cheap one.
 #
-# The Gemini ladder is the one the committed measurements were taken on. It is
-# not the default when another provider is configured -- it is the default only
-# when nothing else is, so that analysing the committed data needs no key.
+# Gemini's ladder is the one the committed measurements were taken on, and is
+# kept exactly, so that every committed genome hash still matches.
 DEFAULT_LADDERS: dict[str, tuple[str, str]] = {
-    "anthropic": ("claude-haiku-4-5", "claude-sonnet-5"),
-    "openai": ("gpt-5-mini", "gpt-5"),
+    "anthropic": ("claude-haiku", "claude-sonnet"),
+    "openai": ("gpt-5.4-mini", "gpt-5.5"),
     "gemini": ("gemini-3.5-flash-lite", "gemini-3.5-flash"),
     "openrouter": ("openrouter/free", "openrouter/free"),
 }
+
+# The network default each provider starts from. Gemini's is the measured one.
+_DEFAULT_WORKER = {
+    "gemini": "gemini-3.1-flash-lite",
+}
+
+# The order neuro-san-studio falls back through when several keys are set.
+PROVIDER_ORDER = ("openai", "anthropic", "gemini")
+
+# What a person might type for a provider, mapped to the name used here.
+_PROVIDER_NAMES = {
+    "anthropic": "anthropic", "claude": "anthropic",
+    "openai": "openai", "gpt": "openai",
+    "gemini": "gemini", "google": "gemini",
+    "openrouter": "openrouter",
+}
+
+
+def configured_provider() -> str:
+    """Which provider this run uses: ESP_PROVIDER, else the first key present.
+
+    Chosen the way neuro-san-studio chooses: whichever provider holds a usable
+    key, in its fallback order. A placeholder is not a key. With no key at all
+    the answer is Gemini, the provider the committed measurements were taken
+    on, so the offline half of the project runs on a fresh clone unchanged.
+    """
+    explicit = os.environ.get("ESP_PROVIDER", "").strip().lower()
+    if explicit:
+        if explicit not in _PROVIDER_NAMES:
+            raise ValueError(f"ESP_PROVIDER={explicit!r} is not one of "
+                             f"{', '.join(sorted(set(_PROVIDER_NAMES)))}")
+        return _PROVIDER_NAMES[explicit]
+    present = set(provider_keys())
+    for provider in PROVIDER_ORDER:
+        if KEY_FOR_PROVIDER[provider] in present:
+            return provider
+    return "gemini"
+
+
+def default_model_for(provider: str) -> str:
+    """The network default a provider starts from, before any promotion."""
+    return _DEFAULT_WORKER.get(provider, DEFAULT_LADDERS[provider][0])
+
 
 # Which models are the cheap rung of their own family. Matched on the family's
 # naming convention rather than listed, so a new release in a known family

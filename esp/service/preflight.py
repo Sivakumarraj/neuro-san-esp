@@ -87,7 +87,7 @@ def run_checks(root: Path | None = None, live: bool = False) -> list[Check]:
     # three candidates. Non-fatal, because an unreachable provider is a
     # different problem from a bad key and must not be reported as one.
     # The check that saves a whole run. neuro-san picks the client class from
-    # the model name, so a network configured for claude-sonnet-5 with only
+    # the model name, so a network configured for claude-sonnet with only
     # GOOGLE_API_KEY set does not fail at startup -- it fails on every call,
     # inside every agent, and scores every candidate zero. The cache then keeps
     # those zeros, and the search is taught that good topologies are bad.

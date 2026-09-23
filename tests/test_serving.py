@@ -31,6 +31,8 @@ from esp.serving import (
 )
 
 ROOT = Path(__file__).resolve().parent.parent
+ANTHROPIC_KEY = "sk-ant-EXAMPLE-not-a-real-key-000000000000000000000"
+OPENAI_KEY = "sk-proj-EXAMPLE-not-a-real-key-00000000000000000000"
 CHAMPION = measurements.best()
 
 
@@ -154,7 +156,8 @@ def test_same_provider_is_served_as_measured_apart_from_the_reply_format():
 
 def _in_subprocess(code: str, **env: str) -> str:
     environment = {**os.environ, "ESP_NO_DOTENV": "1", "PYTHONPATH": str(ROOT), **env}
-    for name in ("ESP_MODEL_TIERS",):
+    for name in ("ESP_MODEL_TIERS", "ESP_DEFAULT_MODEL", "ESP_PROVIDER",
+                 "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY"):
         if name not in env:
             environment.pop(name, None)
     done = subprocess.run([sys.executable, "-c", code], capture_output=True,
@@ -174,11 +177,12 @@ def test_a_claude_deployment_serves_the_gemini_champion_on_claude_and_says_so():
         "  'models': sorted({a.model for a in s.genome.agents.values() if a.model}\n"
         "                   | {s.genome.default_model}),\n"
         "  'note': s.note(g.default_model)}))",
-        ESP_DEFAULT_MODEL="claude-haiku-4-5"))
+        ANTHROPIC_API_KEY=ANTHROPIC_KEY))
 
     assert out["retargeted"] is True
     assert out["provider"] == "anthropic"
-    assert out["models"] == ["claude-haiku-4-5", "claude-sonnet-5"]
+    assert out["models"] == ["claude-haiku", "claude-sonnet"], (
+        "a Claude key alone should serve on neuro-san's version-free aliases")
     assert "has not been measured" in out["note"], (
         "a retargeted network must never be presented as the measured one")
 
@@ -256,7 +260,7 @@ def test_a_provider_chosen_only_in_dotenv_reaches_every_module(tmp_path):
                     ignore=shutil.ignore_patterns("__pycache__"))
     (tmp_path / ".env").write_text(
         "ANTHROPIC_API_KEY=sk-ant-EXAMPLE-not-a-real-key-000000000000000000000\n"
-        "ESP_DEFAULT_MODEL=claude-haiku-4-5\n", encoding="utf-8")
+        "ESP_PROVIDER=anthropic\n", encoding="utf-8")
     environment = {k: v for k, v in os.environ.items()
                    if k not in ("ESP_NO_DOTENV", "ESP_DEFAULT_MODEL", "ESP_MODEL_TIERS",
                                 "ANTHROPIC_API_KEY")}
@@ -267,7 +271,7 @@ def test_a_provider_chosen_only_in_dotenv_reaches_every_module(tmp_path):
          "print(DEFAULT_MODEL, ','.join(MODEL_TIERS))"],
         capture_output=True, text=True, env=environment, cwd=tmp_path, timeout=120)
     assert done.returncode == 0, done.stderr
-    assert done.stdout.split() == ["claude-haiku-4-5", "claude-haiku-4-5,claude-sonnet-5"]
+    assert done.stdout.split() == ["claude-haiku", "claude-haiku,claude-sonnet"]
 
 
 def test_esp_no_dotenv_really_turns_loading_off(tmp_path):
@@ -297,7 +301,7 @@ def test_the_ladder_follows_the_default_models_provider():
     out = _in_subprocess(
         "from esp.genome.definition import MODEL_TIERS\nprint(','.join(MODEL_TIERS))",
         ESP_DEFAULT_MODEL="gpt-5-mini")
-    assert out == "gpt-5-mini,gpt-5", (
+    assert out == "gpt-5-mini,gpt-5.5", (
         "an OpenAI default with a Gemini ladder hands agents a model the run "
         "holds no key for")
 
@@ -348,3 +352,61 @@ def test_a_population_from_another_provider_fails_the_preflight(tmp_path, monkey
     check = next(c for c in preflight.run_checks() if c.name == "population provider")
     assert not check.ok and check.fatal
     assert "gemini" in check.detail and "anthropic" in check.detail
+
+
+# ------------------------------------------- chosen by provider, not model
+
+_MODELS = ("from esp.genome.definition import DEFAULT_MODEL, MODEL_TIERS\n"
+           "print(DEFAULT_MODEL, ','.join(MODEL_TIERS))")
+
+
+def test_a_claude_key_alone_selects_claude_on_version_free_aliases():
+    """neuro-san keeps `claude-haiku` and `claude-sonnet` pointed at the newest
+    release, which is how neuro-san-studio names Claude in its own config."""
+    assert _in_subprocess(_MODELS, ANTHROPIC_API_KEY=ANTHROPIC_KEY).split() == [
+        "claude-haiku", "claude-haiku,claude-sonnet"]
+
+
+def test_several_keys_follow_neuro_san_studios_order():
+    out = _in_subprocess(_MODELS, ANTHROPIC_API_KEY=ANTHROPIC_KEY, OPENAI_API_KEY=OPENAI_KEY)
+    assert out.split()[0].startswith("gpt-"), "studio falls back OpenAI, Anthropic, Gemini"
+
+
+def test_esp_provider_chooses_among_several_keys():
+    out = _in_subprocess(_MODELS, ANTHROPIC_API_KEY=ANTHROPIC_KEY, OPENAI_API_KEY=OPENAI_KEY,
+                         ESP_PROVIDER="claude")
+    assert out.split()[0] == "claude-haiku"
+
+
+def test_a_placeholder_is_not_a_key_and_selects_nothing():
+    out = _in_subprocess(_MODELS, ANTHROPIC_API_KEY="paste-your-key-here")
+    assert out.split()[0] == "gemini-3.1-flash-lite"
+
+
+def test_an_unknown_provider_name_is_refused_not_guessed(monkeypatch):
+    from esp.config import configured_provider
+
+    monkeypatch.setenv("ESP_PROVIDER", "mistral")
+    with pytest.raises(ValueError, match="ESP_PROVIDER"):
+        configured_provider()
+
+
+def test_any_model_of_the_provider_can_be_chosen_and_takes_its_own_rung():
+    """A strong choice tops the ladder; putting claude-opus under claude-sonnet
+    would make every promotion a downgrade."""
+    assert _in_subprocess(_MODELS, ANTHROPIC_API_KEY=ANTHROPIC_KEY,
+                          ESP_DEFAULT_MODEL="claude-opus").split() == [
+        "claude-opus", "claude-haiku,claude-opus"]
+    assert _in_subprocess(_MODELS, ANTHROPIC_API_KEY=ANTHROPIC_KEY,
+                          ESP_DEFAULT_MODEL="claude-haiku-4-5").split() == [
+        "claude-haiku-4-5", "claude-haiku-4-5,claude-sonnet"]
+
+
+def test_the_committed_analysis_does_not_depend_on_the_configured_provider():
+    """The surrogate's model-tier feature reads each model's own provider ladder,
+    so `make offline` prints the published figures on a Claude machine too."""
+    code = ("import numpy as np\n"
+            "from esp.eval import measurements\n"
+            "from esp.surrogate.predictor import features\n"
+            "print(repr(np.vstack([features(m.genome) for m in measurements.load()]).tolist()))")
+    assert _in_subprocess(code) == _in_subprocess(code, ANTHROPIC_API_KEY=ANTHROPIC_KEY)

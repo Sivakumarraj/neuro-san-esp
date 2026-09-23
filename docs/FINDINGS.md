@@ -404,6 +404,30 @@ HOCON agent network rather than a fixed-length action vector, and it is a real d
 rather than a detail: anyone comparing this against the ESP papers should expect to find
 one model here, not two.
 
+### A known defect in the model-tier feature, measured and left in place
+
+Two of the thirteen features, `mean_model_tier` and `max_model_tier`, place each agent's model
+on the ladder `gemini-3.5-flash-lite, gemini-3.5-flash`. The workers in every committed network
+run `gemini-3.1-flash-lite`, which is not on that ladder, so it is encoded as the *highest*
+tier. The cheapest model is labelled as costlier than the strongest one.
+
+Correcting the ordering and re-running the 20-seed sweep at 12 shuffles:
+
+| | token margin | token excluded | accuracy margin | accuracy excluded | derived fitness |
+| --- | --- | --- | --- | --- | --- |
+| as published | −0.472 [−0.661 … −0.238] | 20 / 20 | +0.628 [+0.367 … +0.989] | 0 / 20 | +0.643 |
+| ordering corrected | −0.350 [−0.552 … −0.116] | 20 / 20 | +0.733 [+0.397 … +1.008] | 0 / 20 | +0.601 |
+
+**No conclusion changes.** Token cost still loses to its own null under every seed and is still
+excluded, and accuracy still clears its null under every seed. The token margin is about a
+quarter smaller. The accuracy margin is a little larger. Accuracy still carries the combined
+figure.
+
+It is recorded rather than silently fixed, because every figure in this document describes the
+Predictor as it actually ran. That includes the one whose choices `results/history.json`
+records. Correcting the feature changes the model those figures describe, so the fix belongs
+with a re-derivation of all of them, not ahead of it.
+
 ### The Pareto front now breeds
 
 `pareto()` was computed on every run, written to `history.json`, and drawn in three PDFs.

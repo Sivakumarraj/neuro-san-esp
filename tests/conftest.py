@@ -12,5 +12,9 @@ Provider tests that need a specific configuration set it themselves.
 import os
 
 os.environ["ESP_NO_DOTENV"] = "1"
-for _name in ("ESP_DEFAULT_MODEL", "ESP_MODEL_TIERS", "ESP_RPM", "ESP_MODELS"):
+# Provider keys too: the provider is chosen from whichever key is present, so a
+# key exported in the developer's shell would otherwise pick it for the suite.
+for _name in ("ESP_DEFAULT_MODEL", "ESP_MODEL_TIERS", "ESP_RPM", "ESP_MODELS",
+              "ESP_PROVIDER", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY",
+              "GOOGLE_API_KEYS", "OPENROUTER_API_KEY"):
     os.environ.pop(_name, None)
