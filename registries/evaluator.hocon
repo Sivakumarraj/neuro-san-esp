@@ -1,0 +1,97 @@
+{
+    # The evaluator's own model only reads tool output and writes it up, so it
+    # is the cheap rung. Which provider depends on which key is present, in
+    # neuro-san-studio's order: an entry whose key is missing is skipped. The
+    # networks it measures run on the provider esp.config chooses, whatever
+    # this one lands on.
+    "llm_config": {
+        "fallbacks": [
+            {"model_name": "gpt-5.4-mini"},
+            {"model_name": "claude-haiku"},
+            {"model_name": "gemini-3.5-flash-lite"},
+        ],
+    },
+
+    "metadata": {
+        "description": "Measures neuro-san agent networks on the same questions and compares them: accuracy, unfinished runs, tokens, and which networks nothing else beats. Every call it makes to a measured network is paid for.",
+        "tags": ["evaluation", "measurement", "benchmark"],
+        "sample_queries": [
+            "Which networks can you measure?",
+            "Measure the designer's shape against the best evolved network on the built-in benchmark.",
+            "Is the best-measured network still the best? Measure the top two again.",
+        ],
+    },
+
+    # One measurement of four networks on seventeen questions is sixty-eight
+    # multi-hop runs; the session has to outlive it.
+    "max_steps": 20,
+    "max_execution_seconds": 3600,
+
+    "tools": [
+        {
+            "name": "Evaluator",
+            "function": {
+                "description": "Measures agent networks on a set of questions and compares them.",
+            },
+            "instructions": """
+You measure neuro-san agent networks and compare them. You do not guess.
+
+When asked what can be measured, call ListNetworks and list the networks by
+name with what each scored when it was last measured.
+
+When asked to measure or compare networks:
+
+1.  If you do not already know the exact names, call ListNetworks first.
+2.  Call MeasureNetworks with the networks, by the names ListNetworks gave.
+    Leave `questions` out to use the built-in seventeen-question benchmark.
+    Pass `questions` only when the user supplies their own, as JSON Lines of
+    {"question": ..., "answer": ...}.
+3.  Report, for each network: accuracy, accuracy on the questions it
+    finished, how many it never finished, and tokens. Name the networks
+    marked pareto=true: nothing else measured beats them on both accuracy
+    and tokens. Say which questions separated the networks, if any did.
+4.  Where a network has `measured_before`, compare the new accuracy with the
+    old one. A difference of one or two questions out of seventeen is within
+    run-to-run noise; say so rather than calling it a change.
+
+If a tool returns `refused`, tell the user why in one sentence and stop.
+
+Every number you state must come from a tool result in this conversation.
+Never estimate a score, and never state a figure no tool returned. A timeout
+or recursion cap is "unfinished", not "wrong": keep the two apart.
+""",
+            "tools": ["ListNetworks", "MeasureNetworks"],
+        },
+
+        {
+            "name": "ListNetworks",
+            "function": {
+                "description": "Lists the networks this server can measure, with the scores recorded when each was last measured, and how many paid runs are left.",
+            },
+            "class": "esp.service.measure_tools.ListNetworks",
+        },
+
+        {
+            "name": "MeasureNetworks",
+            "function": {
+                "description": "Puts the same questions to up to four networks and returns each one's accuracy, unfinished count, tokens, per-question verdicts, and whether it is on the Pareto front. Every run is a paid model call.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "networks": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Network names or ids exactly as ListNetworks returned them; the six-character hash alone also works.",
+                        },
+                        "questions": {
+                            "type": "string",
+                            "description": "Optional. The user's own questions as JSON Lines, one {\"question\": ..., \"answer\": ...} per line. Leave out for the built-in benchmark.",
+                        },
+                    },
+                    "required": ["networks"],
+                },
+            },
+            "class": "esp.service.measure_tools.MeasureNetworks",
+        },
+    ]
+}

@@ -19,12 +19,18 @@ from datetime import UTC, datetime
 
 from esp.eval import failover
 from esp.eval.runner import QuotaExhausted, evaluate
-from esp.evolve.loop import fitness
+from esp.evolve.loop import fitness, non_dominated
 from esp.genome.definition import DEFAULT_MODEL, Genome
 from esp.genome.mutations import InvalidMutant, mutate
 from esp.genome.seeds import SEEDS
 from esp.service.state import Evaluated, Lease, ServiceState
-from esp.surrogate.predictor import MIN_SAMPLES, Surrogate
+from esp.surrogate.outcomes import (
+    NULL_TRIALS,
+    PREDICTED_OUTCOMES,
+    Outcome,
+    OutcomeSurrogate,
+)
+from esp.surrogate.predictor import MIN_SAMPLES
 
 # How many real evaluations one wake will attempt before stopping voluntarily.
 # Lower than a day's budget on purpose: a wake that tries to spend everything
@@ -124,14 +130,34 @@ class Proposal:
     candidates: list[tuple[Genome, str]] = field(default_factory=list)
     ranked: bool = False
     samples: int = 0
+    # Outcome objectives whose model ranked no better than its own null on
+    # this wake's own population, and were therefore excluded from the
+    # fitness the ranking used. Carried because a service nobody is watching
+    # has no other way to say which objective stopped contributing, and the
+    # combined figure will not show it.
+    useless: list[str] = field(default_factory=list)
 
     def how(self) -> str:
         """One line for the wake report."""
         if not self.candidates:
             return "no unseen candidate could be bred"
+        if set(self.useless) >= set(PREDICTED_OUTCOMES):
+            # Trained, and gated to nothing. Distinct from untrained, and the
+            # report has to say which: "untrained, N of MIN_SAMPLES" would be
+            # false here and would send a reader looking for more samples when
+            # the samples are there and the features are the problem.
+            return (f"{len(self.candidates)} taken in the order they were "
+                    f"bred -- every predicted objective lost to its own null "
+                    f"on these {self.samples} measurements, so none of them "
+                    f"is ordering anything and this is a random search")
         if self.ranked:
-            return (f"{len(self.candidates)} chosen by the Predictor, trained "
+            line = (f"{len(self.candidates)} chosen by the Predictor, trained "
                     f"on {self.samples} measurements")
+            if self.useless:
+                line += (f" -- with {'/'.join(self.useless)} excluded, that "
+                         f"model having ranked no better than its own null "
+                         f"on this population")
+            return line
         return (f"{len(self.candidates)} taken in the order they were bred -- "
                 f"the Predictor is untrained ({self.samples} of "
                 f"{MIN_SAMPLES} measurements), so this is a random search")
@@ -148,22 +174,59 @@ def _propose(state: ServiceState, population: list[Genome], rng: random.Random,
     Training uses the whole measured population; breeding uses its elite. Those
     are deliberately different sets, as they are in the batch loop: a badly
     scoring candidate is a useful training example and a poor parent.
+
+    What the Predictor learns is the outcome objectives -- accuracy and token
+    cost -- not the fitness. Fitness is derived from its predictions by the
+    same weighting the wake selects on. This trained a single model on the
+    already-scalarised fitness, which made the surrogate learn the weighting
+    along with the world and left no way to see that one of the two objectives
+    was being predicted backwards.
     """
-    measured = {e.genome_hash: e.fitness for e in state.evaluated}
+    measured = {e.genome_hash: e for e in state.evaluated}
     trainable = [(g, measured[g.genome_hash()])
                  for g in population if g.genome_hash() in measured]
 
-    surrogate = Surrogate(seed=len(state.evaluated) or 1)
+    genomes = [g for g, _ in trainable]
+    outcomes = [Outcome(accuracy=r.accuracy, tokens=r.tokens)
+                for _, r in trainable]
+
+    surrogate = OutcomeSurrogate(seed=len(state.evaluated) or 1)
+    useless: list[str] = []
     if len(trainable) >= 2:
-        surrogate.fit([g for g, _ in trainable], [v for _, v in trainable])
+        seed = len(state.evaluated)
+        # Cross-validated on the wake's own population, because an objective
+        # can stop being predictable as the population grows and a figure
+        # copied from the README would not notice. The permutation null is
+        # measured here despite costing extra cross-validations: it is a few
+        # seconds of CPU on an hourly wake, and without it the gate below has
+        # no evidence and the service would go on ranking by a prediction
+        # known to be backwards -- unattended, with nobody reading the warning.
+        quality = surrogate.report_quality(genomes, outcomes, seed=seed,
+                                           null_trials=NULL_TRIALS)
+        useless = quality.gated_outcomes()
+        surrogate.fit(genomes, outcomes, gated=useless)
 
     # The elite breed; everything measured trains. Unmeasured genomes cannot be
     # ranked, so they only breed when nothing has been measured yet.
-    parents = [g for g, _ in sorted(trainable, key=lambda pair: -pair[1])[:ELITE]]
+    #
+    # The elite is the Pareto front first, topped up with the best scalarised
+    # fitness. Same rule as the batch loop, for the same reason: a candidate
+    # nothing dominates on all three objectives is a better parent than one
+    # that happens to sit high under one weighting.
+    points = [(r.accuracy, float(r.tokens), float(r.agents))
+              for _, r in trainable]
+    chosen = [trainable[i] for i in non_dominated(points)][:ELITE]
+    if len(chosen) < ELITE:
+        for pair in sorted(trainable, key=lambda p: -p[1].fitness):
+            if pair not in chosen:
+                chosen.append(pair)
+            if len(chosen) >= ELITE:
+                break
+    parents = [g for g, _ in chosen]
     if not parents:
         parents = population
     if not parents:
-        return Proposal(samples=len(trainable))
+        return Proposal(samples=len(trainable), useless=useless)
 
     # Two sets, not one. `seen` keeps the wake from paying twice for a genome
     # across days; `proposed` keeps it from paying twice inside one batch,
@@ -191,7 +254,7 @@ def _propose(state: ServiceState, population: list[Genome], rng: random.Random,
         candidates.append((child, operator))
 
     if not candidates:
-        return Proposal(samples=len(trainable))
+        return Proposal(samples=len(trainable), useless=useless)
 
     # `ranks()` rather than a flag of our own. This asked whether it had two
     # samples and then set `trained = True`, but the Surrogate needs
@@ -201,12 +264,12 @@ def _propose(state: ServiceState, population: list[Genome], rng: random.Random,
     # slice a selection. Only the surrogate knows whether it trained.
     if not surrogate.ranks():
         return Proposal(candidates[:wanted], ranked=False,
-                        samples=len(trainable))
+                        samples=len(trainable), useless=useless)
 
     scores = surrogate.predict([c for c, _ in candidates])
     ranked = sorted(zip(candidates, scores, strict=True), key=lambda p: -p[1])
     return Proposal([pair for pair, _ in ranked[:wanted]], ranked=True,
-                    samples=len(trainable))
+                    samples=len(trainable), useless=useless)
 
 
 def _models_of(genome: Genome) -> list[str]:

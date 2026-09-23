@@ -87,6 +87,16 @@ def test_the_optimiser_is_served_but_never_public(tmp_path, monkeypatch, records
     assert '"public": false' in optimiser_line, optimiser_line
 
 
+def test_the_evaluator_is_served_and_reachable_from_the_ui(tmp_path, monkeypatch, records):
+    """The point of serving it in the studio is asking for a measurement from
+    the chat panel, so unlike the optimiser it is public here."""
+    monkeypatch.setattr(serve_studio, "REGISTRY", tmp_path)
+    _written, manifest = serve_studio.write(records)
+    line = next(line for line in manifest.read_text(encoding="utf-8").splitlines()
+                if "evaluator.hocon" in line)
+    assert '"public": true' in line, line
+
+
 def test_every_served_network_renders_as_a_real_neuro_san_network(
         tmp_path, monkeypatch, records):
     """Not a mock-up: each file is the genome that earned the score, in the

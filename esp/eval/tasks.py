@@ -67,7 +67,12 @@ def _matches(expected: str, produced: str) -> bool:
     """
     want, got = normalise(expected), normalise(produced)
     if re.fullmatch(r"\d+(?:\.\d+)?", want):
-        return re.search(rf"(?<![\w.-]){re.escape(want)}(?![\w.-])", got) is not None
+        # A full stop after the number is the end of a sentence unless a digit
+        # follows it. Refusing any following "." marked "The total is 4500.
+        # INC-4401 affected..." wrong -- harmless while every network replied
+        # with the bare value, and wrong on every explained answer.
+        pattern = rf"(?<![\w.-]){re.escape(want)}(?![\w-])(?!\.\d)"
+        return re.search(pattern, got) is not None
     return want in got
 
 

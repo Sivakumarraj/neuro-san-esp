@@ -64,12 +64,19 @@ NOTES: dict[str, str] = {
         "otherwise be scored as a bad topology.",
     "esp/eval/failover.py":
         "Moves to the next model when one model's daily quota is spent.",
+    "esp/surrogate/outcomes.py":
+        "The Predictor as ESP describes it: one model per outcome objective, "
+        "with fitness derived from their predictions rather than learned.",
     "esp/surrogate/predictor.py":
-        "The Predictor. Genome features to predicted fitness -- the part that "
-        "makes this ESP rather than a genetic algorithm.",
+        "Feature extraction and rank-quality measurement, plus the single "
+        "scalarised surrogate this replaced -- kept because the comparison "
+        "between the two is a published result.",
     "esp/evolve/loop.py":
         "Population, selection, elitism, the multi-objective fitness function "
         "and the Pareto front.",
+    "esp/serving.py":
+        "The network a person talks to: the measured topology with its front man "
+        "asked to explain, moved to the configured provider with promotions kept.",
     "esp/service/state.py":
         "The population and today's budget, written to disk after every single "
         "evaluation so an interruption costs nothing.",
@@ -88,7 +95,14 @@ NOTES: dict[str, str] = {
     "scripts/offline_search.py":
         "Phases B and C only. Zero provider calls, so it runs with no key at all.",
     "scripts/probe_models.py":
-        "Which models are usable today and what budget is left.",
+        "Google's free tier only: which Gemini models answer today, and each "
+        "one's daily cap.",
+    "scripts/smoke_live.py":
+        "The whole path on a real key: preflight, then four questions put to the "
+        "champion as the web page serves it.",
+    "scripts/null_sweep.py":
+        "Whether the objective gate's verdict survives a change of fold seed and "
+        "shuffle count. No key.",
     "scripts/baseline_report.py": "The seed measurements, as text.",
     "scripts/smoke_inprocess.py":
         "Proves a network can be run in-process with no server.",
@@ -317,10 +331,11 @@ class Dossier(Layout):
         self.h1("How it works", "Four phases. Phase C is the point.")
 
         self.terminal(
-            "Phase A   evaluate a few candidates for real       -->  (genome, fitness)\n"
+            "Phase A   evaluate a few candidates for real      -->  (genome, outcomes)\n"
             "               |                                             |\n"
             "               |                                             v\n"
-            "Phase B   train the Predictor on every pair measured so far\n"
+            "Phase B   train one Predictor per outcome objective, on every\n"
+            "          measurement so far\n"
             "                                                             |\n"
             "                                                             v\n"
             "Phase C   mutate thousands of candidates, rank them against the\n"
@@ -337,11 +352,15 @@ class Dossier(Layout):
              "used. This costs real money and real time: about eight minutes a "
              "network."),
             ("Phase B",
-             "Fit a small model that reads a network's shape &mdash; agent count, "
-             "depth, branching, which model each agent runs, how long its instructions "
-             "are &mdash; and predicts how well it will score. It is trained on tens of "
-             "samples, so it is weak. Its job is not to be right; its job is to "
-             "<i>rank</i>."),
+             "Fit a small model <i>per objective</i>. Each one reads a network's "
+             "shape &mdash; agent count, depth, branching, which model each agent "
+             "runs, how long its instructions are &mdash; and predicts one thing that "
+             "was actually measured: how accurate the network will be, or how many "
+             "tokens it will burn. Fitness is then <i>derived</i> from those "
+             "predictions by the same fixed weighting used to score a real "
+             "evaluation; no model is ever trained on a fitness. They are trained on "
+             "tens of samples, so they are weak. Their job is not to be right; their "
+             "job is to <i>rank</i>."),
             ("Phase C",
              "Generate thousands of mutated networks and score every one with the "
              "Predictor. No language model is called, so this is effectively free. "
@@ -583,14 +602,45 @@ class Dossier(Layout):
             "<font face='Courier' size='9'>results/history.json</font> rather than "
             f"hidden. Refitted afterwards on all {spelled(facts().measured)} it "
             "comes out positive on every "
-            "split tried, roughly <b>+0.24 to +0.65</b> &mdash; but that is a "
+            "split tried, roughly <b>+0.26 to +0.73</b> &mdash; but that is a "
             f"measurement taken after the fact, and at {spelled(facts().measured)} "
             "samples the figure moves "
             "with the cross-validation split, so no single value from it is worth "
-            "quoting. The machinery is correct and the ranking is free; whether the "
+            "quoting. Asked directly to choose, trained on nine networks to pick "
+            "the best of three it has never seen, it picks the best <b>62%</b> of "
+            "the time against <b>33%</b> for chance; with its gate switched off, "
+            "<b>72%</b>, a disagreement the findings record rather than resolve. "
+            "The machinery is correct and the ranking is free; whether the "
             "ranking is any good is a function of how many real evaluations have "
             "accumulated, which is exactly why the service runs every hour instead of "
             "once.",
+            bg=WARN_BG, bar=AMBER)
+
+        self.callout(
+            "One of the two predicted objectives is worse than useless",
+            "Splitting the surrogate into one model per outcome objective was done to "
+            "answer a reviewer&rsquo;s question about what the Predictor actually "
+            "predicts. It found a defect instead. Reported separately over "
+            f"{spelled(facts().measured)} measured networks and 20 cross-validation "
+            "seeds, <b>accuracy</b> ranks at <b>+0.27 to +0.72</b> and <b>token "
+            "cost</b> at <b>&minus;0.80 to &minus;0.38</b> &mdash; negative in every "
+            "seed tried. The Predictor orders candidates by cost <i>backwards</i>. "
+            "Phase C weighted it at full strength until an objective that loses "
+            "to its own permutation null was made to stop contributing; it is "
+            "now held at the population mean. That exclusion replicates where the "
+            "null itself does not: token cost is excluded under <b>20 of 20</b> "
+            "cross-validation seeds and accuracy under none, at both 12 and 40 "
+            "shuffles per null, while the null is noisy enough that a single seed "
+            "can place it anywhere from &minus;0.42 to +0.03 &mdash; so the "
+            "decision is quotable and no point estimate of the baseline is. "
+            "The combined figure is <b>+0.60</b> and "
+            "looks healthy, because the accuracy term is large enough to carry it "
+            "alone; the single scalarised model this replaced reported much the same, "
+            "<b>+0.62</b> and could not have shown the problem, having never been "
+            "trained on an objective. Thirteen structural features do not predict what "
+            "a network will spend. Nothing here yet says what would, and "
+            f"{spelled(facts().measured)} samples cannot settle whether this is a "
+            "property of the feature set or of these particular networks.",
             bg=WARN_BG, bar=AMBER)
 
         self.h2("The framework really does wake it")
@@ -774,6 +824,13 @@ class Dossier(Layout):
             "price. Its measured rank correlation is published in this document "
             "whatever it says, including when it says &lsquo;no better than "
             "chance&rsquo;.",
+            "<b>Token cost is predicted backwards.</b> Measured per objective, the "
+            "cost model&rsquo;s rank correlation is negative in every cross-validation "
+            "seed tried, and loses to its own permutation null in every one. The "
+            "search now measures that each generation and holds a losing objective "
+            "at the population mean, so it no longer steers. The prediction itself "
+            "is unfixed: diagnosing it needs more evaluations than have been "
+            "bought.",
             "<b>The designer baseline is a reconstruction.</b> It reproduces the shape "
             "<font face='Courier' size='9'>agent_network_designer</font> produces "
             "&mdash; one top agent, shallow DAG, fewest agents &mdash; not its literal "
@@ -783,17 +840,18 @@ class Dossier(Layout):
             f"<b>{spelled(facts().measured).capitalize()} real evaluations, a "
             "search only a couple of generations deep.</b> Evolved candidates did "
             "beat every seed, but on one search, one random seed, one base model "
-            "and one task domain, with no repeat run and no held-out tasks. Budget "
+            "and one task domain, with no repeat run. Held-out task splits support "
+            "the population claim and cannot order individual networks. Budget "
             "arrives at three candidates a day, which is the reason the service "
             "exists and the reason this is measured in weeks rather than "
             "afternoons.",
-            "<b>The surrogate has not been shown to beat picking at random.</b> "
+            "<b>The surrogate beats picking at random offline, not yet online.</b> "
             "The generation that produced the first winner ranked with a Predictor "
-            "measured at &minus;0.333, worse than chance. The most recent network "
-            "is the first the Predictor actually chose, and it is the best "
-            "measured. Settling which of those the loop deserves credit for needs "
-            "a run that searches with the Predictor and without it on the same "
-            "budget, and that has not been bought.",
+            "measured at &minus;0.333, worse than chance. Offline, trained on nine "
+            "networks, it now picks the best of three unseen ones 62% of the time "
+            "against 33% for chance. Whether a search that uses it beats one that "
+            "does not, on the same budget, needs paid runs of both, and those have "
+            "not been bought.",
             "<b>Automated agent architecture search is an active field.</b> The idea "
             "is not new. What is absent from all of it is neuro-san, and what is absent "
             "from neuro-san is any fitness function at all.",
@@ -822,8 +880,9 @@ class Dossier(Layout):
             "make check            # lint + the full test suite\n"
             "make offline          # phases B and C -- no key needed, no calls made\n"
             "\n"
-            "export GOOGLE_API_KEY=...\n"
-            "make probe            # which models have budget today\n"
+            "cp .env.example .env  # paste an Anthropic, OpenAI or Gemini key\n"
+            "make check-key        # does the provider accept it\n"
+            "make smoke            # four real questions, end to end\n"
             "make baseline         # measure the seed topologies\n"
             "make search           # the batch loop\n"
             "\n"

@@ -91,3 +91,20 @@ def test_the_lint_command_in_the_image_matches_ci():
     ci_lint = re.search(r"ruff check ([\w /]+)", workflow).group(1).split()
     image_lint = re.search(r"ruff check ([\w /]+)", COMPOSE).group(1).split()
     assert set(ci_lint) == set(image_lint)
+
+
+def test_no_service_demands_one_providers_key():
+    """Every keyed service required GOOGLE_API_KEY, so `docker compose up`
+    refused to start on a machine holding only a Claude or OpenAI key. The
+    preflight inside the container demands the right key for the configured
+    model; compose has no business picking a provider."""
+    assert "?set GOOGLE_API_KEY" not in COMPOSE
+    assert not re.search(r"(ANTHROPIC|OPENAI|GOOGLE)_API_KEY: \$\{\w+:\?", COMPOSE)
+    assert "path: .env" in COMPOSE and "required: false" in COMPOSE
+
+
+def test_a_key_never_reaches_the_build_context():
+    """The Dockerfile copies named paths today; the ignore file keeps it safe
+    the day somebody writes `COPY . .`."""
+    ignored = (ROOT / ".dockerignore").read_text(encoding="utf-8").split()
+    assert ".env" in ignored

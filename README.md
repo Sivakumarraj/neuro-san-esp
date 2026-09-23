@@ -34,6 +34,38 @@ Predictor and the sample-efficiency argument. In shape this is nearer to **LEAF*
 (*Evolutionary Neural AutoML for Deep Learning*, GECCO 2019), which evolves architectures
 and size, with agents where LEAF had layers.
 
+## Measure your own network
+
+The measurement is not tied to the networks this repository evolved. **Any network neuro-san
+can load can be scored on any questions you can check the answers to**, from three places:
+
+```bash
+# 1. A terminal. NETWORK is a HOCON path or a name in your manifest.
+make measure NETWORK=registries/my_network.hocon TASKS=my_questions.jsonl
+
+# 2. A browser: the "Measure networks" tab, side by side, with a Pareto front.
+python apps/web/serve.py                     # http://localhost:7860
+
+# 3. Inside neuro-san: the evaluator agent, in the studio chat panel.
+make studio                                  # then ask it "which networks can you measure?"
+```
+
+A question file is JSON Lines, one question per line; `answers` may list several accepted
+forms, and `id` and `hops` are optional:
+
+```json
+{"question": "Which city is depot D08 in?", "answer": "Pickering"}
+{"id": "Q2", "question": "Which contract has the highest penalty?", "answers": ["C-2139", "C2139"]}
+```
+
+Each network gets accuracy; accuracy over the questions it finished, because a timeout or a
+blown recursion cap is not a wrong answer; the unfinished count; tokens; cost where the
+provider reports it; and time. Every answer is kept whole, and `--json` writes the full
+report. The file is validated before anything is paid for. A run that measured the
+environment rather than the network is refused, not reported: no model called, every
+question erroring, or a provider quota. With no question file, the built-in
+seventeen-question benchmark below is used.
+
 ## Results
 
 **Twelve networks measured on real model calls, 17 tasks each, 204 task runs. The search
@@ -41,7 +73,7 @@ found a better topology than the one neuro-san's designer produces, twice, and b
 came from the same knob.**
 
 | | Accuracy | Tokens | Agents | Fitness |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `seed:designer_shaped` — the shape the designer produces | 0.8235 | 385,280 | 4 | 0.7761 |
 | `seed:flat_pair` | 0.8235 | 316,074 | 3 | 0.7852 |
 | `seed:solo` — one agent, one tool | 0.8235 | 377,716 | 1 | 0.7835 |
@@ -76,29 +108,77 @@ splits**, and evolved networks outrank the hand-written ones by two and a half p
 [docs/FINDINGS.md](docs/FINDINGS.md#held-out-tasks-what-this-task-set-can-and-cannot-support)
 works through it.
 
-**The Predictor has started to earn its place, and has not finished.** At the generation the
-first search used it — nine measurements — cross-validated rank correlation was **−0.333**,
-worse than chance, and `results/history.json` records that. Refitted over all twelve it is
-positive on every split tried, **+0.28 to +0.76**, median near +0.67, and the twelfth
-network was the first one it actually chose: a wake trained on eleven real samples ranked a
-pool and paid for the top of it. That is the loop working as designed, once. It is not yet
-evidence that the surrogate beats picking at random, which needs a run that does both.
+**The Predictor now has direct evidence behind it, and one result nobody predicted.** At the
+generation the first search used it, with nine measurements, its cross-validated rank
+correlation was **−0.333**, worse than chance, and `results/history.json` records that.
+Refitted over all twelve it is positive on every split tried, **+0.26 to +0.73**, median
++0.62. The twelfth network was the first one it chose. The test that matters is the choice
+the search depends on: trained on nine networks, pick the best of three it has never seen.
+It **picks the best 62% of the time, against 33% for chance**, with less than half the
+regret (`make ablation`, 220 held-out sets, no key). The surprise is its safety gate. With
+the gate switched off it picks the best **72%** of the time, although the objective the gate
+removes, token cost, is predicted backwards on those same networks. That is reported, not
+resolved; [docs/FINDINGS.md](docs/FINDINGS.md#does-the-predictor-pick-better-than-chance)
+works through it.
 
 Full numbers, the failure analysis and the prior art are in
 [docs/FINDINGS.md](docs/FINDINGS.md).
 
 ## Limitations
 
-- **The surrogate has never been compared against random selection.** It chose the
-  twelfth network, and at the generation the first search used it it cross-validated at
-  −0.333, worse than chance. Both facts are published. Which of the two the loop deserves
-  credit for needs a run that searches with the Predictor and without it on the same
-  budget, and that has not been bought.
+- **The surrogate beats chance offline. Online it is untested, and its gate costs it.**
+  On held-out networks it picks the best of three 62% of the time against 33% for a random
+  picker, and 72% with the gate off (`make ablation`). The held-out sets overlap, so these
+  are not 220 independent trials. Whether a search that uses it finds better networks for
+  the same budget than one that does not needs paid runs of both, and those have not been
+  bought.
+- **One of the two predicted objectives does not beat its own null, and is now excluded.**
+  Token cost cross-validates at −0.53 against a permutation null of about −0.17, so it sits
+  **roughly 0.35 below the no-signal baseline**, and the Predictor orders candidates by cost
+  backwards. Phase C used to weight it at full strength anyway. It no longer does: each
+  generation measures every objective against its own permutation null, and an objective
+  that loses to that null is held at the population mean, so it stays on the fitness scale
+  but cannot order anything. Steering a search with a predictor that ranks backwards
+  looked worse than not predicting that objective at all. The selection ablation says
+  otherwise on these twelve networks, for no reason yet understood (see the bullet above),
+  and the gate stays on until that is explained.
+
+  **The exclusion is stable even though the number under it is noisy**, and the two have to
+  be reported separately. Across 20 cross-validation seeds the token margin is negative in
+  **20 of 20** and the objective is excluded in **20 of 20**, at both 12 and 40 shuffles per
+  null. The null itself is far less settled: its median moves from −0.17 to −0.16 between
+  those shuffle counts, and individual seeds range from −0.42 to +0.03. So the margin is a
+  range — medians **−0.35 and −0.37**, single seeds from −0.12 to −0.70 — and any
+  single-seed figure is one draw from that spread rather than the result.
+
+  The gate is a measurement, not a hardcoded exclusion — the objective returns on its own
+  the generation it starts predicting — and it only fires where the null was actually
+  measured, because against an assumed baseline of zero a twelve-sample procedure would
+  drop objectives for being small-sample rather than for being wrong. Accuracy clears its
+  null by +0.73 and is untouched, in 20 of 20 seeds. **What this does not do is fix the
+  prediction.** Thirteen structural features still do not predict what a network will spend,
+  nothing here says what would, and twelve samples cannot say how much of the −0.35 is real.
+- **One feature was mislabelled; it is fixed, and no conclusion moved.** The model-tier
+  feature placed a model by its position on the configured ladder, so the workers' cheapest
+  model read as the most expensive. It is now a property of the model — rung, then release.
+  The token margin moved from −0.47 to −0.35, accuracy's from +0.63 to +0.73, and every
+  exclusion verdict stayed the same. Every Predictor figure here is after the fix, and `make
+  figures` regenerates them all from committed data; the before-and-after table is in
+  [docs/FINDINGS.md](docs/FINDINGS.md#a-defect-in-the-model-tier-feature-measured-and-fixed).
+- **There is no context, so this is not ESP's loop.** ESP prescribes *actions for a context*
+  and the Prescriptor is the model that maps one to the other. This project has **no context
+  variable at all** — every candidate is scored against the same fixed task set. That is the
+  reason there is no learned Prescriptor rather than an oversight: with nothing to map from,
+  mutation operators are the only thing that can fill that slot. What this implements is
+  surrogate-assisted architecture search, which is nearer to LEAF than to ESP.
 - **Twelve real evaluations, two generations of search.** No repeat run, no second random
-  seed, no held-out task set. A candidate costs about 165 provider requests against a free
-  tier of 500 per day per model — three candidates a day, so eleven is about four days of
-  budget. The 118 candidates the surrogate scored in between cost nothing, which is the part
-  of ESP that does work as advertised.
+  seed, no held-out task set. A candidate costs about 165 model calls and a quarter to half a
+  million tokens, which is why there are twelve and not twelve hundred. The 118 candidates the
+  surrogate scored in between cost nothing, which is the part of ESP that does work as
+  advertised.
+- **Every measurement was taken on one provider.** All twelve ran on Gemini. The code runs
+  unchanged on Anthropic and OpenAI, and the champion is served there with its promotion
+  intact, but nothing here says how the ranking holds on another provider's models.
 - **Seventeen of the 204 task runs never finished** — a timeout or a blown recursion cap
   rather than a wrong answer. They concentrate on two full-corpus aggregation questions.
   `accuracy` counts them as wrong; `answered_accuracy()` excludes them. Both are reported.
@@ -121,12 +201,16 @@ Full numbers, the failure analysis and the prior art are in
 
 Four phases, repeated. Phase C is the point: it is free, so the search can be wide.
 
-```
-Phase A   measure the seed topologies for real        ->  (genome, fitness) pairs
-Phase B   train a Predictor on those pairs            ->  cheap fitness estimate
-Phase C   breed and rank thousands of candidates      ->  zero LLM calls
+```text
+Phase A   measure the seed topologies for real        ->  (genome, outcomes) pairs
+Phase B   train one Predictor per outcome objective   ->  cheap outcome estimates
+Phase C   breed candidates, rank by derived fitness   ->  zero LLM calls
 Phase D   pay for real evaluation of the elite only   ->  feed back into B
 ```
+
+Fitness is **derived** from the Predictor's outputs, never learned by it — see
+[Predictor, fitness, prescription](#predictor-fitness-prescription--which-is-which) below for
+why that distinction matters and what it exposed.
 
 ### The genome is neuro-san's own format
 
@@ -143,7 +227,7 @@ model must not be mistaken for the same network on another.
 Each candidate answers all 17 tasks through a real neuro-san session. Three objectives are
 recorded, then scalarised for selection while the Pareto front is kept separately:
 
-```
+```text
 fitness = accuracy − 0.06 · min(tokens / 600000, 1) − 0.02 · (agents / 9)
 ```
 
@@ -162,30 +246,93 @@ teaches the search that a good topology is bad.
 cycle, no front man — is **discarded, never repaired**, so every candidate that reaches a
 real evaluation is a network neuro-san would actually serve.
 
-### The Predictor
+**The Pareto front breeds.** Parents are chosen by non-dominated sorting on
+(accuracy up, tokens down, agents down), topped up with the best scalarised fitness when the
+front is smaller than the elite. Selection used to take the top few by fitness alone while
+the front was computed, plotted in three documents and never consulted — multi-objective in
+the report and single-objective in the search.
 
-A `GradientBoostingRegressor` over **thirteen structural features** of the genome: agent
-count, depth, edges, branching, leaves, searchers, model tiers and instruction lengths
-(`esp/surrogate/predictor.py`). Never a measured quantity — a feature derived from a
-measurement would mean the Predictor needed a real evaluation in order to predict one.
+### Predictor, fitness, prescription — which is which
+
+Three words get used loosely about a loop like this, and conflating them is how a search
+comes to optimise something nobody chose. In this repository they are three separate things:
+
+| | What it is | Where it lives |
+| --- | --- | --- |
+| **Predictor** | The surrogate. **One `GradientBoostingRegressor` per outcome objective**, learned from real evaluations. It predicts *accuracy* and *token cost*. It never sees a fitness and never sees the weights below. | `esp/surrogate/outcomes.py` |
+| **Fitness** | A fixed weighting applied to outcomes — not learned, not fitted, just arithmetic. Over **measured** outcomes it scores Phases A and D. Over **predicted** outcomes it ranks Phase C. Same function both times. | `esp/evolve/loop.py::scalarise` |
+| **Prescription** | What proposes the next candidate. Seven mutation operators plus Pareto-front selection, run against the Predictor. **Not** a learned model — see the departure noted at the top. | `esp/genome/mutations.py` |
+
+**There is no context here, and that is the deeper departure.** In ESP a Prescriptor maps a
+*context* to the actions to take in it. Every candidate in this project is evaluated against
+the same fixed task set, so there is no context to map from — which is why mutation operators
+occupy the prescription slot rather than a learned model. Building a real Prescriptor starts
+with deciding what the context is; that decision is the research, not the network.
+
+Agent count is a fourth objective and has **no model at all**: it is an exact property of a
+genome, so it is counted rather than estimated. A regressor asked to guess a number already
+in hand only adds error.
+
+The Predictor's input is **thirteen structural features** of the genome — agent count, depth,
+edges, branching, leaves, searchers, model tiers, instruction lengths — and never a measured
+quantity. A feature derived from a measurement would mean the Predictor needed a real
+evaluation in order to predict one.
 
 Below **eight** samples it refuses to fit, `predict` returns the training mean, and
 `ranks()` reports `False` so that callers say the generation was a random search instead of
 printing a ranking over one repeated constant. Quality is reported as cross-validated
 Spearman rank correlation, because the Predictor's job is ordering, not pricing.
 
-There is no learned Prescriptor here: the prescription step is mutation plus elite selection.
-That is a real departure from canonical ESP, and
-[docs/FINDINGS.md](docs/FINDINGS.md#what-the-predictor-is-exactly) says why.
+**This split was made after review feedback and it immediately found a defect.** The first
+version trained a single model directly on the scalarised fitness, which put the weighting
+inside the surrogate. Reported per objective instead, on the twelve measured networks:
+
+| Objective | Spearman | Permutation null | Margin over null | Excluded from Phase C |
+| --- | --- | --- | --- | --- |
+| accuracy | **+0.63** [+0.27 … +0.72] | −0.07 [−0.36 … +0.30] | **+0.73**, positive in 20/20 seeds | 0/20 seeds |
+| token cost | **−0.53** [−0.80 … −0.38] | −0.17 [−0.42 … +0.03] | **−0.35**, negative in 20/20 seeds | **20/20 seeds** |
+
+Medians over 20 cross-validation seeds, with the per-seed range in brackets; each null is
+the median of 12 shuffles. Repeating the sweep at 40 shuffles moves the null medians to
+−0.13 and −0.16 and leaves both margin signs and both exclusion counts unchanged.
+
+**Read the last column, not the third.** The null is the noisiest quantity here — a single
+seed can put token cost's anywhere from −0.42 to +0.03 — so no point estimate of it is worth
+quoting. What is stable is the decision it feeds: token cost loses to its own null under
+every seed and every shuffle count tried, and accuracy under none. `make figures`
+reproduces the whole table from committed data, no key needed.
+
+**The null column is the point, and the first version of this table did not have it.** A rank
+correlation only means something against the baseline the same procedure produces when there
+is no signal to find, and on twelve samples that baseline is not automatically zero.
+Cross-validation can manufacture negative correlation on its own: hold out a high value, the
+training mean drops, the model predicts low. `permutation_null()` measures it by shuffling
+the targets and re-running the identical cross-validation.
+
+Two things came out of measuring it. **Accuracy's margin survives it comfortably** — at worst
++0.40 across the seeds tried — though its null is not the settled −0.03 an earlier draft
+claimed: it is −0.07 at 12 shuffles and −0.13 at 40, and single seeds reach +0.30, for the tie
+reason below. **Token cost's null is about −0.17, so the real effect is −0.35, not −0.53.**
+The finding holds: the margin is negative in every seed tried, and the Predictor does order
+candidates by cost backwards. It is a third smaller than the raw correlation, and twelve
+samples cannot cleanly separate the real part from the artifact.
+
+**Two caveats the tests record.** The null is only trustworthy on an untied objective — a
+permutation destroys a relationship only if permuting moves the values, and accuracy takes
+just four distinct values across twelve networks, so its null is weak. Token cost is distinct
+in all twelve, so its null is sound, and token cost is what the finding is about. And the
+spread is wide: the token null itself ranges from −0.42 to +0.03 across seeds. The margin is
+the right statistic; it is not a precise one. Full account in
+[docs/FINDINGS.md](docs/FINDINGS.md#what-the-predictor-is-exactly).
 
 ### It runs as a service, not a batch job
 
-The first version was a script that planned forty evaluations and died at the daily cap every
-time. The cap is not an obstacle to a service — it is its rhythm. An hourly
-`invocation: "event"` agent (`registries/manifest.hocon`) spends what today allows, writes the
-population down **after every candidate**, and stops. Budget-aware failover across models
-keeps the measured daily caps as data (`esp/eval/failover.py`), and a preflight refuses to
-start on a configuration that would produce wrong numbers.
+The first version was a script that planned forty evaluations and died when the provider
+stopped it. A budget is not an obstacle to a service — it is its rhythm. An hourly
+`invocation: "event"` agent (`registries/manifest.hocon`) spends what the budget allows,
+writes the population down **after every candidate**, and stops, so an interruption costs at
+most the candidate in flight. A preflight refuses to start on a configuration that would
+produce wrong numbers.
 
 ## Quick start
 
@@ -200,74 +347,157 @@ make offline     # phases B and C: breed and rank candidates, zero LLM calls
 ```
 
 Nothing above needs an account, a key, or a network. `make offline` trains the Predictor on
-the eleven measurements committed in `tests/fixtures/cache/` and evolves against them,
+the twelve measurements committed in `tests/fixtures/cache/` and evolves against them,
 announcing which cache it used.
 
 ### With an API key
 
-A free key from [aistudio.google.com/apikey](https://aistudio.google.com/apikey) gives 500
-requests per day per model.
+Runs on **Anthropic, OpenAI or Google Gemini**, chosen the way neuro-san-studio chooses: by
+provider, not by model. Put a key in `.env` and that provider is used. With several keys set,
+studio's order decides (OpenAI, then Anthropic, then Gemini), and `ESP_PROVIDER` forces one.
+neuro-san picks the client class from the model name, so nothing else changes.
+
+Each provider has a two-rung ladder, a model for the workers and a stronger one the search can
+promote a router to, because that promotion is the one change the measurements found worth
+making. Wherever neuro-san has a version-free alias the ladder uses it, as studio's own config
+does with `claude-sonnet`, so a new release is picked up without an edit:
+
+| Provider | Key | Workers | Router, when promoted |
+| --- | --- | --- | --- |
+| Anthropic | `ANTHROPIC_API_KEY` | `claude-haiku` (newest Haiku) | `claude-sonnet` (newest Sonnet) |
+| OpenAI | `OPENAI_API_KEY` | `gpt-5.4-mini` | `gpt-5.5` |
+| Google Gemini | `GOOGLE_API_KEY` | `gemini-3.1-flash-lite` | `gemini-3.5-flash` |
+
+**Any model neuro-san resolves works.** `ESP_DEFAULT_MODEL=claude-opus` runs the workers on
+Opus, and the model takes the rung it belongs on, so a strong choice becomes the top of the
+ladder rather than sitting under Sonnet. `ESP_MODEL_TIERS` sets both rungs outright. OpenAI has
+no version-free alias in neuro-san's registry, so its rungs are the newest named there. Gemini's
+are the ones the committed measurements were taken on.
 
 ```bash
-cp .env.example .env      # paste the key in; .env is gitignored
-python apps/optimizer/run_optimizer.py --check   # preflight
-make probe                                       # which models answer today
+cp .env.example .env      # paste your key in; .env is gitignored
+make check-key            # asks the provider whether the key works
+python apps/optimizer/run_optimizer.py --check   # the full preflight
 ```
 
-The preflight reports where the key came from and what the budget buys:
-
-```
-[ok  ] provider key: set, GOOGLE_API_KEY, from .env
-[ok  ] model ladder: gemini-3.5-flash-lite, gemini-3.1-flash-lite
-       -- 1000 requests/day = about 6 candidate(s)
+```text
+[ok  ] provider key: set, ANTHROPIC_API_KEY, from .env
+[ok  ] model provider: claude-haiku needs ANTHROPIC_API_KEY
+[ok  ] model tiers: claude-haiku, claude-sonnet
+[ok  ] population provider: all anthropic
+[ok  ] pacing: 14 requests/minute per model (ESP_RPM); paid API, no daily cap
 ```
 
 **Run the preflight first.** A misconfigured evaluator does not crash. It scores every
 candidate zero, and the cache keeps that answer forever, so the search is taught that good
-topologies are bad.
+topologies are bad. The preflight asks the provider whether the key works, rather than whether
+the variable is set, and refuses to start on the mistakes that otherwise surface from inside an
+agent:
 
-The preflight asks Google whether the key actually works, rather than whether the variable
-is set — one free call, because listing models costs nothing. It refuses to start on the
-mistakes that otherwise surface as `API key not valid` from inside an agent:
-
+```text
+[FAIL] provider key: ANTHROPIC_API_KEY still the placeholder from .env.example
+[FAIL] model tiers: gemini-3.5-flash needs GOOGLE_API_KEY -- set ESP_MODEL_TIERS to models
+       of the provider you hold a key for
+[FAIL] population provider: state holds measurements taken on gemini, and this run is
+       configured for anthropic. Measurements do not cross providers
 ```
-[FAIL] provider key: GOOGLE_API_KEY still the placeholder from .env.example
-[FAIL] provider key accepted: rejected by Google (401) -- the key is wrong, revoked,
-       or from a project without the Generative Language API enabled
-```
 
-`python scripts/check_key.py` runs just that check on its own.
+**What a run costs.** One candidate is seventeen questions and about 165 model calls. The twelve
+committed measurements used between 242,670 and 473,450 tokens each; those were taken on
+Gemini, and another provider's tokenizer and verbosity will land in the same range rather than
+on the same number. `ESP_RPM` sets the pace. The default of 14 requests a minute is safe on any
+account and slow on a paid one, at about twelve minutes of queueing per candidate. Set it to one
+under the per-minute limit your provider's console shows.
 
-**The key is read once, at launch.** Editing `.env` under a running server
-changes nothing until it restarts, and `.env.example` is the committed template
-— it is not read for a key, so put the key in `.env` and leave the example
-alone.
+**The model is part of the genome hash, so measurements do not cross providers.** The twelve
+committed results are all on `gemini-3.1-flash-lite`. On Claude every hash changes, the cache
+misses correctly, and the population starts again from the seeds. A fitness measured on one
+model does not describe the same network on another. The web page and the studio still serve
+the measured champion on your provider: the same topology, with the same agent promoted to the
+stronger model. Each surface says that the score on your provider has not been measured.
 
-Then either re-measure the seeds yourself, or adopt the measurements already paid for and
-spend your budget on new candidates instead:
+**The key is read once, at launch.** Editing `.env` under a running server changes nothing
+until it restarts, and `.env.example` is the committed template. It is not read for a key, so
+put the key in `.env` and leave the example alone.
+
+You need a measured population before anything can be searched. There are two
+ways to get one. **They are alternatives, not steps — run one, not both.**
+
+**Option A — measure the seed topologies on your own provider.** Three networks, about 500
+model calls.
 
 ```bash
-make baseline                              # measure the seed topologies (~1.5 days of budget)
-python scripts/adopt_measurements.py       # or: start from the committed eleven
-python apps/optimizer/run_optimizer.py     # one wake: train, rank, pay for the elite
+make baseline
 ```
 
-### Talk to the agents in a browser
+**Option B — adopt the twelve measurements this repository already paid for.** Only on
+Gemini, where they were taken: `adopt_measurements.py` refuses to mix them into a run on
+another provider. Seconds, and no key needed.
+
+```bash
+python scripts/adopt_measurements.py
+```
+
+Then, with a population in place, run one wake — train the Predictor, rank a
+free pool, and pay only for the elite:
+
+```bash
+python apps/optimizer/run_optimizer.py
+```
+
+Check the whole path end to end on your key, from preflight to four answered questions:
+
+```bash
+make smoke
+```
+
+> **If a run ever reports `acc=0.00 tok=0 (cached)`**, an earlier run wrote
+> zeros before the key worked. `tok=0` means no model was called at all. Newer
+> builds refuse to cache that, but zeros already on disk keep replaying:
+> `rm -rf .esp-cache` and run the preflight again.
+
+#### On Google's free tier
+
+Gemini's free tier caps requests per model per day, and some models cannot fund a single
+candidate. For that case only, the runner fails over between models as each cap is reached,
+with measured caps and per-model pacing kept as data in `esp/eval/failover.py`. `make probe`
+re-measures them against your key. None of this machinery engages on Anthropic or OpenAI,
+which have per-minute limits and no daily cap.
+
+### Talk to the agents, and measure them, in a browser
 
 ```bash
 python apps/web/serve.py  # then open http://localhost:7860
 ```
 
+The page has two tabs. **Ask a network** is described below. **Measure networks** puts the
+same questions to up to four networks at once: the twelve committed ones, plus any HOCON you
+place in `ESP_NETWORKS`. It uses the built-in benchmark or a JSON Lines file you paste, shows
+progress, and marks the Pareto front. It also gives a question-by-question grid and a JSON
+download. Measuring is paid for, so a deployment caps the total runs (`ESP_WEB_MAX_MEASURE`)
+and runs one measurement at a time. A network is never uploaded: it names Python classes to
+import.
+
 One process, no separate backend, no second repository. The page runs questions through the
-measured champion on neuro-san's direct session — the same code path the evaluator measures
-with, so what you talk to is exactly what was scored. Questions from the graded task set are
-**marked against the known answer in front of you**:
+measured champion on neuro-san's direct session, the same code path the evaluator measures
+with. It changes one line, and says so: the benchmark tells the front man to reply with the
+bare value so it can be scored, and the page asks it instead to **explain its answer**. It
+gives the answer first, then every identifier it followed, what each document said, and any
+calculation written out. The topology, tools and models are the ones that earned the score.
+
+Four questions are offered as one click each, one per kind of difficulty. They are a direct
+lookup, a two-document hop, the deepest four-document chain in the set, and one that hops and
+then calculates. **All seventeen benchmark questions** are listed beneath them, easiest
+first, and any other question about Meridian Logistics works too. Benchmark questions are
+**marked against the known answer in front of you**, and full answers are never truncated:
 
 ```json
-{"answer": "R. Delacroix", "expected": "R. Delacroix", "correct": true, "seconds": 48.4}
+{"answer": "The total penalty owed for incident INC-4401 is 4500. ...",
+ "expected": "4500", "correct": true, "provider": "anthropic",
+ "router_model": "claude-sonnet", "worker_model": "claude-haiku", "seconds": 48.4}
 ```
 
-Expect **30–60 seconds** for a multi-hop question: four documents have to be found and
+Expect **30–90 seconds** for a multi-hop question: up to four documents have to be found and
 chained, and anything faster would mean it did not really look.
 
 ### Open every measured network in the accelerator UI
@@ -289,17 +519,24 @@ alternatives, and to the network that beat them — and the answers, the routing
 and the agent count differ in front of you. Reading that off a table is not the
 same as watching two topologies answer.
 
-```
+```text
 studio_evolved_reassign_model
-  "Rank 1 of 11 by measured fitness (+0.8453): evolved by the reassign_model
-   operator. Scored 88.24% on 17 multi-hop questions using 260,052 tokens
-   across 5 agent(s). Genome 6859dda0dfabcf2d."
+  "Rank 1 of 12 by measured fitness (+0.8941): evolved by the reassign_model
+   operator. Scored 94.12% on 17 multi-hop questions using 359,600 tokens
+   across 5 agent(s), measured on gemini-3.1-flash-lite. Genome 3bf9c008d880c3fc."
 ```
 
 Each agent is the genome that earned its score, rebuilt from the measurement
-rather than described, with its numbers in the description the UI shows. The
-optimiser is served and stays **private**: it spends the day's whole evaluation
-budget when poked.
+rather than described, with its numbers in the description the UI shows, and
+the same four one-click questions the web page offers. As on the web page, the
+front man explains its answer, and on another provider the models move to that
+provider's ladder with the promotion kept; each description says which.
+
+The **evaluator** is served beside them, so a measurement is a chat message: "measure the
+designer's shape against the best evolved network". It can only measure networks the
+deployment already knows. It is told to state no number its tools did not return, and
+`ESP_EVAL_MAX_RUNS` caps what it may spend. The optimiser is served and stays **private**:
+poking it starts a paid evaluation.
 
 ### Serve the champion as an ordinary agent
 
@@ -326,18 +563,19 @@ the cron in `registries/manifest.hocon` with `user_id: system`, no client attach
 ## Repository layout
 
 | Path | What lives there |
-|---|---|
+| --- | --- |
 | `esp/genome/` | The genome: neuro-san network definitions, the seven mutation operators, three seed topologies |
+| `esp/measure.py` | Measure any neuro-san network on any question file — the library behind `make measure`, the web page and the evaluator |
 | `esp/eval/` | The measured world, the 17 scored tasks, the runner, budget-aware model failover |
 | `esp/surrogate/` | The Predictor and its honest quality reporting |
 | `esp/evolve/` | The batch ESP loop — phases A through D in one sitting |
-| `esp/service/` | The same loop as an interruptible service: persistent population, budget, lease |
+| `esp/service/` | The same loop as an interruptible service: persistent population, budget, lease; the evaluator's tools |
 | `esp/report/` | The generated PDFs, and figures from the run history |
-| `apps/web/` | The single-process browser front end |
+| `apps/web/` | The single-process browser front end: ask a network, measure networks |
 | `apps/optimizer/` | One wake, runnable by hand or from any scheduler |
-| `registries/` | neuro-san manifests: the optimiser agent, and the generated champion |
-| `scripts/` | Offline search, model probe, champion and studio serving, report and proof generation |
-| `tests/` | The suite, plus the eleven committed measurements in `tests/fixtures/cache/` |
+| `registries/` | neuro-san manifests: the optimiser and evaluator agents, and the generated champion |
+| `scripts/` | Offline search, Predictor figures and the selection ablation, model probe, champion and studio serving, report and proof generation |
+| `tests/` | The suite, plus the twelve committed measurements in `tests/fixtures/cache/` |
 | `results/` | `results/history.json` and the figures the reports read |
 
 ## Testing and verification
@@ -347,6 +585,8 @@ make check      # ruff + the full suite, exactly what CI runs
 make verify     # start a real neuro-san server and prove it fires the optimiser
 make offline    # the free half of ESP, end to end, no key
 make holdout    # select on half the tasks, judge on the other half, no key
+make figures    # every published Predictor figure, regenerated, no key
+make ablation   # does the Predictor pick better than chance? no key
 ```
 
 The suite covers the genome and its validity gate, the scored tasks, outcome
@@ -362,7 +602,7 @@ optimiser on a shortened cron, and a browser reaching the champion through the r
 ## Documentation
 
 | | |
-|---|---|
+| --- | --- |
 | [docs/FINDINGS.md](docs/FINDINGS.md) | Measurements, failure analysis, what the Predictor is, prior art |
 | [SERVING.md](SERVING.md) | Deployment, state, budget, and what the agent may do |
 | [SECURITY.md](SECURITY.md) | Reporting a vulnerability |

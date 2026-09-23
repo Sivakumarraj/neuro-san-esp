@@ -435,16 +435,17 @@ class Explainer(Layout):
             bg=WARN_BG, bar=AMBER)
 
         self.callout(
-            "The guesser has never been shown to help",
+            "The guesser helps on paper; the real test has not been run",
             "It needs eight real results before it can learn anything at all. At the "
             "round that produced the winning design it had nine, and when tested it "
             "guessed the order of designs <b>worse than picking at random</b>. So "
             "that round's improvement came from the searching, not the guessing. "
-            "Given every result collected since, it does better than random, and "
-            "the latest design is the first one it actually picked &mdash; but "
-            "nothing here has yet run the search with the guesser and without it "
-            "on the same budget, which is what would settle whether the guesser "
-            "is worth its place.<br/><br/>"
+            "Given every result collected since, it does better than random: shown "
+            "three designs it has never seen, it picks the best one about six times "
+            "in ten, where picking blindly manages three. The latest design is the "
+            "first one it actually picked. What has not been run is the whole "
+            "search with the guesser and without it on the same budget, which is "
+            "what would settle whether the guesser is worth its place.<br/><br/>"
             "Below eight results it returns the same guess for every design, and the "
             "code now says so instead of printing a confident-looking number.<br/><br/>"
             "An earlier version printed <font face='Courier' size='9'>+0.000</font> in "

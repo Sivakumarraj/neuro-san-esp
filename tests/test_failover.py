@@ -106,13 +106,16 @@ def test_surrogate_survives_a_model_it_has_never_seen():
     any model not in the list -- and failover exists precisely to substitute
     models that are not in it. A genome measured under a swapped model would
     have taken the surrogate down with it."""
-    from esp.genome.definition import MODEL_TIERS
     from esp.genome.seeds import solo
     from esp.surrogate.predictor import _tier, features
 
-    assert _tier(MODEL_TIERS[0]) == 0
-    # Unknown models sort after the known ones: we do not know what they cost.
-    assert _tier("some-model-invented-tomorrow") == len(MODEL_TIERS)
+    # A property of the model, not of the configured ladder: rung first, then
+    # release. The committed workers' model is the cheapest and must read so.
+    assert (_tier("gemini-3.1-flash-lite") < _tier("gemini-3.5-flash-lite")
+            < _tier("gemini-3.5-flash"))
+    assert _tier("claude-haiku") < _tier("claude-sonnet")
+    # An unknown model must not raise; it reads as the cheap rung.
+    assert _tier("some-model-invented-tomorrow") == 0
 
     genome = solo()
     genome.default_model = "a-model-not-in-any-tier"

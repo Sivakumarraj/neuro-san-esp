@@ -146,6 +146,26 @@ def test_the_caveat_never_contradicts_the_champion(client):
         assert "no evolved candidate has beaten" not in body.lower()
 
 
+def test_the_header_names_the_best_measurement_on_disk():
+    """The header and the Measure tab's table are read from the same data, so
+    they cannot disagree. They did: a committed state/champion.json that
+    predated the twelfth measurement put +0.8453 under "best-measured" while
+    the table beneath listed +0.8941."""
+    from esp.eval import measurements
+
+    best = measurements.best()
+    if best is not None:
+        assert serve.RECORD.fitness >= best.fitness
+
+
+def test_the_caveat_does_not_present_an_old_figure_as_current(client):
+    """The -0.333 was the surrogate at the first search, on nine samples. Said
+    without that context it reads as the predictor's quality today."""
+    caveat = serve.caveat()
+    if "-0.333" in caveat or "\u22120.333" in caveat:
+        assert "first used" in caveat
+
+
 def test_the_caveat_reports_the_real_measurement_count(client):
     """A stated shortfall has to match what is actually on disk."""
     from esp.surrogate.predictor import MIN_SAMPLES
@@ -157,3 +177,191 @@ def test_the_caveat_reports_the_real_measurement_count(client):
         assert f"needs {MIN_SAMPLES} measurements" in body
     else:
         assert "has not trained" not in body
+
+
+# ------------------------------------------- full answers, any provider
+
+def test_a_long_explained_answer_reaches_the_visitor_whole(client, monkeypatch):
+    """The page used to cut every answer at 2,000 characters -- exactly the
+    explanation a person came to read."""
+    long_answer = "The total penalty owed is 4500. " + "Evidence line. " * 400
+    monkeypatch.setattr(serve, "_ask", lambda *a: (long_answer, {}, 1.0))
+    body = client.post("/ask", json={"question": "anything"}).json()
+    assert body["answer"] == long_answer
+
+
+def test_the_page_offers_the_four_showcase_questions(client):
+    import html
+
+    from esp.serving import SHOWCASE, display_question
+
+    text = client.get("/").text
+    for task in SHOWCASE:
+        # Escaped, as the page must: "depot's" arrives as "depot&#x27;s".
+        assert html.escape(display_question(task)) in text
+    assert "Answer with the number only" not in text
+
+
+def test_a_showcase_question_as_displayed_is_graded(client, monkeypatch):
+    from esp.serving import SHOWCASE, display_question
+
+    task = SHOWCASE[3]
+    explained = f"The total penalty owed is {task.answer}. It was worked out as follows."
+    monkeypatch.setattr(serve, "_ask", lambda *a: (explained, {}, 1.0))
+    body = client.post("/ask", json={"question": display_question(task)}).json()
+    assert body["expected"] == task.answer
+    assert body["correct"] is True
+
+
+def test_the_answer_names_the_models_it_ran_on(client, monkeypatch):
+    monkeypatch.setattr(serve, "_ask", lambda *a: ("x", {}, 1.0))
+    body = client.post("/ask", json={"question": "q"}).json()
+    assert body["provider"] == serve.SERVED.provider
+    assert body["router_model"] and body["worker_model"]
+
+
+def test_the_page_says_how_the_served_network_differs_from_the_measured_one(client):
+    assert "reply format" in client.get("/").text or "not been measured" in client.get("/").text
+
+
+def test_the_question_limit_message_is_not_about_one_providers_free_tier(client,
+                                                                        monkeypatch):
+    monkeypatch.setattr(serve, "MAX_QUESTIONS", 0)
+    error = client.post("/ask", json={"question": "q"}).json()["error"]
+    assert "free" not in error.lower() and "500 requests" not in error
+
+
+def test_startup_asks_for_the_serving_providers_key_not_googles(monkeypatch, capsys):
+    """A deployment holding only a Claude key refused to start at all."""
+    from esp.serving import Served
+
+    claude = serve.SERVED.genome.clone()
+    claude.default_model = "claude-haiku-4-5"
+    monkeypatch.setattr(serve, "SERVED", Served(claude, "anthropic", True))
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("GOOGLE_API_KEY", "AQ.EXAMPLE-not-a-real-key-0000000000000000000000")
+    assert serve.main() == 1
+    assert "ANTHROPIC_API_KEY" in capsys.readouterr().err
+
+
+# ------------------------------------------------------------ measuring
+
+def _report(name_accuracy_tokens):
+    from esp.eval.runner import TaskResult
+    from esp.measure import Report
+
+    accuracy, tokens = name_accuracy_tokens
+    correct = round(accuracy * 4)
+    results = [TaskResult(f"Q{i}", 1, i < correct, 1.0, "answer") for i in range(4)]
+    return Report(network="n", suite="s", results=results, tokens=tokens, cost=0.0,
+                  seconds=4.0, questions={r.task_id: "q" for r in results},
+                  expected={r.task_id: "a" for r in results})
+
+
+def _wait(client, job_id):
+    import time
+    for _ in range(100):
+        state = client.get(f"/api/jobs/{job_id}").json()
+        if state["state"] != "running":
+            return state
+        time.sleep(0.05)
+    raise AssertionError("the measurement never finished")
+
+
+@pytest.fixture
+def measuring(monkeypatch):
+    monkeypatch.setattr(serve, "_measured", {"count": 0})
+    monkeypatch.setattr(serve, "_jobs", {})
+    monkeypatch.setattr(serve, "MAX_MEASURE", 1000)
+    return TestClient(serve.build_app())
+
+
+def test_the_committed_networks_are_offered_with_what_they_scored(measuring):
+    listed = measuring.get("/api/networks").json()
+    committed = [n for n in listed if n["measured"]]
+    assert len(committed) == 12
+    assert all({"accuracy", "tokens", "agents", "on"} <= set(n["measured"]) for n in committed)
+
+
+@pytest.mark.parametrize("body,complaint", [
+    ({"networks": []}, "at least one"),
+    ({"networks": ["a", "b", "c", "d", "e"]}, "at most"),
+    ({"networks": ["no-such-network"]}, "unknown"),
+    ({"networks": ["__first__"], "suite": "{nope"}, "not JSON"),
+    ({"networks": ["__first__"], "suite": "\n".join(
+        f'{{"question": "q{i}", "answer": "a"}}' for i in range(60))}, "at most 50"),
+])
+def test_a_bad_measurement_request_is_refused_before_anything_runs(measuring, body, complaint):
+    if body["networks"] == ["__first__"]:
+        body = {**body, "networks": [measuring.get("/api/networks").json()[0]["id"]]}
+    response = measuring.post("/api/measure", json=body)
+    assert response.status_code == 400 and complaint in response.json()["error"]
+    assert serve._measured["count"] == 0, "a refused request spent budget"
+
+
+def test_the_deployment_budget_is_enforced_up_front(measuring, monkeypatch):
+    monkeypatch.setattr(serve, "MAX_MEASURE", 10)
+    first = measuring.get("/api/networks").json()[0]["id"]
+    response = measuring.post("/api/measure", json={"networks": [first]})   # 17 runs
+    assert response.status_code == 429 and "left of its 10" in response.json()["error"]
+
+
+def test_a_measurement_runs_reports_every_network_and_marks_the_front(measuring, monkeypatch):
+    listed = measuring.get("/api/networks").json()
+    a, b, c = listed[0], listed[1], listed[2]
+    # Keyed by id: two committed networks share the name mut:reassign_model.
+    outcomes = {a["id"]: (0.75, 1000), b["id"]: (0.5, 2000)}
+
+    def fake_measure(hocon, tasks, suite, on_result):
+        name = next(n["id"] for n in listed if serve.candidates()[n["id"]].hocon == hocon)
+        if name not in outcomes:
+            raise OSError("the whole evaluation cost zero tokens")
+        report = _report(outcomes[name])
+        for result in report.results:
+            on_result(result)
+        return report
+
+    monkeypatch.setattr(serve, "measure_network", fake_measure)
+    started = measuring.post("/api/measure", json={
+        "networks": [a["id"], b["id"], c["id"]],
+        "suite": '{"question": "q", "answer": "a"}'})
+    assert started.status_code == 200, started.text
+    done = _wait(measuring, started.json()["job"])
+
+    assert done["state"] == "done"
+    rows = {r["id"]: r for r in done["reports"]}
+    assert rows[a["id"]]["pareto"] and not rows[b["id"]]["pareto"], (
+        "the better-and-cheaper network is on the front; the other is dominated")
+    assert "zero tokens" in rows[c["id"]]["error"], "one failure must not stop the others"
+
+
+def test_only_one_measurement_runs_at_a_time(measuring, monkeypatch):
+    monkeypatch.setattr(serve, "_jobs", {"x": {"state": "running"}})
+    first = measuring.get("/api/networks").json()[0]["id"]
+    assert measuring.post("/api/measure", json={"networks": [first]}).status_code == 409
+
+
+def test_the_page_lists_every_benchmark_question_not_four(client):
+    import html
+
+    from esp.eval.tasks import TASKS
+    from esp.serving import display_question
+
+    text = client.get("/").text
+    assert all(html.escape(display_question(t)) in text for t in TASKS)
+    assert "Measure networks" in text
+
+
+def test_the_pages_script_parses(client):
+    """A newline escape once turned into a real line break inside a string and
+    left the Measure tab dead in every browser. Parsed here, not assumed."""
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+    script = client.get("/").text.split("<script>")[1].split("</script>")[0]
+    done = subprocess.run([node, "-e", "new Function(require('fs').readFileSync(0,'utf8'))"],
+                          input=script, capture_output=True, text=True, timeout=30)
+    assert done.returncode == 0, done.stderr

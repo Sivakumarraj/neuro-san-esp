@@ -6,3 +6,8 @@
 __pycache__
 *.egg-info
 results
+# Never send a key to the build daemon, and never let a future COPY bake one in.
+.env
+.env.*
+!.env.example
+state

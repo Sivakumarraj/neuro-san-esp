@@ -4,13 +4,19 @@ services:
   optimizer:
     build: .
     restart: unless-stopped
+    # The key and the model come from .env, like everywhere else. The preflight
+    # inside the container demands whichever key the configured model needs, so
+    # nothing here names one provider -- this used to require GOOGLE_API_KEY,
+    # and refused to start on a machine holding only a Claude key.
+    env_file:
+      - path: .env
+        required: false
     environment:
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:?set GOOGLE_API_KEY to run the service}
       ESP_OPTIMIZER_CRON: ${ESP_OPTIMIZER_CRON:-0 * * * *}
     volumes:
-      # The population is the expensive thing here, not the compute. The free
-      # tier buys about three real evaluations a day, so this volume holds
-      # weeks of budget. A container that loses it starts again from the seeds.
+      # The population is the expensive thing here, not the compute: every
+      # record in it is a paid evaluation. A container that loses it starts
+      # again from the seeds.
       - esp-state:/app/state
       - ./results:/app/results
     command: python -m neuro_san.service.main_loop.server_main_loop
@@ -20,8 +26,13 @@ services:
   wake:
     build: .
     profiles: ["tools"]
-    environment:
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:?set GOOGLE_API_KEY to run a wake}
+    # The key and the model come from .env, like everywhere else. The preflight
+    # inside the container demands whichever key the configured model needs, so
+    # nothing here names one provider -- this used to require GOOGLE_API_KEY,
+    # and refused to start on a machine holding only a Claude key.
+    env_file:
+      - path: .env
+        required: false
     volumes:
       - esp-state:/app/state
     command: python apps/optimizer/run_optimizer.py
@@ -39,24 +50,33 @@ services:
     profiles: ["tools"]
     command: sh -c "ruff check esp tests scripts apps && python -m pytest tests -q"
 
-  # The batch loop. Needs real budget: a candidate costs about 165 provider
-  # requests and the free tier caps them per day, per model. Run probe first.
+  # The batch loop. Real calls: a candidate costs about 165 of them.
   search:
     build: .
     profiles: ["tools"]
-    environment:
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:?set GOOGLE_API_KEY to run a real search}
+    # The key and the model come from .env, like everywhere else. The preflight
+    # inside the container demands whichever key the configured model needs, so
+    # nothing here names one provider -- this used to require GOOGLE_API_KEY,
+    # and refused to start on a machine holding only a Claude key.
+    env_file:
+      - path: .env
+        required: false
     volumes:
       - ./results:/app/results
       - ./.esp-cache:/app/.esp-cache
     command: python scripts/run_esp.py --generations 3 --elite 3 --out results
 
-  # Which models are usable and what daily budget is left.
+  # Google's free tier only: which Gemini models answer, and each daily cap.
   probe:
     build: .
     profiles: ["tools"]
-    environment:
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:?set GOOGLE_API_KEY to probe models}
+    # The key and the model come from .env, like everywhere else. The preflight
+    # inside the container demands whichever key the configured model needs, so
+    # nothing here names one provider -- this used to require GOOGLE_API_KEY,
+    # and refused to start on a machine holding only a Claude key.
+    env_file:
+      - path: .env
+        required: false
     command: python scripts/probe_models.py
 
 volumes:

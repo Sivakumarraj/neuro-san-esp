@@ -37,7 +37,7 @@ HISTORY = ROOT / "results" / "history.json"
 # measured before that candidate reaches the published history.
 STATE = Path(os.environ.get("ESP_STATE", ROOT / "state")) / "state.json"
 
-# Weights live with the loop that selects on them; imported lazily inside
+# The weighting lives with the loop that selects on it; imported lazily inside
 # `_fitness` so that reading measurements does not drag the evolution module in.
 
 
@@ -64,10 +64,15 @@ class Measurement:
 
 
 def _fitness(accuracy: float, tokens: int, agents: int) -> float:
-    from esp.evolve.loop import TOKEN_SCALE, WEIGHTS
-    return (WEIGHTS["accuracy"] * accuracy
-            - WEIGHTS["tokens"] * min(tokens / TOKEN_SCALE, 1.0)
-            - WEIGHTS["agents"] * (agents / 9.0))
+    """The project's one weighting, imported rather than restated.
+
+    This held its own copy of the arithmetic. A reader of the cache and the
+    loop that selects on it disagreeing about what a score means is not a
+    cosmetic duplication: the champion this module resolves would be a
+    different network from the one the search picked.
+    """
+    from esp.evolve.loop import scalarise
+    return scalarise(accuracy, tokens, agents)
 
 
 def _origins() -> dict[str, str]:
@@ -163,6 +168,17 @@ def load(cache_dir: Path | None = None) -> list[Measurement]:
             tokens = int(raw["tokens"])
             agents = int(raw["agents"])
         except (KeyError, TypeError, ValueError):
+            continue
+
+        # Nothing was measured here, whatever the file says. Seventeen tasks
+        # through a language model cannot cost zero tokens, so this record was
+        # written by a run that never reached a provider. The runner now
+        # refuses to cache these, but caches written before that guard existed
+        # are still on disk -- and one of them will happily train a Predictor
+        # and be served as a champion. Skipping on the way in means an old
+        # poisoned cache stops mattering without anybody having to know it is
+        # there.
+        if tokens == 0:
             continue
 
         found.append(Measurement(

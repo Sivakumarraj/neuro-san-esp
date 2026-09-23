@@ -3,59 +3,59 @@
     "name": "tree",
     "command": "git ls-files",
     "exit_code": 0,
-    "captured_at": "2026-08-24T03:31:41.296237+00:00",
-    "lines": 112
+    "captured_at": "2026-09-19T18:21:05.825301+00:00",
+    "lines": 140
   },
   {
     "name": "log",
     "command": "git log --oneline -15",
     "exit_code": 0,
-    "captured_at": "2026-08-24T03:31:41.298568+00:00",
-    "lines": 2
+    "captured_at": "2026-09-19T18:21:05.828504+00:00",
+    "lines": 15
   },
   {
     "name": "tests",
     "command": "/home/user/neuro-san-esp/.venv/bin/python -m pytest tests -q",
     "exit_code": 0,
-    "captured_at": "2026-08-24T03:31:41.301166+00:00",
-    "lines": 5
+    "captured_at": "2026-09-19T18:21:05.832459+00:00",
+    "lines": 8
   },
   {
     "name": "lint",
     "command": "/home/user/neuro-san-esp/.venv/bin/python -m ruff check esp tests scripts apps",
     "exit_code": 0,
-    "captured_at": "2026-08-24T03:31:57.171480+00:00",
+    "captured_at": "2026-09-19T18:25:27.440664+00:00",
     "lines": 1
   },
   {
     "name": "offline_search",
     "command": "/home/user/neuro-san-esp/.venv/bin/python scripts/offline_search.py --pool 2000",
     "exit_code": 0,
-    "captured_at": "2026-08-24T03:31:57.206397+00:00",
-    "lines": 22
+    "captured_at": "2026-09-19T18:25:27.479077+00:00",
+    "lines": 27
   },
   {
     "name": "periodic_server",
     "command": "/home/user/neuro-san-esp/.venv/bin/python scripts/verify_periodic.py",
     "exit_code": 0,
-    "captured_at": "2026-08-24T03:31:58.397042+00:00",
+    "captured_at": "2026-09-19T18:25:45.781633+00:00",
     "lines": 8
   },
   {
     "name": "serving_champion",
-    "command": "(assembled by hand -- two captures: serve_champion.py re-run on a clean clone 2026-09-11, and one live 2026-08-22 session with a real neuro-san server, curl and a browser)",
+    "command": "(two captures: serve_champion.py re-run on a clean clone 2026-09-11, and one live 2026-08-22 session with a real neuro-san server, curl and a browser)",
     "attested": "two captures: serve_champion.py re-run on a clean clone 2026-09-11, and one live 2026-08-22 session with a real neuro-san server, curl and a browser",
     "lines": 59
   },
   {
     "name": "studio",
-    "command": "(assembled by hand -- one live session 2026-09-11: serve_studio.py, nsflow, curl against the neuro-san server, and a real question answered by the winning network)",
+    "command": "(one live session 2026-09-11: serve_studio.py, nsflow, curl against the neuro-san server, and a real question answered by the winning network)",
     "attested": "one live session 2026-09-11: serve_studio.py, nsflow, curl against the neuro-san server, and a real question answered by the winning network",
     "lines": 59
   },
   {
     "name": "accelerator",
-    "command": "(assembled by hand -- one live session 2026-09-11: probe_models, serve_studio, nsflow, and four real questions answered over HTTP by the served networks)",
+    "command": "(one live session 2026-09-11: probe_models, serve_studio, nsflow, and four real questions answered over HTTP by the served networks)",
     "attested": "one live session 2026-09-11: probe_models, serve_studio, nsflow, and four real questions answered over HTTP by the served networks",
     "lines": 83
   }

@@ -19,6 +19,14 @@ import os
 from dataclasses import dataclass, field
 from typing import Any
 
+from esp.config import (
+    DEFAULT_LADDERS,
+    configured_provider,
+    cost_tier,
+    default_model_for,
+    provider_for,
+)
+
 # A candidate's step and time budget.
 #
 # The time budget is not a model-speed setting. Evaluation runs tasks concurrently
@@ -31,40 +39,57 @@ from typing import Any
 MAX_STEPS = int(os.environ.get("ESP_MAX_STEPS", "40"))
 MAX_EXECUTION_SECONDS = int(os.environ.get("ESP_MAX_EXECUTION_SECONDS", "600"))
 
-# Ordered cheapest-first. Position in this list is the "tier" a feature vector
-# sees, so the surrogate can learn "spending more here pays, spending there does not".
-# Measured daily caps on the free tier, read out of the 429 payloads themselves:
+# The network default, and the models a genome may carry, cheapest first.
 #
-#     gemini-3.5-flash-lite    500 / day
-#     gemini-3.1-flash-lite    500 / day
-#     gemini-3-flash            20 / day
-#     gemini-3.6-flash          20 / day
+# Chosen the way neuro-san-studio chooses: by provider, not by model. The
+# provider is ESP_PROVIDER if set, otherwise whichever of OpenAI, Anthropic or
+# Google holds a usable key, in studio's order (`esp.config.configured_provider`).
+# Its default ladder uses neuro-san's version-free aliases wherever they exist,
+# so a new release is picked up without an edit. Any model neuro-san resolves
+# can be named instead with ESP_DEFAULT_MODEL -- the workers then run exactly
+# that, and a promoted router gets the same provider's stronger rung.
 #
-# The "lite" models get 500 and the full models get 20. A candidate costs about
-# 165 requests over the 17 tasks, so one lite model's daily allowance buys three
-# candidates and a full model's buys none. Only the lite models are listed here:
-# a reassign_model mutation onto a 20/day model is a guaranteed quota failure,
-# and a quota failure scores a good topology as broken.
+# With no key and nothing set, both describe the Gemini population the
+# committed measurements were taken on, so the offline half of the project --
+# search, held-out analysis, the null sweep -- runs on a fresh clone with no key
+# and every committed genome hash still matches.
 #
-# gemini-2.5-* are excluded for a different reason -- reachable and in budget,
-# but the agent loop fails on them ("Agent stopped due to..."), which would
-# likewise blame the topology for the environment.
-# The models a genome may carry, cheapest first, and the network default.
-#
-# Configurable because the provider is: neuro-san resolves the client class from
-# the model name, so "openrouter/free" reaches OpenRouter's free router and
-# "gemini-3.1-flash-lite" reaches Google, with no other change. Baking the names
-# in meant the whole project could only ever be run against one account.
-#
-# Changing either changes every genome hash, because the model is part of the
-# genome -- which is correct and deliberate. A fitness measured on one model
-# does not describe a network running on another, so the cache must miss.
+# Position in the ladder is what `reassign_model` moves along. Changing either
+# setting changes every genome hash, because the model is part of the genome --
+# which is deliberate. A fitness measured on one model does not describe a
+# network running on another, so the cache must miss.
+DEFAULT_MODEL = (os.environ.get("ESP_DEFAULT_MODEL", "").strip()
+                 or default_model_for(configured_provider()))
+
+
+def _default_ladder(model: str) -> str:
+    """The configured provider's two rungs, with the chosen worker model first.
+
+    The ladder follows the default model's provider. Setting a Claude default
+    used to leave the ladder on Gemini, and a `reassign_model` mutation then
+    handed an agent a model the run held no key for: every call inside that
+    agent failed, the candidate scored zero, and the search learned that a good
+    topology is bad.
+    """
+    provider = provider_for(model) or "gemini"
+    cheap, strong = DEFAULT_LADDERS.get(provider, DEFAULT_LADDERS["gemini"])
+    if provider != "gemini" and model not in (cheap, strong):
+        # The chosen model takes the rung it belongs on: a cheap one becomes
+        # what the workers run, a strong one what a router is promoted to.
+        # Putting claude-opus below claude-sonnet would make every promotion
+        # a downgrade.
+        if cost_tier(model):
+            strong = model
+        else:
+            cheap = model
+    return f"{cheap},{strong}"
+
+
 MODEL_TIERS: list[str] = [
     name.strip() for name in os.environ.get(
-        "ESP_MODEL_TIERS", "gemini-3.5-flash-lite,gemini-3.5-flash").split(",")
+        "ESP_MODEL_TIERS", _default_ladder(DEFAULT_MODEL)).split(",")
     if name.strip()
 ]
-DEFAULT_MODEL = os.environ.get("ESP_DEFAULT_MODEL", "gemini-3.1-flash-lite")
 
 CORPUS_TOOL = "CorpusSearch"
 

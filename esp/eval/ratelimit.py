@@ -15,14 +15,24 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import importlib
+import os
 import random
 import threading
 import time
+import warnings
 from collections import deque
 
 from esp.eval import failover
 
-DEFAULT_RPM = 14          # one under the documented 15, to leave headroom
+# Requests per minute for any model without a measured limit of its own.
+#
+# 14 sits one under the 15 the Gemini free tier allows, and it is a safe floor
+# on every provider. It is not a sensible ceiling on a paid key: at 14 a minute
+# the ~165 calls one candidate makes take twelve minutes of pure queueing.
+# `ESP_RPM` raises it -- set it to one under the requests-per-minute limit your
+# provider console shows for your account.
+DEFAULT_RPM = int(os.environ.get("ESP_RPM", "14"))
 MAX_RETRIES = 6
 
 _buckets: dict[str, Bucket] = {}
@@ -186,10 +196,43 @@ class Bucket:
             await asyncio.sleep(sleep_for)
 
 
+def quieten_fixed_sampling_warning() -> None:
+    """Silence one library warning that fires once per model call.
+
+    langchain-google-genai warns that a model "uses fixed sampling defaults;
+    the sampling parameter(s) temperature will be ignored" whenever a
+    temperature reaches a model that has none. This project never sets a
+    temperature -- neuro-san's own default llm_config does -- so there is
+    nothing here to fix, and the warning is accurate and harmless.
+
+    It is also emitted on every single call. A live run against the newest
+    Gemini models produced hundreds of copies, and they buried the recursion
+    errors that actually needed reading. An operator who cannot see a real
+    failure in their own terminal is the cost being paid for a notice about a
+    parameter nobody chose.
+
+    Narrow on purpose: this message, this category. Anything else the driver
+    has to say still gets through.
+    """
+    warnings.filterwarnings(
+        "ignore",
+        message=r".*fixed sampling defaults.*",
+        category=UserWarning,
+    )
+
+
 def bucket_for(model: str, rpm: int = DEFAULT_RPM) -> Bucket:
+    """One bucket per model, paced at that model's own measured limit.
+
+    `rpm` is the fallback for a model nobody has measured. It used to be the
+    rate for *every* model, which is right for the lite tier and far too fast
+    for the newest flash models -- 14 a minute against a measured 5. Selecting
+    one of those then produced 429s the runner scored as candidate failures.
+    """
     with _buckets_lock:
         if model not in _buckets:
-            _buckets[model] = Bucket(rpm)
+            from esp.eval.failover import rpm_for
+            _buckets[model] = Bucket(rpm_for(model, rpm))
         return _buckets[model]
 
 
@@ -210,6 +253,10 @@ _TRANSIENT_MARKERS = (
     "503", "UNAVAILABLE",          # "currently experiencing high demand"
     "500", "INTERNAL",             # their side fell over
     "504", "DEADLINE_EXCEEDED",    # their gateway gave up, not our timeout
+    # Anthropic's way of saying 503. It was missing, so a busy Claude API was
+    # scored as a wrong answer on a paid key -- while the comment on
+    # `install_others` below claimed exactly this case was handled.
+    "529", "overloaded",
 )
 
 
@@ -238,6 +285,7 @@ def _is_transient_server_error(exc: BaseException) -> bool:
 
 
 def install(rpm: int = DEFAULT_RPM) -> bool:
+    quieten_fixed_sampling_warning()
     """Patch the Google chat model. Idempotent; returns False if unavailable."""
     try:
         from langchain_google_genai import ChatGoogleGenerativeAI
@@ -344,3 +392,101 @@ def install(rpm: int = DEFAULT_RPM) -> bool:
     wrap("_agenerate", is_async=True)
     ChatGoogleGenerativeAI._esp_rate_limited = True
     return True
+
+
+# The other providers this project can run on. Google keeps its own wrapper
+# above because the daily-cap failover, the model ladder and the key ring are
+# all free-tier Google concepts measured out of Google's own 429 payloads.
+# Anthropic and OpenAI are paid APIs with per-minute limits and no daily cap to
+# retire a model against, so they get the half that applies: pacing, backoff on
+# a rate limit, and retry on a transient server fault.
+#
+# Without this they were unpaced and unretried. A 529 from Anthropic or a 503
+# from OpenAI would come back through neuro-san as an agent error, the
+# candidate would score zero, and the search would learn that a perfectly good
+# topology is bad -- the exact failure already fixed once for Google.
+_OTHER_PROVIDERS = (
+    ("langchain_anthropic", "ChatAnthropic"),
+    ("langchain_openai", "ChatOpenAI"),
+)
+
+
+def install_others(rpm: int = DEFAULT_RPM) -> list[str]:
+    """Pace Anthropic and OpenAI. Returns the client classes actually patched.
+
+    Absent drivers are skipped rather than raising: a run on Gemini should not
+    need the Anthropic package installed to start.
+    """
+    patched: list[str] = []
+
+    for module_name, class_name in _OTHER_PROVIDERS:
+        try:
+            module = importlib.import_module(module_name)
+            client = getattr(module, class_name)
+        except (ImportError, AttributeError):
+            continue
+        if getattr(client, "_esp_rate_limited", False):
+            patched.append(class_name)
+            continue
+
+        def wrap(target, method_name: str, is_async: bool):
+            original = getattr(target, method_name, None)
+            if original is None:
+                return
+
+            def model_of(self) -> str:
+                # Clients disagree about the attribute; both are read rather
+                # than assuming, because pacing the wrong bucket name silently
+                # shares one rate limit between every model.
+                for attribute in ("model", "model_name"):
+                    value = getattr(self, attribute, None)
+                    if value:
+                        return str(value)
+                return "unknown"
+
+            if is_async:
+                async def limited(self, *args, **kwargs):
+                    for attempt in range(MAX_RETRIES):
+                        await bucket_for(model_of(self), rpm).acquire_async()
+                        try:
+                            _stats["calls"] += 1
+                            return await original(self, *args, **kwargs)
+                        except Exception as exc:
+                            transient = _is_transient_server_error(exc)
+                            if ((not _is_quota_error(exc) and not transient)
+                                    or attempt == MAX_RETRIES - 1):
+                                raise
+                            _stats["retries"] += 1
+                            if transient:
+                                _stats["transient_retries"] = _stats.get(
+                                    "transient_retries", 0) + 1
+                            await asyncio.sleep(
+                                min(60.0, 2 ** attempt) + random.random())
+                    return None
+            else:
+                def limited(self, *args, **kwargs):
+                    for attempt in range(MAX_RETRIES):
+                        bucket_for(model_of(self), rpm).acquire()
+                        try:
+                            _stats["calls"] += 1
+                            return original(self, *args, **kwargs)
+                        except Exception as exc:
+                            transient = _is_transient_server_error(exc)
+                            if ((not _is_quota_error(exc) and not transient)
+                                    or attempt == MAX_RETRIES - 1):
+                                raise
+                            _stats["retries"] += 1
+                            if transient:
+                                _stats["transient_retries"] = _stats.get(
+                                    "transient_retries", 0) + 1
+                            time.sleep(min(60.0, 2 ** attempt) + random.random())
+                    return None
+
+            setattr(target, method_name, limited)
+
+        wrap(client, "_generate", is_async=False)
+        wrap(client, "_agenerate", is_async=True)
+        client._esp_rate_limited = True
+        patched.append(class_name)
+
+    return patched

@@ -21,7 +21,8 @@ from scipy.stats import spearmanr
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import KFold
 
-from esp.genome.definition import MODEL_TIERS, Genome
+from esp.config import model_rank
+from esp.genome.definition import Genome
 
 FEATURE_NAMES = [
     "agents", "depth", "edges", "mean_branching", "max_branching",
@@ -32,20 +33,26 @@ FEATURE_NAMES = [
 
 
 
-def _tier(model: str) -> int:
+def _tier(model: str) -> float:
     """Where a model sits on the cost ladder, as a number the surrogate can use.
 
-    Never raises on an unknown name. Calling MODEL_TIERS.index() directly would
-    crash feature extraction for any model absent from the list, and failover
-    exists precisely to substitute models that are not in it -- a genome
-    measured under a swapped model would take the surrogate down with it.
-    Unknown models sort after the known ones, which is the honest ordering: we
-    do not know what they cost.
+    A property of the model itself: its rung (cheap or strong), then its
+    release within the rung, so gemini-3.1-flash-lite < gemini-3.5-flash-lite
+    < gemini-3.5-flash and claude-haiku < claude-sonnet on any machine.
+
+    It used to be the model's position in the configured ladder, with anything
+    off the ladder placed above everything on it. Every committed network's
+    workers run gemini-3.1-flash-lite, which is not on the default ladder, so
+    the cheapest model in the population was encoded as the most expensive --
+    and on a machine configured for another provider every committed model fell
+    off the ladder at once and the feature went constant. Correcting it moved
+    the token-cost margin from -0.47 to its current value and changed no
+    exclusion verdict; docs/FINDINGS.md records both.
+
+    Never raises: an unknown model reads as the cheap rung, release 0.
     """
-    try:
-        return MODEL_TIERS.index(model)
-    except ValueError:
-        return len(MODEL_TIERS)
+    rung, release = model_rank(model)
+    return rung + release / 100
 
 
 def features(genome: Genome) -> np.ndarray:

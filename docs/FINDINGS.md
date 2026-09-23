@@ -11,7 +11,7 @@ and nine mutants, every one of them cached with its per-task outcomes and its ge
 `tests/fixtures/cache/`, summarised in `results/history.json`.
 
 | Origin | Accuracy | Of what it answered | Never finished | Tokens | Agents | Fitness |
-|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- |
 | **`mut:reassign_model`** | **0.9412** | **0.94 (16/17)** | **0** | 359,600 | 5 | **0.8941** |
 | `mut:reassign_model` | 0.8824 | 1.00 (15/15) | 2 | **260,052** | 5 | 0.8453 |
 | `mut:split_agent` | 0.8824 | 0.94 (15/16) | 1 | 272,068 | 5 | 0.8441 |
@@ -58,10 +58,11 @@ it ranked worse than chance.
 
 Refitting `report_quality` over all twelve committed measurements says something better,
 with a caveat attached. Across three input orderings and forty cross-validation seeds — 120
-runs — spearman came out **positive every time, +0.280 to +0.755, median +0.671**, beating
-the 0.2 threshold in all 120. At eleven measurements the same sweep gave +0.236 to +0.645,
-median +0.518: the estimate is improving and its spread is narrowing as samples accumulate,
-which is the expected shape and not yet a result.
+runs — spearman came out **positive every time, +0.261 to +0.725, median +0.618**, beating
+the 0.2 threshold in all 120. At eleven measurements the same sweep gave +0.219 to +0.636,
+median +0.509: the estimate is improving as samples accumulate, which is the expected shape
+and not yet a result. `make figures` reruns both sweeps from committed data; the figures are
+after the model-tier fix [below](#a-defect-in-the-model-tier-feature-measured-and-fixed).
 
 The spread is still part of the finding. At this sample size the number moves by almost 0.5
 depending on how `KFold` happens to split, so **any single figure quoted from it is an
@@ -69,10 +70,13 @@ artefact of a seed** — which is why a range is given here and nowhere is one v
 
 **The twelfth network is the first the Predictor actually chose.** A service wake trained on
 eleven real samples, ranked a pool of mutants, paid for the top of it, and the candidate it
-picked beat everything measured before. That is the ESP loop working end to end, once. It is
-not evidence that the surrogate beats picking at random, because nothing in this repository
-has yet run both on the same budget — and until that exists, the honest attribution for the
-improvement is the evolutionary search with the Predictor unproven alongside it.
+picked beat everything measured before. That is the ESP loop working end to end, once. On
+its own it is not evidence that the surrogate beats picking at random. The offline selection
+test [below](#does-the-predictor-pick-better-than-chance) is: trained on nine networks, it
+picks the best of three unseen ones 62% of the time against 33% for chance. A search with the
+Predictor and one without it, on the same budget, has still not been run. So the
+improvement is credited to the evolutionary search, with the Predictor's contribution
+measured offline only.
 
 `esp/surrogate/predictor.py` reports `spearman` as `None` rather than `0.000` when there
 are too few samples to cross-validate, because a placeholder printed in a measurement's
@@ -108,7 +112,7 @@ quietly stop being true.
 Seventeen of the 204 task runs never finished, all of them among the first eleven networks. They are not spread evenly:
 
 | Task | Shape | Networks that never finished it |
-|---|---|---|
+| --- | --- | --- |
 | T08 | 3-hop full-corpus aggregation | 9 of 12 |
 | T06 | 3-hop full-corpus aggregation | 6 of 12 |
 | T03 | 2-hop | 1 of 12 |
@@ -181,7 +185,7 @@ It gives two answers, and they point in opposite directions.
 **No, half of seventeen tasks cannot identify which network is best.**
 
 | | |
-|---|---|
+| --- | --- |
 | Selection winner also ranked first on the held-out half | 0% of splits |
 | Selection winner ranked in the held-out top three | 0% of splits |
 | Its mean held-out rank | 7.2 of 12 |
@@ -206,7 +210,7 @@ sample size does not contain.
 **Yes, searching beat not searching, and that does hold out of sample.**
 
 | | |
-|---|---|
+| --- | --- |
 | Searched winner beat the designer's shape on held-out tasks | 90% of splits |
 | Mean held-out fitness margin over it | +0.0224 |
 | The designer's shape, mean held-out rank | 10.4 of 12 |
@@ -234,18 +238,183 @@ a real search's would be after a fuller run.
 
 ## What the Predictor is, exactly
 
-Asked directly in review, and the answer was implicit in the code and nowhere in the
-documentation, so: the Predictor is a **`GradientBoostingRegressor` from scikit-learn** —
-200 trees, depth 3, learning rate 0.05, subsample 0.9 — fitted on
-`(genome, measured fitness)` pairs and returning one scalar per candidate. It lives in
-`esp/surrogate/predictor.py` and it is the only model in this repository. There is no
-neural network anywhere in it.
+Asked directly in review — twice, and the second time by a co-author of the ESP paper, who
+said he had *"a hard time understanding what the predictor surrogate is in the ESP for this
+general use-case"* and described what it ought to be:
 
-**Its input is thirteen numbers describing the network's structure and configuration, and
-nothing that was measured:**
+> Typically, the surrogate model is one or more ML models that act as predictors for various
+> outcome objectives we expect from the target we are optimizing — in this case, the
+> Neuro-san agent network. The prescription then generates actions optimized against the
+> surrogate.
+
+The first version was not that, and the confusion was the code's fault rather than the
+reader's. It trained **one** model directly on the already-scalarised fitness. That single
+choice fused the three things a reader has to be able to separate — what is predicted, how
+it is scored, what proposes the next candidate — into one object, and no amount of prose
+around it would have made them distinct.
+
+### The three things, separated
+
+| | What it is | Learned? | Where |
+| --- | --- | --- | --- |
+| **Predictor** | One `GradientBoostingRegressor` per outcome objective — 200 trees, depth 3, learning rate 0.05, subsample 0.9 — fitted on `(genome → outcome)`. Predicts **accuracy** and **token cost**. | Yes, from real evaluations | `esp/surrogate/outcomes.py` |
+| **Fitness** | `accuracy − 0.06·min(tokens/600000, 1) − 0.02·(agents/9)`. A fixed weighting. Applied to *measured* outcomes it scores Phases A and D; applied to *predicted* outcomes it ranks Phase C. | No — arithmetic | `esp/evolve/loop.py::scalarise` |
+| **Prescription** | Seven mutation operators plus elite selection, run against the Predictor. | No | `esp/genome/mutations.py` |
+
+**Agent count is an objective with no model.** It is an exact property of a genome, so
+`predict_outcomes` counts it. Asking a regressor to estimate a number already in hand adds
+error and buys nothing. Depth is excluded from fitness entirely and is reported only.
+
+Two things follow from making the split, beyond matching the paper. The weights stop being
+baked into a fitted model, so re-weighting no longer needs a retrain on a population that
+cost four days of provider budget to collect. And each objective becomes separately
+measurable — which is how the next section exists at all.
+
+### Splitting it found a defect: token cost does not beat its own null
+
+Reported per objective over the twelve measured networks:
+
+| Objective | spearman | permutation null | margin over null | margin sign | excluded |
+| --- | --- | --- | --- | --- | --- |
+| accuracy | +0.626 [+0.268 … +0.723] | **−0.072** [−0.361 … +0.298] | **+0.733** [+0.397 … +1.008] | positive 20 / 20 | 0 / 20 |
+| **token cost** | **−0.531** [−0.795 … −0.382] | **−0.168** [−0.423 … +0.025] | **−0.350** [−0.552 … −0.116] | **negative 20 / 20** | **20 / 20** |
+| derived fitness | +0.601 [+0.431 … +0.683] | — | — | — | — |
+| *(the old single model, same data)* | *+0.618* [+0.261 … +0.725] | *—* | *—* | *—* | *—* |
+
+Medians over 20 cross-validation seeds, per-seed range in brackets; each null is itself the
+median of 12 shuffles. The single-model row is the 120-run sweep above. All of it is after
+the model-tier fix and regenerated by `make figures`.
+
+Re-run at 40 shuffles per null, the medians move — accuracy's null to −0.127 and token
+cost's to −0.157, margins to +0.741 and −0.374 — and **nothing that matters moves**: both
+margin signs hold at 20 / 20 and both exclusion counts are identical. The spearman column is
+unchanged to three decimals, as it must be, since the shuffle count cannot touch it.
+
+**The last column is the load-bearing one.** A margin is a difference of two noisy
+quantities, and the null is the noisier: one seed can place token cost's anywhere between
+−0.42 and +0.03. No point estimate of it should be quoted. What replicates is the decision —
+token cost loses to its own null under every seed and shuffle count tried, accuracy under
+none. That is what the gate acts on, and it is why the gate is recomputed per generation
+rather than written down as a constant.
+
+**The null column was not in the first version of this table, and leaving it out overstated
+the finding.** That version reported −0.608 (−0.531 after the tier fix) as though zero were the no-signal baseline.
+Cross-validation on twelve samples can manufacture negative rank correlation on its own:
+hold out a high value and the training mean drops, so the model predicts low and the error
+correlates with the truth in the wrong direction. The baseline has to be measured, not
+assumed.
+
+`permutation_null()` measures it the only way that means anything — shuffle the targets so no
+relationship can survive, run the **identical** cross-validation, take the median over twelve
+shuffles.
+
+Measuring it corrected the record in both directions:
+
+- **Accuracy's margin clears the null under every seed** — +0.73 at 12 shuffles, +0.74 at
+  40, never below +0.39. The accuracy finding is not at risk. Its *null*, however, is not the
+  settled −0.03 this bullet first claimed: it is −0.07 at 12 shuffles and −0.13 at 40, and
+  individual seeds reach +0.30, for the tie reason below. The margin survives because it is
+  large, not because the baseline is known precisely.
+- **Token cost's null is about −0.17, so the real effect is −0.35, not −0.53.** A third
+  smaller than the raw correlation. The finding survives — the margin is negative in every one of 20
+  seeds at both shuffle counts, and the Predictor genuinely orders candidates by cost
+  backwards — but the dramatic version of the number does not.
+
+**A limit on the null itself, which decides which objective it can be trusted on.** A
+permutation destroys a relationship only if permuting moves the values. Accuracy takes
+**four distinct values across twelve networks**, so a shuffle frequently maps a value onto an
+identical one and leaves the ordering largely intact. Its null is therefore weak, and its
++0.73 margin should be read as indicative rather than measured. The sweep shows it:
+accuracy's null drifts from −0.07 to −0.13 with the shuffle count, and single seeds reach
++0.30. The margin survives because it is large, never below +0.39, not because the baseline
+is known. Token cost is distinct in all twelve, so its null
+is sound — and token cost is the objective the finding is about. `test_the_null_is_only_meaningful_on_an_untied_objective`
+pins this so nobody moves the check to the tied objective.
+
+**And the spread is wide even where the null is sound.** The median is stable; a single draw
+is not. Individual shuffled token correlations spread widely at this sample size, and the
+*null itself* ranges from −0.42 to +0.03 across cross-validation seeds. The
+margin over the null is the right statistic. It is not a precise one, and no figure in this
+table should be quoted to three decimal places as though it were.
+
+**Note the last two rows.** The combined figure barely differs — +0.60 derived from the
+per-objective models, +0.62 from the old single model. The
+scalarised surrogate looked healthy, was healthy by its own measure, and was concealing
+this, because the accuracy term is large enough to carry the total on its own. That is the
+part worth generalising: a single scalarised quality number cannot express *which*
+objective is broken, and a multi-objective search reporting one number will not notice when
+half of it is noise.
+
+It is now said out loud in three places rather than left in a table: `make offline` prints a
+warning under the quality line, the service puts it in the wake report an unattended
+operator reads, and `tests/test_outcome_surrogate.py::test_token_cost_is_anti_predicted_on_the_committed_population`
+fails if it ever stops being true — so fixing it forces this section to be rewritten instead
+of allowing it to go quietly stale.
+
+**What has not been done:** nothing here diagnoses *why*, and no feature has been added to
+try to fix it. Both need more than twelve evaluations to be worth doing, and inventing a
+fix that cannot be validated would be worse than reporting the defect.
+
+### Does the Predictor pick better than chance?
+
+Every figure above describes the Predictor. The search uses it to **choose**: of the
+candidates it could pay to measure, which one. `make ablation` asks that directly, with no
+key and no calls. There are 220 ways to hold out three of the twelve measurements. For each
+one it trains on the other nine exactly as a service wake does: cross-validate, gate, fit.
+Then it picks the held-out network it predicts best and looks up how that network actually
+scored.
+
+| Picker | Picked the best of three | Mean regret (fitness) | Could rank |
+| --- | --- | --- | --- |
+| random (exact expectation) | 33.3% | 0.0387 | — |
+| **Predictor, as a wake runs it** | **62.1%** | **0.0162** | 212 / 220 |
+| Predictor, gate switched off | 71.8% | 0.0066 | 220 / 220 |
+| Predictor, token cost always excluded | 62.3% | 0.0144 | 220 / 220 |
+
+Regret is the fitness the pick left behind against the best network in its three. Where
+the Predictor could not rank, because the gate excluded both objectives, its pick is scored
+as chance.
+
+**The Predictor picks better than chance.** It picks the best network nearly twice as often
+as a random picker does, with well under half the regret. Of 20,000 simulated random
+pickers on the same held-out sets, none did as well (p < 0.0001). The sets overlap, since
+each network is in 55 of them, so this is not 220 independent trials. It says nothing about
+networks outside this population. It is still the first direct evidence in this repository
+that the surrogate helps the search choose.
+
+**The gate makes the choice worse, and why is not understood.** The gate excluded token cost
+in 205 of the 220 training sets, as the per-objective figures predict, and accuracy in 11.
+Excluding token cost costs about ten points of "picked the best" and more than doubles
+regret. The tokens-excluded row shows that exclusion alone accounts for nearly all of it.
+Yet on these same held-out networks the token model is backwards. It puts a held-out pair
+in the right order only 28.8% of the time (660 pairs), where chance is 50%, while the
+accuracy model manages 84.8% (460 pairs). A term that ranks its own objective backwards is
+improving the choice on fitness. Token spend and accuracy are uncorrelated across the twelve networks (Spearman
+−0.08), so the obvious explanation, that spending tracks accuracy, does not hold. Twelve
+networks cannot separate a mechanism from a coincidence.
+
+**The gate stays on, and this is recorded against it.** The gate asks whether a model
+predicts its own objective. On held-out networks the answer for token cost is no, as it is
+in cross-validation. The ablation asks the question the search actually depends on, and on
+that question the gate loses. Keeping a term because it helps for no known reason is how a
+search comes to rest on an accident of twelve samples. Removing a safeguard on the same
+evidence would be the same mistake the other way round. The gate is one argument to `fit`,
+and `make ablation` will show when the evidence moves. The change this points to is gating
+an objective on held-out *selection* rather than on its own rank correlation. Testing that
+needs more measurements than exist.
+
+**What this still does not show** is that a search using the Predictor finds better networks
+than one that does not, for the same budget. Picking the best of three measured networks is
+the step the search depends on, not the search itself. The online comparison needs paid runs
+on both arms, and they have not been bought.
+
+### The feature set
+
+**The Predictor's input is thirteen numbers describing the network's structure and
+configuration, and nothing that was measured:**
 
 | | |
-|---|---|
+| --- | --- |
 | Shape | `agents`, `depth`, `edges`, `mean_branching`, `max_branching`, `leaves`, `top_degree` |
 | Tools | `searchers`, `searcher_fraction` |
 | Models | `mean_model_tier`, `max_model_tier` |
@@ -259,16 +428,30 @@ list and a genome measured under a swapped model must not take feature extractio
 with it.
 
 A gradient-boosted tree ensemble rather than anything larger because the training set is
-**tens of samples**. Below eight it refuses to fit at all: `predict` then returns the mean
-of whatever it has seen, `ranks()` reports `False`, and both the batch loop and the service
-say out loud that the generation is a random search rather than printing a ranking over one
-repeated constant.
+**tens of samples**, and there is no neural network anywhere in this repository. Below eight
+samples it refuses to fit at all: `predict` then returns the mean of whatever it has seen,
+`ranks()` reports `False`, and both the batch loop and the service say out loud that the
+generation is a random search rather than printing a ranking over one repeated constant. An
+objective whose measured values are constant gets no model either, and a surrogate missing
+one of its objectives does not claim to rank.
 
 Quality is reported as **cross-validated Spearman rank correlation**, not error, because
 the Predictor's job is ordering. It never has to price a topology correctly — it has to put
 the promising ones above the hopeless ones so that real budget goes to the top of the list.
-`report_quality` runs `KFold` over the whole scored population and publishes the number
-whatever it says, including the −0.333 above.
+`report_quality` runs `KFold` over the whole scored population, publishes a figure per
+objective **and** for the derived fitness, and names any objective that ranks no better than
+chance rather than letting it disappear into a mean. It publishes whatever it says,
+including the −0.333 above and the −0.608 in the section before this one.
+
+**The deeper departure: there is no context.** ESP prescribes *actions for a context*, and
+the Prescriptor is precisely the model that maps one to the other. This project has **no
+context variable anywhere** — every candidate is evaluated against the same fixed seventeen
+tasks. That is not an omission that could be patched by bolting on a network: with nothing to
+map from, a Prescriptor has no input, which is why seven mutation operators occupy that slot
+instead. Building a real Prescriptor here starts with deciding what the context *is* — a
+task distribution, a budget, a domain — and that decision is the research, not the network.
+Stated before a reader has to ask, because "ESP" without it invites exactly the confusion the
+review raised.
 
 **Where this is not canonical ESP.** In ESP as Cognizant AI Lab published it, the
 Prescriptor is *also* a learned model — a network mapping context to actions, evolved
@@ -279,6 +462,49 @@ place of an evolved prescriptor. That is a deliberate simplification for a genom
 HOCON agent network rather than a fixed-length action vector, and it is a real difference
 rather than a detail: anyone comparing this against the ESP papers should expect to find
 one model here, not two.
+
+### A defect in the model-tier feature, measured and fixed
+
+Two of the thirteen features, `mean_model_tier` and `max_model_tier`, used to place each
+agent's model by its position on the configured ladder, `gemini-3.5-flash-lite,
+gemini-3.5-flash`, with anything off the ladder placed above everything on it. The workers in
+every committed network run `gemini-3.1-flash-lite`, which is not on that ladder, so the
+cheapest model was encoded as the *highest* tier. On a machine configured for Claude or
+OpenAI every committed model fell off the ladder at once and the feature went constant.
+
+The tier is now a property of the model: its rung (cheap or strong, from the model family),
+then its release within the rung, so `gemini-3.1-flash-lite < gemini-3.5-flash-lite <
+gemini-3.5-flash` and `claude-haiku < claude-sonnet` on any machine
+(`esp/config.py::model_rank`). The 20-seed sweep at 12 shuffles, before and after:
+
+| | token margin | token excluded | accuracy margin | accuracy excluded | derived fitness |
+| --- | --- | --- | --- | --- | --- |
+| before the fix | −0.472 [−0.661 … −0.238] | 20 / 20 | +0.628 [+0.367 … +0.989] | 0 / 20 | +0.643 |
+| after the fix | −0.350 [−0.552 … −0.116] | 20 / 20 | +0.733 [+0.397 … +1.008] | 0 / 20 | +0.601 |
+
+**No conclusion changes.** Token cost still loses to its own null under every seed and is
+still excluded, and accuracy still clears its null under every seed. The token margin is
+about a quarter smaller, the accuracy margin a little larger, and accuracy still carries the
+combined figure.
+
+Every Predictor figure in this document and the README is the after-fix one, and
+`scripts/surrogate_figures.py` (`make figures`) regenerates all of them from committed data.
+The one exception is the −0.333 in `results/history.json`: that is the Predictor the first
+search actually ranked with, and it stays as recorded.
+
+### The Pareto front now breeds
+
+`pareto()` was computed on every run, written to `history.json`, and drawn in three PDFs.
+Selection ignored it completely and took the top `elite` candidates by scalarised fitness.
+That is multi-objective in the report and single-objective in the search, and the gap has a
+cost: the cheapest network ever measured contributes nothing to breeding if one particular
+weighting puts it mid-table — which is the exact outcome a Pareto front exists to prevent.
+
+Parents are now chosen by non-dominated sorting on (accuracy up, tokens down, agents down),
+topped up with the best scalarised fitness when the front is smaller than the elite, so a
+one-point front cannot collapse the search onto a single parent. The batch loop and the
+service wake share one `non_dominated()` so the front the reports draw and the front the
+search breeds from cannot drift apart.
 
 ## What measurement changed
 

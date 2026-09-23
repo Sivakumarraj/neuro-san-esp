@@ -21,6 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from esp.config import KEY_NAMES
 from esp.report.layout import (
     AMBER,
     BAD,
@@ -111,8 +112,7 @@ class Verification(Layout):
         # Does this environment actually have a provider key? The preflight's
         # correct behaviour inverts on the answer, so it is established rather
         # than assumed.
-        keyed = bool(os.environ.get("GOOGLE_API_KEY")
-                     or os.environ.get("OPENROUTER_API_KEY")
+        keyed = bool(any(os.environ.get(name) for name in KEY_NAMES)
                      or (ROOT / ".env").exists())
 
         results = []

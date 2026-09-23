@@ -268,7 +268,7 @@ def test_the_live_check_is_off_by_default(monkeypatch):
     default path would make `run_checks` untestable without a provider."""
     monkeypatch.setenv("GOOGLE_API_KEY", "AQ.EXAMPLE-not-a-real-key-00000000000")
     names = [c.name for c in preflight.run_checks()]
-    assert "provider key accepted" not in names
+    assert not any(name.endswith(" accepted") for name in names)
 
 
 def test_a_rejected_key_fails_the_live_check(monkeypatch):
@@ -281,7 +281,7 @@ def test_a_rejected_key_fails_the_live_check(monkeypatch):
         lambda _name="GOOGLE_API_KEY", timeout=20.0: rejected)
 
     check = next(c for c in preflight.run_checks(live=True)
-                 if c.name == "provider key accepted")
+                 if c.name.endswith(" accepted"))
     assert not check.ok
     assert check.fatal, "a rejected key must stop the run"
 
@@ -297,6 +297,37 @@ def test_an_unreachable_provider_is_not_reported_as_a_bad_key(monkeypatch):
         lambda _name="GOOGLE_API_KEY", timeout=20.0: unreachable)
 
     check = next(c for c in preflight.run_checks(live=True)
-                 if c.name == "provider key accepted")
+                 if c.name.endswith(" accepted"))
     assert check.ok
     assert "not checked" in check.detail
+
+
+def test_a_ladder_the_run_holds_no_key_for_is_refused(monkeypatch):
+    """A Claude default with a Gemini ladder passed the key check and then
+    failed inside every agent the search promoted -- scoring those candidates
+    zero, which reads as the promotion having been a bad idea."""
+    from esp.service import preflight
+
+    monkeypatch.setattr(preflight, "DEFAULT_MODEL", "claude-haiku-4-5")
+    monkeypatch.setattr(preflight, "MODEL_TIERS", ["gemini-3.5-flash-lite", "gemini-3.5-flash"])
+    monkeypatch.setattr(preflight, "provider_keys", lambda: ["ANTHROPIC_API_KEY"])
+    tiers = next(c for c in preflight.run_checks() if c.name == "model tiers")
+    assert not tiers.ok and tiers.fatal
+    assert "GOOGLE_API_KEY" in tiers.detail
+
+
+def test_a_paid_provider_is_shown_its_pace_not_a_free_tier_budget(monkeypatch):
+    from esp.service import preflight
+
+    monkeypatch.setattr(preflight, "DEFAULT_MODEL", "claude-haiku-4-5")
+    names = [c.name for c in preflight.run_checks()]
+    assert "pacing" in names and "model ladder" not in names
+
+
+def test_an_unreadable_state_file_is_reported_not_raised(tmp_path, monkeypatch):
+    from esp.service import preflight
+
+    (tmp_path / "state.json").write_text("{ not json", encoding="utf-8")
+    monkeypatch.setattr(preflight, "STATE_DIR", tmp_path)
+    check = next(c for c in preflight.run_checks() if c.name == "population provider")
+    assert not check.ok and "unreadable" in check.detail
