@@ -1,5 +1,14 @@
 {
-    "llm_config": {"model_name": "gemini-3.5-flash-lite"},
+    # Whichever key is present, in neuro-san-studio's order: an entry whose key
+    # is missing is skipped. Pinned to Gemini, this agent failed on every
+    # deployment holding only a Claude or OpenAI key.
+    "llm_config": {
+        "fallbacks": [
+            {"model_name": "gpt-5.4-mini"},
+            {"model_name": "claude-haiku"},
+            {"model_name": "gemini-3.5-flash-lite"},
+        ],
+    },
 
     "metadata": {
         "description": "An autonomous optimiser that keeps searching for a better agent network, a few candidates a day, forever.",

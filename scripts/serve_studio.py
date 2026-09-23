@@ -20,8 +20,10 @@ offers as one-click prompts.
     python scripts/serve_studio.py          # write the registries
     make studio                             # write them, then launch the UI
 
-The optimiser is included but stays private, as it is in the deployed manifest:
-it spends the day's whole evaluation budget when poked.
+The evaluator is included and public, so a measurement can be asked for from
+the same chat panel ("measure the designer's shape against the best evolved
+network"). The optimiser is included but stays private, as it is in the
+deployed manifest: it spends the day's whole evaluation budget when poked.
 """
 
 from __future__ import annotations
@@ -128,6 +130,13 @@ def write(records, include_optimizer: bool = True) -> tuple[list[Path], Path]:
         "    # is the result this project exists to produce, and reading it off a",
         "    # table is not the same as watching two topologies answer.",
         *entries,
+    ]
+    lines += [
+        "",
+        "    # Measures any of the networks above on request, from the chat panel.",
+        "    # Public here because this UI is the operator's own; every request is",
+        "    # paid, and ESP_EVAL_MAX_RUNS caps them for the life of the server.",
+        '    "evaluator.hocon": {"serve": true, "public": true},',
     ]
     if include_optimizer:
         lines += [

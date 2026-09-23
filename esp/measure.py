@@ -184,6 +184,19 @@ def render(report: Report) -> str:
     return "\n".join(lines)
 
 
+def pareto(reports: list[dict]) -> None:
+    """Mark the reports no other report beats on accuracy and tokens both.
+
+    Reports that carry an `error` were not measured and are never on the front.
+    """
+    done = [r for r in reports if not r.get("error")]
+    for r in done:
+        r["pareto"] = not any(
+            o is not r and o["accuracy"] >= r["accuracy"] and o["tokens"] <= r["tokens"]
+            and (o["accuracy"] > r["accuracy"] or o["tokens"] < r["tokens"])
+            for o in done)
+
+
 @dataclass(frozen=True)
 class Candidate:
     """A network this deployment can measure, and what is known about it."""

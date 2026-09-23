@@ -35,4 +35,14 @@ topology was found. Most wakes find nothing; say nothing when that happens.
             ],
         },
     },
+
+    # Measures networks on request and compares them. Private by default for
+    # the same reason as the optimiser: every request is paid model calls, and
+    # ESP_EVAL_MAX_RUNS caps them per process. ESP_EVALUATOR_PUBLIC=true opens
+    # it, for a deployment whose operator means to offer measurement.
+    "evaluator.hocon": {
+        "serve": true,
+        "public": false,
+        "public": ${?ESP_EVALUATOR_PUBLIC},
+    },
 }

@@ -52,7 +52,7 @@ from esp.eval.runner import _ask, write_network  # noqa: E402
 from esp.eval.tasks import TASKS, score  # noqa: E402
 from esp.genome.definition import Genome  # noqa: E402
 from esp.genome.seeds import SEEDS  # noqa: E402
-from esp.measure import BUILTIN, Candidate, SuiteError, catalog, parse_suite  # noqa: E402
+from esp.measure import BUILTIN, Candidate, SuiteError, catalog, pareto, parse_suite  # noqa: E402
 from esp.measure import measure as measure_network  # noqa: E402
 from esp.service.state import Evaluated, ServiceState  # noqa: E402
 from esp.serving import SHOWCASE, display_question, graded, presentable  # noqa: E402
@@ -77,7 +77,7 @@ MAX_SUITE_BYTES = 200_000
 # Networks an operator adds by placing HOCON files here. Never uploaded: a
 # network names Python classes to import, so taking one from a visitor would be
 # taking code.
-NETWORKS_DIR = os.environ.get("ESP_WEB_NETWORKS") or None
+NETWORKS_DIR = os.environ.get("ESP_NETWORKS") or None
 _measured = {"count": 0}
 _jobs: dict[str, dict] = {}
 _job_lock = threading.Lock()
@@ -90,16 +90,6 @@ def candidates() -> dict[str, Candidate]:
     if _candidates is None:
         _candidates = {c.id: c for c in catalog(NETWORKS_DIR)}
     return _candidates
-
-
-def pareto(reports: list[dict]) -> None:
-    """Mark the reports no other report beats on accuracy and tokens both."""
-    done = [r for r in reports if not r.get("error")]
-    for r in done:
-        r["pareto"] = not any(
-            o is not r and o["accuracy"] >= r["accuracy"] and o["tokens"] <= r["tokens"]
-            and (o["accuracy"] > r["accuracy"] or o["tokens"] < r["tokens"])
-            for o in done)
 
 
 def run_job(job: dict, chosen: list[Candidate], tasks: list, suite: str) -> None:
