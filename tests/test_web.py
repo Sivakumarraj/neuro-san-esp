@@ -146,6 +146,26 @@ def test_the_caveat_never_contradicts_the_champion(client):
         assert "no evolved candidate has beaten" not in body.lower()
 
 
+def test_the_header_names_the_best_measurement_on_disk():
+    """The header and the Measure tab's table are read from the same data, so
+    they cannot disagree. They did: a committed state/champion.json that
+    predated the twelfth measurement put +0.8453 under "best-measured" while
+    the table beneath listed +0.8941."""
+    from esp.eval import measurements
+
+    best = measurements.best()
+    if best is not None:
+        assert serve.RECORD.fitness >= best.fitness
+
+
+def test_the_caveat_does_not_present_an_old_figure_as_current(client):
+    """The -0.333 was the surrogate at the first search, on nine samples. Said
+    without that context it reads as the predictor's quality today."""
+    caveat = serve.caveat()
+    if "-0.333" in caveat or "\u22120.333" in caveat:
+        assert "first used" in caveat
+
+
 def test_the_caveat_reports_the_real_measurement_count(client):
     """A stated shortfall has to match what is actually on disk."""
     from esp.surrogate.predictor import MIN_SAMPLES
@@ -222,3 +242,126 @@ def test_startup_asks_for_the_serving_providers_key_not_googles(monkeypatch, cap
     monkeypatch.setenv("GOOGLE_API_KEY", "AQ.EXAMPLE-not-a-real-key-0000000000000000000000")
     assert serve.main() == 1
     assert "ANTHROPIC_API_KEY" in capsys.readouterr().err
+
+
+# ------------------------------------------------------------ measuring
+
+def _report(name_accuracy_tokens):
+    from esp.eval.runner import TaskResult
+    from esp.measure import Report
+
+    accuracy, tokens = name_accuracy_tokens
+    correct = round(accuracy * 4)
+    results = [TaskResult(f"Q{i}", 1, i < correct, 1.0, "answer") for i in range(4)]
+    return Report(network="n", suite="s", results=results, tokens=tokens, cost=0.0,
+                  seconds=4.0, questions={r.task_id: "q" for r in results},
+                  expected={r.task_id: "a" for r in results})
+
+
+def _wait(client, job_id):
+    import time
+    for _ in range(100):
+        state = client.get(f"/api/jobs/{job_id}").json()
+        if state["state"] != "running":
+            return state
+        time.sleep(0.05)
+    raise AssertionError("the measurement never finished")
+
+
+@pytest.fixture
+def measuring(monkeypatch):
+    monkeypatch.setattr(serve, "_measured", {"count": 0})
+    monkeypatch.setattr(serve, "_jobs", {})
+    monkeypatch.setattr(serve, "MAX_MEASURE", 1000)
+    return TestClient(serve.build_app())
+
+
+def test_the_committed_networks_are_offered_with_what_they_scored(measuring):
+    listed = measuring.get("/api/networks").json()
+    committed = [n for n in listed if n["measured"]]
+    assert len(committed) == 12
+    assert all({"accuracy", "tokens", "agents", "on"} <= set(n["measured"]) for n in committed)
+
+
+@pytest.mark.parametrize("body,complaint", [
+    ({"networks": []}, "at least one"),
+    ({"networks": ["a", "b", "c", "d", "e"]}, "at most"),
+    ({"networks": ["no-such-network"]}, "unknown"),
+    ({"networks": ["__first__"], "suite": "{nope"}, "not JSON"),
+    ({"networks": ["__first__"], "suite": "\n".join(
+        f'{{"question": "q{i}", "answer": "a"}}' for i in range(60))}, "at most 50"),
+])
+def test_a_bad_measurement_request_is_refused_before_anything_runs(measuring, body, complaint):
+    if body["networks"] == ["__first__"]:
+        body = {**body, "networks": [measuring.get("/api/networks").json()[0]["id"]]}
+    response = measuring.post("/api/measure", json=body)
+    assert response.status_code == 400 and complaint in response.json()["error"]
+    assert serve._measured["count"] == 0, "a refused request spent budget"
+
+
+def test_the_deployment_budget_is_enforced_up_front(measuring, monkeypatch):
+    monkeypatch.setattr(serve, "MAX_MEASURE", 10)
+    first = measuring.get("/api/networks").json()[0]["id"]
+    response = measuring.post("/api/measure", json={"networks": [first]})   # 17 runs
+    assert response.status_code == 429 and "left of its 10" in response.json()["error"]
+
+
+def test_a_measurement_runs_reports_every_network_and_marks_the_front(measuring, monkeypatch):
+    listed = measuring.get("/api/networks").json()
+    a, b, c = listed[0], listed[1], listed[2]
+    # Keyed by id: two committed networks share the name mut:reassign_model.
+    outcomes = {a["id"]: (0.75, 1000), b["id"]: (0.5, 2000)}
+
+    def fake_measure(hocon, tasks, suite, on_result):
+        name = next(n["id"] for n in listed if serve.candidates()[n["id"]].hocon == hocon)
+        if name not in outcomes:
+            raise OSError("the whole evaluation cost zero tokens")
+        report = _report(outcomes[name])
+        for result in report.results:
+            on_result(result)
+        return report
+
+    monkeypatch.setattr(serve, "measure_network", fake_measure)
+    started = measuring.post("/api/measure", json={
+        "networks": [a["id"], b["id"], c["id"]],
+        "suite": '{"question": "q", "answer": "a"}'})
+    assert started.status_code == 200, started.text
+    done = _wait(measuring, started.json()["job"])
+
+    assert done["state"] == "done"
+    rows = {r["id"]: r for r in done["reports"]}
+    assert rows[a["id"]]["pareto"] and not rows[b["id"]]["pareto"], (
+        "the better-and-cheaper network is on the front; the other is dominated")
+    assert "zero tokens" in rows[c["id"]]["error"], "one failure must not stop the others"
+
+
+def test_only_one_measurement_runs_at_a_time(measuring, monkeypatch):
+    monkeypatch.setattr(serve, "_jobs", {"x": {"state": "running"}})
+    first = measuring.get("/api/networks").json()[0]["id"]
+    assert measuring.post("/api/measure", json={"networks": [first]}).status_code == 409
+
+
+def test_the_page_lists_every_benchmark_question_not_four(client):
+    import html
+
+    from esp.eval.tasks import TASKS
+    from esp.serving import display_question
+
+    text = client.get("/").text
+    assert all(html.escape(display_question(t)) in text for t in TASKS)
+    assert "Measure networks" in text
+
+
+def test_the_pages_script_parses(client):
+    """A newline escape once turned into a real line break inside a string and
+    left the Measure tab dead in every browser. Parsed here, not assumed."""
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+    script = client.get("/").text.split("<script>")[1].split("</script>")[0]
+    done = subprocess.run([node, "-e", "new Function(require('fs').readFileSync(0,'utf8'))"],
+                          input=script, capture_output=True, text=True, timeout=30)
+    assert done.returncode == 0, done.stderr

@@ -1,0 +1,251 @@
+<!doctype html><html lang=en><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<link rel=icon href="data:,">
+<title>neuro-san-esp | measure agent networks</title>
+<style>
+ :root{color-scheme:light dark;--bg:#fbfcfd;--fg:#101418;--mute:#5b6672;--line:#d7dde3;
+       --accent:#1a4fa0;--warn:#fff6e5;--warnline:#e8d9b0;--ok:#1f7a3a;--bad:#a4262c;
+       --onaccent:#fff;--soft:#eef2f7}
+ @media(prefers-color-scheme:dark){:root{--bg:#0f1115;--fg:#e6e9ee;--mute:#98a2ae;
+       --line:#2a2f38;--accent:#6ea0ff;--warn:#2a2313;--warnline:#4a3f22;--ok:#5cc47a;
+       --bad:#ff7b72;--onaccent:#0f1115;--soft:#171b22}}
+ *{box-sizing:border-box}
+ body{font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      max-width:980px;margin:0 auto;padding:28px 16px;background:var(--bg);color:var(--fg)}
+ h1{font-size:22px;margin:0 0 4px} h2{font-size:17px;margin:0 0 8px}
+ .sub{color:var(--mute);margin:0 0 14px;font-size:14px}
+ .card{border:1px solid var(--line);border-radius:10px;padding:16px;margin:16px 0}
+ textarea{width:100%;padding:10px;font:inherit;border-radius:8px;border:1px solid var(--line);
+          background:transparent;color:inherit}
+ button{padding:9px 18px;border:0;border-radius:8px;background:var(--accent);color:var(--onaccent);
+        font:inherit;cursor:pointer} button[disabled]{opacity:.5;cursor:not-allowed}
+ .row{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+ .tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin:18px 0 0}
+ .tabs button{background:transparent;color:var(--mute);border-radius:8px 8px 0 0;padding:9px 14px}
+ .tabs button[aria-selected=true]{color:var(--fg);background:var(--soft);font-weight:600}
+ .ex{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-top:10px}
+ .ex button,.qlist button{background:transparent;color:inherit;border:1px solid var(--line);
+            text-align:left;font-size:14px;line-height:1.4;padding:9px}
+ .ex b,.qlist b{display:block;font-size:12px;color:var(--mute);font-weight:600;margin-bottom:2px}
+ details{margin-top:12px} summary{cursor:pointer;color:var(--accent)}
+ .qlist{display:grid;gap:6px;margin-top:8px}
+ #answer{white-space:pre-wrap;line-height:1.65}
+ .meta{font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--mute);margin-top:12px}
+ .ok{color:var(--ok);font-weight:600} .bad{color:var(--bad);font-weight:600}
+ .warn{background:var(--warn);border-color:var(--warnline);font-size:14px}
+ .served{font-size:13px;color:var(--mute)}
+ .scroll{overflow-x:auto} table{border-collapse:collapse;width:100%;font-size:14px}
+ th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+ th{font-size:12px;color:var(--mute);font-weight:600}
+ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+ progress{width:100%;height:10px}
+ .pill{font-size:12px;padding:1px 7px;border-radius:9px;background:var(--soft);color:var(--mute)}
+ [hidden]{display:none!important}
+</style>
+<h1>Measure and talk to neuro-san agent networks</h1>
+<p class=sub>__SUB__</p>
+<p class=served>__SERVED__</p>
+
+<nav class=tabs role=tablist>
+<button role=tab id=tab-ask aria-selected=true onclick="show('ask')">Ask a network</button>
+<button role=tab id=tab-measure aria-selected=false onclick="show('measure')">Measure networks</button>
+</nav>
+
+<section id=panel-ask>
+<div class=card>
+<p class=sub style="margin:0">Ask anything about Meridian Logistics. Benchmark questions are graded
+against their known answer in front of you.</p>
+<div class=ex>__EXAMPLES__</div>
+<details><summary>All __COUNT__ benchmark questions, by difficulty</summary>
+<div class=qlist>__ALLQUESTIONS__</div></details>
+<textarea id=q rows=3 style="margin-top:12px"
+ placeholder="e.g. Which depot services contract C-2117, and who manages it?"></textarea>
+<div class=row><button id=go onclick=ask()>Ask</button>
+<span id=status class=sub style="margin:0"></span></div>
+</div>
+<div class=card id=result hidden>
+<div id=answer></div>
+<div class=meta id=meta></div>
+</div>
+</section>
+
+<section id=panel-measure hidden>
+<div class=card>
+<h2>1. Networks</h2>
+<p class=sub>Pick up to __MAXNETS__. The twelve committed networks are listed with what they scored when
+they were measured; measuring again is a fresh, independent run on this deployment's provider.</p>
+<div class=scroll><table id=nets><thead><tr><th></th><th>Network</th><th>Measured accuracy</th>
+<th>Measured tokens</th><th>Agents</th><th>Measured on</th></tr></thead><tbody></tbody></table></div>
+</div>
+<div class=card>
+<h2>2. Questions</h2>
+<label><input type=radio name=suite value=builtin checked onchange=estimate()> The built-in
+benchmark (__COUNT__ multi-hop questions over the Meridian Logistics corpus)</label><br>
+<label><input type=radio name=suite value=custom onchange=estimate()> Your own, as JSON Lines</label>
+<div id=custom hidden>
+<textarea id=suitetext rows=6 oninput=estimate()
+ placeholder='{"question": "Which city is depot D08 in?", "answer": "Pickering"}'></textarea>
+<div class=row><input type=file id=suitefile accept=".jsonl,.json,.txt" onchange=loadfile(this)>
+<span class=sub style="margin:0">One object per line: <code>question</code>, and <code>answer</code>
+or <code>answers</code>. A reply is correct if it contains one of them.</span></div>
+</div>
+</div>
+<div class=card>
+<h2>3. Run</h2>
+<p class=sub id=estimate>Pick at least one network.</p>
+<div class=row><button id=run onclick=runMeasure() disabled>Measure</button>
+<span id=mstatus class=sub style="margin:0"></span></div>
+<progress id=progress value=0 max=1 hidden></progress>
+</div>
+<div class=card id=mresult hidden>
+<h2>Results</h2>
+<p class=sub>Unfinished means the network never answered (a timeout or a blown recursion cap), which is
+not the same as answering wrongly, so both accuracies are shown. &#9733; marks the networks no other
+network beats on both accuracy and tokens.</p>
+<div class=scroll><table id=summary><thead><tr><th>Network</th><th>Accuracy</th>
+<th>Of what it answered</th><th>Unfinished</th><th>Tokens</th><th>Seconds</th></tr></thead>
+<tbody></tbody></table></div>
+<h2 style="margin-top:18px">Question by question</h2>
+<div class=scroll><table id=matrix></table></div>
+<div class=row><a id=download download="measurement.json">Download the full report (JSON)</a></div>
+</div>
+</section>
+
+<div class="card warn">
+<b>What this is.</b> Meridian Logistics is invented &mdash; 24 depots, 40 contracts, 124 documents.
+Nothing about it is in any model's training data, so the only way to answer is to go and read,
+which is what makes the score a measurement of the <i>topology</i> rather than of recall.
+<br><br>
+<b>What it is not.</b> __CAVEAT__
+</div>
+<p class=sub>Source: <a href="https://github.com/Sivakumarraj/neuro-san-esp">github.com/Sivakumarraj/neuro-san-esp</a></p>
+<script>
+const MAXNETS=__MAXNETS__, COUNT=__COUNT__;
+let nets=[], chosen=new Set(), loaded=false;
+function el(tag,text,cls){const e=document.createElement(tag); if(text!==undefined)e.textContent=text;
+  if(cls)e.className=cls; return e}
+function show(which){
+  for(const n of ['ask','measure']){
+    document.getElementById('panel-'+n).hidden=(n!==which);
+    document.getElementById('tab-'+n).setAttribute('aria-selected', n===which);
+  }
+  if(which==='measure' && !loaded) loadNets();
+}
+function pick(b){document.getElementById('q').value=b.dataset.q;ask()}
+async function ask(){
+  const q=document.getElementById('q').value.trim(); if(!q)return;
+  const go=document.getElementById('go'), st=document.getElementById('status');
+  const box=document.getElementById('result'), ans=document.getElementById('answer'),
+        meta=document.getElementById('meta');
+  go.disabled=true; box.hidden=true;
+  st.textContent='Running the network — a multi-hop question takes a minute or two.';
+  try{
+    const r=await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json'},
+                               body:JSON.stringify({question:q})});
+    const d=await r.json();
+    box.hidden=false; meta.textContent='';
+    if(d.error){ans.textContent='Error: '+d.error;return}
+    ans.textContent=d.answer||'(the network returned no answer)';
+    meta.appendChild(el('div',`${d.agents} agents · ${d.seconds}s · ${d.provider}`
+      +` · router ${d.router_model}, workers ${d.worker_model}`));
+    if(d.expected){
+      const g=el('div','Benchmark answer: '+d.expected+' — ');
+      g.appendChild(el('span',d.correct?'CORRECT':'WRONG',d.correct?'ok':'bad'));
+      meta.appendChild(g);
+    }
+  }catch(e){box.hidden=false;ans.textContent='Error: '+e}
+  finally{go.disabled=false;st.textContent=''}
+}
+async function loadNets(){
+  const body=document.querySelector('#nets tbody');
+  try{ nets=await (await fetch('/api/networks')).json(); loaded=true; }
+  catch(e){ body.appendChild(el('tr')).appendChild(el('td','Could not load networks: '+e)); return }
+  for(const n of nets){
+    const tr=el('tr'), box=el('input'); box.type='checkbox';
+    box.onchange=()=>{ if(box.checked){ if(chosen.size>=MAXNETS){box.checked=false;return}
+      chosen.add(n.id)} else chosen.delete(n.id); estimate() };
+    tr.appendChild(el('td')).appendChild(box);
+    const name=tr.appendChild(el('td',n.name)); if(n.note) name.appendChild(el('div',n.note,'pill'));
+    const m=n.measured;
+    tr.appendChild(el('td',m?(100*m.accuracy).toFixed(1)+'%':'—','num'));
+    tr.appendChild(el('td',m?m.tokens.toLocaleString():'—','num'));
+    tr.appendChild(el('td',m?String(m.agents):'—','num'));
+    tr.appendChild(el('td',m?m.on:'not measured'));
+    body.appendChild(tr);
+  }
+}
+function questions(){
+  const custom=document.querySelector('input[name=suite]:checked').value==='custom';
+  document.getElementById('custom').hidden=!custom;
+  if(!custom) return COUNT;
+  return document.getElementById('suitetext').value.split('\n').filter(l=>l.trim()).length;
+}
+function estimate(){
+  const q=questions(), n=chosen.size, runs=n*q, e=document.getElementById('estimate');
+  document.getElementById('run').disabled=!(n&&q);
+  e.textContent = n&&q ? `${n} network${n>1?'s':''} × ${q} question${q>1?'s':''} = ${runs} runs,`
+    +` roughly ${runs*10} model calls. Every call is paid for on this deployment's key.`
+    : 'Pick at least one network and one question.';
+}
+function loadfile(input){ const f=input.files[0]; if(!f) return;
+  f.text().then(t=>{document.getElementById('suitetext').value=t; estimate()}) }
+async function runMeasure(){
+  const run=document.getElementById('run'), st=document.getElementById('mstatus'),
+        bar=document.getElementById('progress');
+  const custom=document.querySelector('input[name=suite]:checked').value==='custom';
+  run.disabled=true; st.textContent='Starting…'; bar.hidden=false; bar.value=0;
+  let r;
+  try{
+    r=await fetch('/api/measure',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({networks:[...chosen], suite: custom?document.getElementById('suitetext').value:null})});
+  }catch(e){st.textContent='Error: '+e; run.disabled=false; return}
+  const d=await r.json();
+  if(!r.ok){st.textContent='Error: '+(d.error||r.status); run.disabled=false; bar.hidden=true; return}
+  poll(d.job);
+}
+async function poll(id){
+  const st=document.getElementById('mstatus'), bar=document.getElementById('progress');
+  const d=await (await fetch('/api/jobs/'+id)).json();
+  bar.max=d.total||1; bar.value=d.done;
+  st.textContent=`${d.done} of ${d.total} answered`+(d.current?` — measuring ${d.current}`:'');
+  if(d.state==='running'){ setTimeout(()=>poll(id),2000); return }
+  document.getElementById('run').disabled=false;
+  st.textContent = d.state==='done' ? 'Done.' : 'Stopped: '+(d.error||'unknown error');
+  render(d);
+}
+function render(d){
+  const box=document.getElementById('mresult'), body=document.querySelector('#summary tbody'),
+        matrix=document.getElementById('matrix');
+  box.hidden=false; body.textContent=''; matrix.textContent='';
+  for(const rep of d.reports){
+    const tr=el('tr');
+    tr.appendChild(el('td',(rep.pareto?'★ ':'')+rep.name));
+    if(rep.error){ const td=el('td','Not measured: '+rep.error); td.colSpan=5; tr.appendChild(td);
+      body.appendChild(tr); continue }
+    tr.appendChild(el('td',(100*rep.accuracy).toFixed(1)+'%','num'));
+    tr.appendChild(el('td',rep.answered_accuracy===null?'—':(100*rep.answered_accuracy).toFixed(1)+'%','num'));
+    tr.appendChild(el('td',String(rep.unfinished),'num'));
+    tr.appendChild(el('td',rep.tokens.toLocaleString(),'num'));
+    tr.appendChild(el('td',rep.seconds.toFixed(0),'num'));
+    body.appendChild(tr);
+  }
+  const ok=d.reports.filter(r=>!r.error);
+  if(ok.length){
+    const head=matrix.appendChild(el('thead')).appendChild(el('tr'));
+    head.appendChild(el('th','Question')); head.appendChild(el('th','Expected'));
+    for(const r of ok) head.appendChild(el('th',r.name));
+    const tb=matrix.appendChild(el('tbody'));
+    ok[0].results.forEach((row,i)=>{
+      const tr=tb.appendChild(el('tr'));
+      tr.appendChild(el('td',row.question)); tr.appendChild(el('td',row.expected));
+      for(const r of ok){ const x=r.results[i];
+        const mark=x.infrastructure?'unfinished':x.correct?'correct':'wrong';
+        const td=tr.appendChild(el('td',mark,x.correct?'ok':x.infrastructure?'':'bad'));
+        td.title=(x.answer||x.error||'').slice(0,600);
+      }
+    });
+  }
+  const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
+  document.getElementById('download').href=URL.createObjectURL(blob);
+}
+</script></html>

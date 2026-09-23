@@ -43,6 +43,8 @@ from esp.config import bootstrap  # noqa: E402
 bootstrap()
 
 import html  # noqa: E402
+import threading  # noqa: E402
+import uuid  # noqa: E402
 
 from esp.config import key_name_for, key_problem  # noqa: E402
 from esp.eval import measurements  # noqa: E402
@@ -50,6 +52,8 @@ from esp.eval.runner import _ask, write_network  # noqa: E402
 from esp.eval.tasks import TASKS, score  # noqa: E402
 from esp.genome.definition import Genome  # noqa: E402
 from esp.genome.seeds import SEEDS  # noqa: E402
+from esp.measure import BUILTIN, Candidate, SuiteError, catalog, parse_suite  # noqa: E402
+from esp.measure import measure as measure_network  # noqa: E402
 from esp.service.state import Evaluated, ServiceState  # noqa: E402
 from esp.serving import SHOWCASE, display_question, graded, presentable  # noqa: E402
 from esp.surrogate.predictor import MIN_SAMPLES  # noqa: E402
@@ -60,13 +64,78 @@ from esp.surrogate.predictor import MIN_SAMPLES  # noqa: E402
 MAX_QUESTIONS = int(os.environ.get("ESP_WEB_MAX_QUESTIONS", "40"))
 _asked = {"count": 0}
 
+# Measuring is the expensive half of the page: one network on the built-in
+# benchmark is seventeen multi-hop runs, about 165 model calls. A deployment
+# caps how many question-runs it will spend in total, how many networks one
+# measurement may compare, and how long a visitor's question file may be; and
+# it runs one measurement at a time, so a second visitor queues behind a key's
+# rate limit rather than doubling it.
+MAX_MEASURE = int(os.environ.get("ESP_WEB_MAX_MEASURE", "68"))
+MAX_NETWORKS = 4
+MAX_SUITE_QUESTIONS = 50
+MAX_SUITE_BYTES = 200_000
+# Networks an operator adds by placing HOCON files here. Never uploaded: a
+# network names Python classes to import, so taking one from a visitor would be
+# taking code.
+NETWORKS_DIR = os.environ.get("ESP_WEB_NETWORKS") or None
+_measured = {"count": 0}
+_jobs: dict[str, dict] = {}
+_job_lock = threading.Lock()
+_candidates: dict[str, Candidate] | None = None
+
+
+def candidates() -> dict[str, Candidate]:
+    """The measurable networks, rendered once per process."""
+    global _candidates
+    if _candidates is None:
+        _candidates = {c.id: c for c in catalog(NETWORKS_DIR)}
+    return _candidates
+
+
+def pareto(reports: list[dict]) -> None:
+    """Mark the reports no other report beats on accuracy and tokens both."""
+    done = [r for r in reports if not r.get("error")]
+    for r in done:
+        r["pareto"] = not any(
+            o is not r and o["accuracy"] >= r["accuracy"] and o["tokens"] <= r["tokens"]
+            and (o["accuracy"] > r["accuracy"] or o["tokens"] < r["tokens"])
+            for o in done)
+
+
+def run_job(job: dict, chosen: list[Candidate], tasks: list, suite: str) -> None:
+    """Measure each chosen network in turn. One failing network does not stop
+    the others: its row says why, and the rest are still measured."""
+    def tick(_result) -> None:
+        job["done"] += 1
+
+    try:
+        for candidate in chosen:
+            job["current"] = candidate.name
+            before = job["done"]
+            try:
+                report = measure_network(candidate.hocon, tasks, suite=suite, on_result=tick)
+                job["reports"].append({"id": candidate.id, "name": candidate.name,
+                                       **report.as_dict()})
+            except (OSError, SuiteError) as exc:
+                job["reports"].append({"id": candidate.id, "name": candidate.name,
+                                       "error": str(exc)[:300]})
+            # A refused network still used up its share of the run, so progress
+            # reaches the total whatever happened to it.
+            job["done"] = before + len(tasks)
+        pareto(job["reports"])
+        job["state"] = "done"
+    except Exception as exc:                       # reported to the page, never raised
+        job["state"], job["error"] = "error", f"{type(exc).__name__}: {exc}"[:300]
+    finally:
+        job["current"] = None
+
 
 def champion():
     """The measured best, or the designer-shaped seed when nothing is measured.
 
-    Priority: this deployment's own `state/champion.json`, then its service
-    population, then the evaluation cache committed with the repository, then
-    the designer-shaped seed. Falling back rather than failing is deliberate: a
+    Sources: this deployment's own `state/champion.json`, its service
+    population, and the evaluation cache committed with the repository; the
+    designer-shaped seed when there is none. Falling back rather than failing is deliberate: a
     fresh deployment with no state should still answer, and the page says which
     case it is in.
 
@@ -76,39 +145,45 @@ def champion():
     eleven measured networks -- under a page headed "measured champion", while
     the network that actually won at +0.8453 sat in the repository with its
     genome beside its score.
+
+    Every source is scored on the same benchmark, so the highest fitness among
+    them wins rather than the first that exists. Taking the first served a
+    committed manifest that predated the twelfth measurement: +0.8453 under
+    "best-measured", beside a table listing +0.8941.
     """
     state_dir = Path(os.environ.get("ESP_STATE", ROOT / "state"))
+    found = []
     manifest = state_dir / "champion.json"
     if manifest.exists():
         payload = json.loads(manifest.read_text())
         genome = Genome.from_canonical(payload["genome"])
         measured = payload["measured"]
-        record = Evaluated(
+        found.append((payload.get("origin", "measured"), genome, Evaluated(
             genome_hash=payload["hash"], origin=payload.get("origin", "measured"),
             fitness=measured["fitness"], accuracy=measured["accuracy"],
             tokens=measured["tokens"], agents=measured["agents"],
             depth=len(genome.reachable()), generation=0, measured_at="",
-            model=genome.default_model, genome=payload["genome"])
-        return payload.get("origin", "measured"), genome, record
+            model=genome.default_model, genome=payload["genome"])))
 
-    state = ServiceState.load(state_dir)
-    best = state.best()
+    best = ServiceState.load(state_dir).best()
     if best is not None:
         for name, build in SEEDS.items():
             genome = build()
             if genome.genome_hash() == best.genome_hash:
-                return name, genome, best
+                found.append((name, genome, best))
 
     committed = measurements.best()
     if committed is not None:
-        return committed.name(), committed.genome, Evaluated(
+        found.append((committed.name(), committed.genome, Evaluated(
             genome_hash=committed.genome_hash, origin=committed.origin,
             fitness=committed.fitness, accuracy=committed.accuracy,
             tokens=committed.tokens, agents=committed.agents,
             depth=committed.depth, generation=0, measured_at="",
             model=committed.genome.default_model,
-            genome=committed.genome.canonical())
+            genome=committed.genome.canonical())))
 
+    if found:
+        return max(found, key=lambda entry: entry[2].fitness)
     return "designer_shaped", SEEDS["designer_shaped"](), None
 
 
@@ -126,93 +201,15 @@ class Question(BaseModel):
     question: str
 
 
-PAGE = """<!doctype html><html lang=en><meta charset=utf-8>
-<meta name=viewport content="width=device-width,initial-scale=1">
-<link rel=icon href="data:,">
-<title>neuro-san-esp | measured champion</title>
-<style>
- :root{color-scheme:light dark;--bg:#fbfcfd;--fg:#101418;--mute:#5b6672;--line:#d7dde3;
-       --accent:#1a4fa0;--code:#12161b;--codefg:#d6e2ee;--warn:#fff6e5;--warnline:#e8d9b0;
-       --ok:#1f7a3a;--bad:#a4262c;--onaccent:#fff}
- @media(prefers-color-scheme:dark){:root{--bg:#0f1115;--fg:#e6e9ee;--mute:#98a2ae;
-       --line:#2a2f38;--accent:#6ea0ff;--warn:#2a2313;--warnline:#4a3f22;--ok:#5cc47a;--bad:#ff7b72;--onaccent:#0f1115}}
- body{font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-      max-width:780px;margin:0 auto;padding:32px 16px;background:var(--bg);color:var(--fg)}
- h1{font-size:22px;margin:0 0 4px} .sub{color:var(--mute);margin:0 0 18px;font-size:14px}
- .card{border:1px solid var(--line);border-radius:10px;padding:16px;margin:16px 0}
- textarea{width:100%;box-sizing:border-box;padding:10px;font:inherit;border-radius:8px;
-          border:1px solid var(--line);background:transparent;color:inherit}
- button{padding:9px 18px;border:0;border-radius:8px;background:var(--accent);color:var(--onaccent);
-        font:inherit;cursor:pointer} button[disabled]{opacity:.5;cursor:not-allowed}
- .row{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
- .ex{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-top:12px}
- .ex button{background:transparent;color:inherit;border:1px solid var(--line);text-align:left;
-            font-size:14px;line-height:1.4;padding:10px}
- .ex b{display:block;font-size:12px;color:var(--mute);font-weight:600;margin-bottom:2px}
- #answer{white-space:pre-wrap;line-height:1.65}
- .meta{font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--mute);margin-top:12px}
- .ok{color:var(--ok);font-weight:600} .bad{color:var(--bad);font-weight:600}
- .warn{background:var(--warn);border-color:var(--warnline);font-size:14px}
- .served{font-size:13px;color:var(--mute)}
-</style>
-<h1>Talking to a measured agent network</h1>
-<p class=sub>__SUB__</p>
-<p class=served>__SERVED__</p>
+class MeasureRequest(BaseModel):
+    networks: list[str]
+    suite: str | None = None          # JSON Lines; None is the built-in benchmark
 
-<div class=card>
-<label for=q class=sub>Ask anything about Meridian Logistics &mdash; or start with one of these.
-Each has a known correct answer, and the page grades it.</label>
-<div class=ex>__EXAMPLES__</div>
-<textarea id=q rows=3 style="margin-top:12px"
- placeholder="e.g. Which depot services contract C-2117, and who manages it?"></textarea>
-<div class=row><button id=go onclick=ask()>Ask</button>
-<span id=status class=sub style="margin:0"></span></div>
-</div>
 
-<div class=card id=result hidden>
-<div id=answer></div>
-<div class=meta id=meta></div>
-</div>
-
-<div class="card warn">
-<b>What this is.</b> Meridian Logistics is invented &mdash; 24 depots, 40 contracts, 124 documents.
-Nothing about it is in any model's training data, so the only way to answer is to go and read,
-which is what makes the score a measurement of the <i>topology</i> rather than of recall.
-<br><br>
-<b>What it is not.</b> __CAVEAT__
-</div>
-<p class=sub>Source: <a href="https://github.com/Sivakumarraj/neuro-san-esp">github.com/Sivakumarraj/neuro-san-esp</a></p>
-<script>
-function pick(b){document.getElementById('q').value=b.dataset.q;ask()}
-async function ask(){
-  const q=document.getElementById('q').value.trim(); if(!q)return;
-  const go=document.getElementById('go'), st=document.getElementById('status');
-  const box=document.getElementById('result'), ans=document.getElementById('answer'),
-        meta=document.getElementById('meta');
-  go.disabled=true; box.hidden=true;
-  st.textContent='Running the network — a multi-hop question takes a minute or two.';
-  try{
-    const r=await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json'},
-                               body:JSON.stringify({question:q})});
-    const d=await r.json();
-    box.hidden=false; meta.textContent='';
-    if(d.error){ans.textContent='Error: '+d.error;return}
-    ans.textContent=d.answer||'(the network returned no answer)';
-    const line=document.createElement('div');
-    line.textContent=`${d.agents} agents · ${d.seconds}s · ${d.provider}`
-      +` · router ${d.router_model}, workers ${d.worker_model}`;
-    meta.appendChild(line);
-    if(d.expected){
-      const g=document.createElement('div');
-      g.append('Benchmark answer: '+d.expected+' — ');
-      const v=document.createElement('span');
-      v.className=d.correct?'ok':'bad'; v.textContent=d.correct?'CORRECT':'WRONG';
-      g.appendChild(v); meta.appendChild(g);
-    }
-  }catch(e){box.hidden=false;ans.textContent='Error: '+e}
-  finally{go.disabled=false;st.textContent=''}
-}
-</script></html>"""
+# The page lives beside this file as plain HTML, so the markup can be read and
+# linted as markup. Placeholders in __CAPS__ are filled by page(); every value a
+# visitor supplies reaches the DOM through textContent, never innerHTML.
+PAGE = (Path(__file__).with_name("page.html")).read_text(encoding="utf-8")
 
 
 def measurement_count() -> int:
@@ -268,10 +265,12 @@ def caveat() -> str:
         quality = surrogate_quality()
         if quality is not None and not quality.get("beats_random", False):
             parts.append(
-                f"the surrogate trained on {quality.get('samples', measured)} "
-                f"samples and did not rank better than chance "
-                f"(Spearman {quality.get('spearman', float('nan')):+.3f}), so "
-                f"the free search explores rather than selects")
+                f"when the search first used the surrogate it had "
+                f"{quality.get('samples', measured)} samples and ranked worse "
+                f"than chance (Spearman {quality.get('spearman', float('nan')):+.3f}); "
+                f"cross-validated on the twelve committed measurements it is "
+                f"positive on every split tried (make figures), but twelve "
+                f"networks is too few to call it a reliable selector")
 
     if not parts:
         parts.append("the search has run few generations, so the Pareto front "
@@ -297,10 +296,18 @@ def page() -> str:
         f'onclick="pick(this)"><b>{label} &middot; {task.hops} hop'
         f'{"s" if task.hops != 1 else ""}</b>{html.escape(display_question(task))}</button>'
         for label, task in zip(labels, SHOWCASE, strict=False))
+    everything = "".join(
+        f'<button data-q="{html.escape(display_question(task), quote=True)}" '
+        f'onclick="pick(this)"><b>{task.task_id} &middot; {task.hops} hop'
+        f'{"s" if task.hops != 1 else ""}</b>{html.escape(display_question(task))}</button>'
+        for task in sorted(TASKS, key=lambda t: (t.hops, t.task_id)))
     served = html.escape(SERVED.note(GENOME.default_model))
     return (PAGE.replace("__SUB__", sub)
                 .replace("__SERVED__", served)
                 .replace("__EXAMPLES__", examples)
+                .replace("__ALLQUESTIONS__", everything)
+                .replace("__COUNT__", str(len(TASKS)))
+                .replace("__MAXNETS__", str(MAX_NETWORKS))
                 .replace("__CAVEAT__", caveat()))
 
 
@@ -362,6 +369,66 @@ def build_app():
             "expected": expected,
             "correct": score(expected, answer) if expected else None,
         })
+
+    @app.get("/api/networks")
+    def networks() -> list[dict]:
+        return [c.public() for c in candidates().values()]
+
+    @app.post("/api/measure")
+    def start_measure(payload: MeasureRequest) -> JSONResponse:
+        pool = candidates()
+        wanted = list(dict.fromkeys(payload.networks))
+        if not wanted:
+            return JSONResponse({"error": "pick at least one network"}, status_code=400)
+        if len(wanted) > MAX_NETWORKS:
+            return JSONResponse({"error": f"at most {MAX_NETWORKS} networks at once"},
+                                status_code=400)
+        unknown = [n for n in wanted if n not in pool]
+        if unknown:
+            return JSONResponse({"error": f"unknown network(s): {', '.join(unknown)}"},
+                                status_code=400)
+        if payload.suite is None:
+            suite, tasks = BUILTIN, list(TASKS)
+        else:
+            if len(payload.suite.encode("utf-8")) > MAX_SUITE_BYTES:
+                return JSONResponse({"error": "the question file is too large"},
+                                    status_code=400)
+            try:
+                suite, tasks = "your questions", parse_suite(payload.suite)
+            except SuiteError as exc:
+                return JSONResponse({"error": str(exc)}, status_code=400)
+            if len(tasks) > MAX_SUITE_QUESTIONS:
+                return JSONResponse(
+                    {"error": f"at most {MAX_SUITE_QUESTIONS} questions per measurement"},
+                    status_code=400)
+
+        runs = len(wanted) * len(tasks)
+        with _job_lock:
+            if any(j["state"] == "running" for j in _jobs.values()):
+                return JSONResponse({"error": "a measurement is already running on this "
+                                              "deployment -- try again when it finishes"},
+                                    status_code=409)
+            if _measured["count"] + runs > MAX_MEASURE:
+                left = max(0, MAX_MEASURE - _measured["count"])
+                return JSONResponse(
+                    {"error": f"that is {runs} question-runs and this deployment has {left} "
+                              f"left of its {MAX_MEASURE}. Every run is paid for; "
+                              "ESP_WEB_MAX_MEASURE raises the limit."}, status_code=429)
+            _measured["count"] += runs
+            job_id = uuid.uuid4().hex[:12]
+            job = {"id": job_id, "state": "running", "done": 0, "total": runs,
+                   "suite": suite, "current": None, "reports": [], "error": None}
+            _jobs[job_id] = job
+        threading.Thread(target=run_job, args=(job, [pool[n] for n in wanted], tasks, suite),
+                         daemon=True).start()
+        return JSONResponse({"job": job_id, "runs": runs})
+
+    @app.get("/api/jobs/{job_id}")
+    def job_status(job_id: str) -> JSONResponse:
+        job = _jobs.get(job_id)
+        if job is None:
+            return JSONResponse({"error": "no such measurement"}, status_code=404)
+        return JSONResponse(job)
 
     return app
 
