@@ -115,6 +115,23 @@ def presentable(genome: Genome) -> Served:
     return Served(retarget(network, cheap, strong), target, retargeted=True)
 
 
+def measurable(genome: Genome) -> Served:
+    """What to *measure* for this genome on this deployment.
+
+    Unlike `presentable`, the reply format is left as measured -- the scorer
+    matches the bare value, so explaining would change the protocol, not just
+    the manners. Only the provider moves, rung for rung, when it has to; a
+    network measured again that way is a new measurement on the new provider,
+    which is exactly the one the committed data lacks.
+    """
+    target = provider_for(DEFAULT_MODEL) or "gemini"
+    source = provider_for(genome.default_model) or "gemini"
+    if source == target:
+        return Served(genome.clone(), target, retargeted=False)
+    cheap, strong = serving_ladder()
+    return Served(retarget(genome, cheap, strong), target, retargeted=True)
+
+
 def display_question(task: Task) -> str:
     """A benchmark question as a person should read it."""
     return _FORMAT_SUFFIX.sub("", task.question).strip()

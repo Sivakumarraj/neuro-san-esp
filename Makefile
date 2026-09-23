@@ -1,4 +1,4 @@
-.PHONY: install test lint lint-docs check check-key smoke figures probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
+.PHONY: install test lint lint-docs check check-key smoke measure figures probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -26,6 +26,13 @@ check-key:
 # dozen model calls in all. Everything else here is offline by design.
 smoke:
 	PYTHONPATH=$$PWD AGENT_TOOL_PATH=$$PWD python scripts/smoke_live.py
+
+# Measure any neuro-san network on any question file -- the capability neuro-san
+# lacks. Real calls. NETWORK is a HOCON path or a manifest name; TASKS is a JSON
+# Lines file of {"question", "answer"} (default: the built-in 17 questions).
+#   make measure NETWORK=registries/my_network.hocon TASKS=my_questions.jsonl
+measure:
+	PYTHONPATH=$$PWD AGENT_TOOL_PATH=$${AGENT_TOOL_PATH:-$$PWD} python -m esp.measure $(NETWORK) --tasks $${TASKS:-meridian}
 
 # Every published figure about the Predictor, regenerated from committed data.
 figures:

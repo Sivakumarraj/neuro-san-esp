@@ -12,7 +12,8 @@ import json
 import os
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -243,6 +244,142 @@ def classify(results: list[TaskResult]) -> list[TaskResult]:
     return results
 
 
+@dataclass
+class SuiteRun:
+    """What one network did on one list of tasks, before any verdict."""
+
+    results: list[TaskResult]
+    tokens: int
+    cost: float
+    seconds: float
+
+
+def run_suite(hocon_path: str, tasks: list[Task], workers: int = MAX_WORKERS,
+              answer_limit: int | None = 400,
+              on_result: Callable[[TaskResult], None] | None = None) -> SuiteRun:
+    """Put every task to one network, in parallel, and classify what came back.
+
+    `hocon_path` is any neuro-san network: a file path, or a name in the
+    manifest. `answer_limit` trims stored answers -- the cache keeps 400
+    characters, a report keeps them whole. `on_result` is called as each task
+    finishes, in completion order, so a caller can show progress; the returned
+    results are always in task order.
+    """
+    def run_one(task: Task) -> tuple[TaskResult, dict]:
+        try:
+            answer, accounting, seconds = _ask(hocon_path, task.question)
+            kept = answer if answer_limit is None else answer[:answer_limit]
+            return TaskResult(task.task_id, task.hops,
+                              score(task.accepted or (task.answer,), answer),
+                              round(seconds, 2), kept), accounting
+        except Exception as exc:
+            return TaskResult(task.task_id, task.hops, False, 0.0, "",
+                              f"{type(exc).__name__}: {exc}"[:300]), {}
+
+    started = time.monotonic()
+    pairs: list[tuple[TaskResult, dict] | None] = [None] * len(tasks)
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        pending = {pool.submit(run_one, task): index for index, task in enumerate(tasks)}
+        for future in as_completed(pending):
+            pair = future.result()
+            pairs[pending[future]] = pair
+            if on_result is not None:
+                on_result(classify([pair[0]])[0])
+    elapsed = time.monotonic() - started
+
+    done = [pair for pair in pairs if pair is not None]
+    return SuiteRun(
+        results=classify([pair[0] for pair in done]),
+        tokens=sum(_total_tokens(pair[1]) for pair in done),
+        cost=round(sum(_cost(pair[1]) for pair in done), 6),
+        seconds=round(elapsed, 2),
+    )
+
+
+def refuse_unmeasured(results: list[TaskResult], tokens: int,
+                      action: str = "cache") -> None:
+    """Raise when a run measured the environment instead of the network.
+
+    Shared by the cache-writing evaluator and by `esp.measure`, because a
+    number the environment produced is as wrong in a report as in the cache --
+    it is only more permanent in the cache. `action` names what is being
+    refused in the message: the evaluator caches, a measurement reports.
+    """
+    # A genome that scores zero because every task raised is not a bad genome,
+    # it is a broken environment -- a missing key, an unset AGENT_TOOL_PATH.
+    # Caching that would pin a permanent zero on a topology that was never
+    # actually run, and the cache would keep returning it long after the
+    # environment was fixed.
+    if all(r.error for r in results):
+        raise OSError(
+            f"every task failed identically -- refusing to {action}. First error: "
+            + results[0].error
+        )
+
+    # Nothing was measured. Every real evaluation burns tokens -- seventeen
+    # tasks through a language model cannot cost zero -- so a zero total means
+    # no model was ever called: a missing key, an unset AGENT_TOOL_PATH, a
+    # provider the driver could not reach. The tasks still "completed", just
+    # with whatever the agent says when it cannot work, so `accuracy` comes
+    # back 0.00 with no error attached and the all-errored check above waves it
+    # through.
+    #
+    # This is the single most expensive thing that can be written to the cache.
+    # It is indistinguishable from a real zero once stored, it never expires,
+    # and it poisons everything downstream: the seeds replay as 0.00 for ever,
+    # the Predictor trains on them, and the search concludes that networks
+    # which were never run are bad. A live run hit exactly this -- two seeds
+    # cached at acc=0.00 tok=0, replayed on every invocation afterwards.
+    if tokens == 0:
+        raise OSError(
+            "the whole evaluation cost zero tokens, so no model was called -- "
+            f"refusing to {action}. Check the API key in .env"
+            + (f", then delete {CACHE_DIR}/ if earlier runs already stored zeros."
+               if action == "cache" else ".")
+        )
+
+    # Every task gave up before answering. Not one wrong answer among them --
+    # seventeen timeouts, or seventeen blown recursion caps, which is what a
+    # live run against neuro-san 0.7.4 produces when langgraph's limit of 40 is
+    # reached on every question.
+    #
+    # None of the guards above sees this. neuro-san hands a blown cap back as
+    # an ordinary answer string, so `error` is empty and the all-errored check
+    # passes it; the agents burned real tokens on the way to giving up, so the
+    # zero-token check passes it too; and no 429 was involved. What lands in
+    # the cache is accuracy 0.00 with a plausible token count, filed against a
+    # topology that was never actually asked anything it could finish.
+    #
+    # `classify()` has always marked these `infrastructure`, and
+    # `answered_accuracy()` has always excluded them. Neither helps once the
+    # record is written: the cached `accuracy` is what trains the Predictor and
+    # what the champion resolver reads. A candidate with some unfinished tasks
+    # is still a measurement and is still cached -- only the total wipeout is
+    # refused, because that one is a fact about the environment.
+    if results and all(r.infrastructure for r in results):
+        raise OSError(
+            f"all {len(results)} tasks gave up before answering "
+            f"(timeout or recursion cap) -- refusing to {action}. This measures "
+            f"the environment, not the topology. First: "
+            f"{(results[0].answer or results[0].error)[:200]}"
+        )
+
+    # Quota exhaustion is not a property of the topology. A daily cap does not
+    # fail every task at once -- it starts failing them part-way through a
+    # candidate, so the all-errored check above does not catch it. What lands
+    # instead is a plausible-looking partial score that gets cached forever and
+    # tells the search a good network is mediocre. Refuse the whole evaluation
+    # rather than record a number the environment produced.
+    starved = [r for r in results if _is_quota_failure(r)]
+    if starved:
+        raise QuotaExhausted(
+            f"{len(starved)} of {len(results)} tasks hit a provider quota -- "
+            f"refusing to {action} a score the environment caused, not the topology. "
+            f"First: {starved[0].error[:200]}"
+        )
+
+
+
 def write_network(genome: Genome) -> Path:
     NETWORK_DIR.mkdir(parents=True, exist_ok=True)
     path = NETWORK_DIR / f"{genome.genome_hash()}.hocon"
@@ -279,107 +416,20 @@ def evaluate(genome: Genome, tasks: list[Task] | None = None,
         return evaluation
 
     hocon_path = str(write_network(genome))
-
-    def run_one(task: Task) -> tuple[TaskResult, dict]:
-        try:
-            answer, accounting, seconds = _ask(hocon_path, task.question)
-            return TaskResult(task.task_id, task.hops, score(task.accepted, answer),
-                              round(seconds, 2), answer[:400]), accounting
-        except Exception as exc:
-            return TaskResult(task.task_id, task.hops, False, 0.0, "",
-                              f"{type(exc).__name__}: {exc}"[:300]), {}
-
-    started = time.monotonic()
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        pairs = list(pool.map(run_one, tasks))
-    elapsed = time.monotonic() - started
-
-    results = classify([pair[0] for pair in pairs])
-    tokens = sum(_total_tokens(pair[1]) for pair in pairs)
-    cost = round(sum(_cost(pair[1]) for pair in pairs), 6)
+    run = run_suite(hocon_path, tasks)
+    results = run.results
 
     evaluation = Evaluation(
         genome_hash=digest,
         accuracy=round(sum(r.correct for r in results) / len(results), 4),
-        seconds=round(elapsed, 2),
-        tokens=tokens,
-        cost=cost,
+        seconds=run.seconds,
+        tokens=run.tokens,
+        cost=run.cost,
         agents=len(genome.reachable()),
         depth=genome.depth(),
         results=results,
     )
-
-    # A genome that scores zero because every task raised is not a bad genome,
-    # it is a broken environment -- a missing key, an unset AGENT_TOOL_PATH.
-    # Caching that would pin a permanent zero on a topology that was never
-    # actually run, and the cache would keep returning it long after the
-    # environment was fixed.
-    if all(r.error for r in results):
-        raise OSError(
-            "every task failed identically -- refusing to cache. First error: "
-            + results[0].error
-        )
-
-    # Nothing was measured. Every real evaluation burns tokens -- seventeen
-    # tasks through a language model cannot cost zero -- so a zero total means
-    # no model was ever called: a missing key, an unset AGENT_TOOL_PATH, a
-    # provider the driver could not reach. The tasks still "completed", just
-    # with whatever the agent says when it cannot work, so `accuracy` comes
-    # back 0.00 with no error attached and the all-errored check above waves it
-    # through.
-    #
-    # This is the single most expensive thing that can be written to the cache.
-    # It is indistinguishable from a real zero once stored, it never expires,
-    # and it poisons everything downstream: the seeds replay as 0.00 for ever,
-    # the Predictor trains on them, and the search concludes that networks
-    # which were never run are bad. A live run hit exactly this -- two seeds
-    # cached at acc=0.00 tok=0, replayed on every invocation afterwards.
-    if tokens == 0:
-        raise OSError(
-            "the whole evaluation cost zero tokens, so no model was called -- "
-            "refusing to cache. Check the API key in .env, then delete "
-            f"{CACHE_DIR}/ if earlier runs already stored zeros."
-        )
-
-    # Every task gave up before answering. Not one wrong answer among them --
-    # seventeen timeouts, or seventeen blown recursion caps, which is what a
-    # live run against neuro-san 0.7.4 produces when langgraph's limit of 40 is
-    # reached on every question.
-    #
-    # None of the guards above sees this. neuro-san hands a blown cap back as
-    # an ordinary answer string, so `error` is empty and the all-errored check
-    # passes it; the agents burned real tokens on the way to giving up, so the
-    # zero-token check passes it too; and no 429 was involved. What lands in
-    # the cache is accuracy 0.00 with a plausible token count, filed against a
-    # topology that was never actually asked anything it could finish.
-    #
-    # `classify()` has always marked these `infrastructure`, and
-    # `answered_accuracy()` has always excluded them. Neither helps once the
-    # record is written: the cached `accuracy` is what trains the Predictor and
-    # what the champion resolver reads. A candidate with some unfinished tasks
-    # is still a measurement and is still cached -- only the total wipeout is
-    # refused, because that one is a fact about the environment.
-    if results and all(r.infrastructure for r in results):
-        raise OSError(
-            f"all {len(results)} tasks gave up before answering "
-            f"(timeout or recursion cap) -- refusing to cache. This measures "
-            f"the environment, not the topology. First: "
-            f"{(results[0].answer or results[0].error)[:200]}"
-        )
-
-    # Quota exhaustion is not a property of the topology. A daily cap does not
-    # fail every task at once -- it starts failing them part-way through a
-    # candidate, so the all-errored check above does not catch it. What lands
-    # instead is a plausible-looking partial score that gets cached forever and
-    # tells the search a good network is mediocre. Refuse the whole evaluation
-    # rather than record a number the environment produced.
-    starved = [r for r in results if _is_quota_failure(r)]
-    if starved:
-        raise QuotaExhausted(
-            f"{len(starved)} of {len(results)} tasks hit a provider quota -- "
-            "refusing to cache a score the environment caused, not the topology. "
-            f"First: {starved[0].error[:200]}"
-        )
+    refuse_unmeasured(results, run.tokens)
 
     payload = asdict(evaluation)
     payload.pop("from_cache", None)
