@@ -26,8 +26,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from esp.config import provider_for
 from esp.eval import measurements
 from esp.eval.runner import CACHE_DIR
+from esp.genome.definition import DEFAULT_MODEL
 from esp.service.state import Evaluated, ServiceState
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -40,6 +42,20 @@ def adopt(state_dir: Path, cache_dir: Path, source: Path | None = None,
     if not found:
         raise SystemExit(
             f"no usable measurements in {source or measurements.FIXTURE_CACHE}")
+
+    # Measurements do not cross providers. The committed twelve were taken on
+    # Gemini; adopting them into a deployment configured for Claude would breed
+    # children that inherit a Gemini default the run holds no key for, and would
+    # rank Claude evaluations against Gemini ones in the same population.
+    configured = provider_for(DEFAULT_MODEL)
+    measured_on = {provider_for(record.genome.default_model) for record in found}
+    if measured_on != {configured}:
+        raise SystemExit(
+            f"these measurements were taken on {', '.join(sorted(map(str, measured_on)))} "
+            f"and this deployment is configured for {configured} ({DEFAULT_MODEL}). "
+            "Measurements do not cross providers -- a fitness measured on one model "
+            "does not describe the same network on another. Measure the seeds on "
+            "your own provider instead: make baseline")
 
     state = ServiceState.load(state_dir)
     if state.evaluated and not force:

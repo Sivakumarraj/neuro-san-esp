@@ -92,7 +92,12 @@ def main() -> int:
 
     bootstrap()
     if not os.environ.get("GOOGLE_API_KEY"):
-        print("GOOGLE_API_KEY is not set", file=sys.stderr)
+        # This probe exists for Google's free tier, where each model has its
+        # own daily cap and some cannot fund a single candidate. A paid
+        # Anthropic or OpenAI key has no such cap to discover.
+        print("GOOGLE_API_KEY is not set. `make probe` measures Gemini free-tier "
+              "caps only; on Anthropic or OpenAI run `make check-key` instead.",
+              file=sys.stderr)
         return 2
 
     warnings.filterwarnings("ignore")

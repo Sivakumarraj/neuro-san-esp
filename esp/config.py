@@ -70,6 +70,55 @@ def key_name_for(model: str) -> str | None:
     return KEY_FOR_PROVIDER.get(provider) if provider else None
 
 
+# Each provider's two-rung ladder, cheap first: what the workers run and what a
+# router is promoted to. Every name is one neuro-san's own model registry
+# resolves -- `tests/test_providers.py` checks that, because a name it does not
+# know fails inside every agent rather than at startup.
+#
+# Two rungs because that is what the measurements support. Both evolved
+# networks that beat the designer's shape did it the same way: the stronger
+# model on the router, the cheap one on every worker. A longer ladder would
+# give the search more to try and nothing measured to justify it.
+#
+# The Gemini ladder is the one the committed measurements were taken on. It is
+# not the default when another provider is configured -- it is the default only
+# when nothing else is, so that analysing the committed data needs no key.
+DEFAULT_LADDERS: dict[str, tuple[str, str]] = {
+    "anthropic": ("claude-haiku-4-5", "claude-sonnet-5"),
+    "openai": ("gpt-5-mini", "gpt-5"),
+    "gemini": ("gemini-3.5-flash-lite", "gemini-3.5-flash"),
+    "openrouter": ("openrouter/free", "openrouter/free"),
+}
+
+# Which models are the cheap rung of their own family. Matched on the family's
+# naming convention rather than listed, so a new release in a known family
+# (gemini-3.9-flash-lite, claude-haiku-5) is placed without an edit here.
+_CHEAP_MARKERS = {
+    "gemini": ("-lite",),
+    "anthropic": ("haiku",),
+    "openai": ("-mini", "-nano"),
+}
+
+
+def cost_tier(model: str) -> int:
+    """0 for a family's cheap rung, 1 for anything stronger.
+
+    Provider-neutral on purpose. A network measured on Gemini and served on
+    Claude has to keep its shape, and its shape includes *which* agent got the
+    stronger model -- the one decision the search found worth making. Position
+    in one provider's ladder cannot express that for a model from another.
+
+    An unrecognised model is treated as cheap, the conservative reading: it
+    never promotes an agent that was not promoted when it was measured.
+    """
+    provider = provider_for(model) or ""
+    name = (model or "").lower()
+    markers = _CHEAP_MARKERS.get(provider)
+    if markers is None:
+        return 0
+    return 0 if any(marker in name for marker in markers) else 1
+
+
 def load_env(path: Path | None = None) -> list[str]:
     """Read KEY=value lines into the environment. Returns the names it set."""
     path = path or ROOT / ".env"
@@ -262,13 +311,18 @@ def key_source(name: str | None = None) -> str:
 
 
 def bootstrap() -> None:
-    """What every entry point calls first: load .env, then the legacy dev file.
+    """What every entry point calls first: load .env into the environment.
 
-    /tmp/.gk is a development convenience from before .env existed. It stays
-    because a running deployment may rely on it, but it is checked last: a key
-    a person pasted into the repository should beat one left in /tmp months ago.
+    Setting `ESP_NO_DOTENV=1` skips it. The test suite does, because a
+    developer's own .env -- a Claude key and a Claude model ladder, say -- would
+    otherwise leak into tests that pin the Gemini population the committed
+    measurements were taken on, and fail them for a reason that has nothing to
+    do with the code.
+
+    There used to be a second source here, a key read out of `/tmp/.gk`. It
+    predated .env, and a credential in a world-readable temporary file is not a
+    fallback worth keeping.
     """
+    if os.environ.get("ESP_NO_DOTENV"):
+        return
     load_env()
-    legacy = Path("/tmp/.gk")
-    if legacy.exists() and not os.environ.get("GOOGLE_API_KEY"):
-        os.environ["GOOGLE_API_KEY"] = legacy.read_text(encoding="utf-8").strip()

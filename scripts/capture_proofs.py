@@ -27,7 +27,8 @@ from pathlib import Path
 # its neighbours ran fine.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from esp.config import bootstrap
+from esp.config import bootstrap, key_name_for, provider_keys
+from esp.genome.definition import DEFAULT_MODEL
 
 ROOT = Path(__file__).resolve().parent.parent
 PROOF_DIR = ROOT / "docs" / "proofs"
@@ -130,7 +131,13 @@ def carry_forward(name: str, command: list[str],
 def main() -> int:
     PROOF_DIR.mkdir(parents=True, exist_ok=True)
     bootstrap()
-    has_key = bool(os.environ.get("GOOGLE_API_KEY"))
+    # The key the configured model needs -- not always Google's. Checking only
+    # GOOGLE_API_KEY meant a Claude-configured machine never re-captured the
+    # keyed proofs and silently carried the old ones forward.
+    # Read after bootstrap(): DEFAULT_MODEL was fixed at import, before .env
+    # was loaded, and a provider chosen only in .env would be missed.
+    wanted = key_name_for(os.environ.get("ESP_DEFAULT_MODEL", DEFAULT_MODEL))
+    has_key = bool(wanted and wanted in provider_keys())
 
     previous = load_index()
 

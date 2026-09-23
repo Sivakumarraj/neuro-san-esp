@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from esp.genome.definition import Agent, Genome
 
-_ANSWER_STYLE = (
+ANSWER_STYLE = (
     "Reply with the answer alone -- a name, a city, a code or a number. "
     "No sentence, no units, no explanation, no thousands separators."
 )
@@ -58,7 +58,7 @@ def solo() -> Genome:
                     "Search for every identifier in the question (D03, C-2105, INC-4407).\n"
                     "A question often spans two or three documents: find one, read the "
                     "identifier it points to, then search again for that.\n"
-                    f"{_MUST_DELEGATE}\n{_ANSWER_STYLE}"
+                    f"{_MUST_DELEGATE}\n{ANSWER_STYLE}"
                 ),
                 can_search=True,
             )
@@ -81,7 +81,7 @@ def designer_shaped() -> Genome:
                     "areas need two calls: ask one, take the identifier it returns, "
                     "then ask the next with that identifier.\n"
                     "Then report the answer.\n"
-                    f"{_MUST_DELEGATE}\n{_ANSWER_STYLE}"
+                    f"{_MUST_DELEGATE}\n{ANSWER_STYLE}"
                 ),
                 tools=["DepotSpecialist", "ContractSpecialist", "IncidentSpecialist"],
             ),

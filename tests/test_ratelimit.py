@@ -199,3 +199,36 @@ def test_the_fixed_sampling_notice_is_silenced_and_nothing_else_is():
     assert not any("fixed sampling" in m for m in messages), messages
     assert any("matters" in m for m in messages), messages
     assert any("different category" in m for m in messages), messages
+
+
+# ------------------------------------------------------ paid-provider pacing
+
+def test_an_overloaded_claude_api_is_retried_not_scored_wrong():
+    """Anthropic says 503 as 529. It was missing, so a busy API scored a task
+    wrong on a paid key while a comment claimed the case was handled."""
+    overloaded = Exception("Error code: 529 - {'type': 'error', 'error': "
+                           "{'type': 'overloaded_error', 'message': 'Overloaded'}}")
+    assert ratelimit._is_transient_server_error(overloaded)
+
+
+def test_a_paid_key_can_be_paced_faster_than_the_free_tier():
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    code = ("from esp.eval import ratelimit\n"
+            "print(ratelimit.DEFAULT_RPM, ratelimit.bucket_for('claude-haiku-4-5').rpm)")
+    done = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, timeout=60,
+        env={**os.environ, "ESP_NO_DOTENV": "1", "ESP_RPM": "45",
+             "PYTHONPATH": str(root)})
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.split() == ["45", "45"]
+
+
+def test_a_measured_gemini_rate_still_beats_the_override():
+    """ESP_RPM is the fallback for unmeasured models, never a way to push a
+    free-tier model past the limit its own 429s reported."""
+    assert failover.rpm_for("gemini-3.8-flash", 45) < 45

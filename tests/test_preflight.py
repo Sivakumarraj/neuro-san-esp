@@ -300,3 +300,25 @@ def test_an_unreachable_provider_is_not_reported_as_a_bad_key(monkeypatch):
                  if c.name.endswith(" accepted"))
     assert check.ok
     assert "not checked" in check.detail
+
+
+def test_a_ladder_the_run_holds_no_key_for_is_refused(monkeypatch):
+    """A Claude default with a Gemini ladder passed the key check and then
+    failed inside every agent the search promoted -- scoring those candidates
+    zero, which reads as the promotion having been a bad idea."""
+    from esp.service import preflight
+
+    monkeypatch.setattr(preflight, "DEFAULT_MODEL", "claude-haiku-4-5")
+    monkeypatch.setattr(preflight, "MODEL_TIERS", ["gemini-3.5-flash-lite", "gemini-3.5-flash"])
+    monkeypatch.setattr(preflight, "provider_keys", lambda: ["ANTHROPIC_API_KEY"])
+    tiers = next(c for c in preflight.run_checks() if c.name == "model tiers")
+    assert not tiers.ok and tiers.fatal
+    assert "GOOGLE_API_KEY" in tiers.detail
+
+
+def test_a_paid_provider_is_shown_its_pace_not_a_free_tier_budget(monkeypatch):
+    from esp.service import preflight
+
+    monkeypatch.setattr(preflight, "DEFAULT_MODEL", "claude-haiku-4-5")
+    names = [c.name for c in preflight.run_checks()]
+    assert "pacing" in names and "model ladder" not in names

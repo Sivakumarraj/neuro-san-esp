@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import importlib
+import os
 import random
 import threading
 import time
@@ -24,7 +25,14 @@ from collections import deque
 
 from esp.eval import failover
 
-DEFAULT_RPM = 14          # one under the documented 15, to leave headroom
+# Requests per minute for any model without a measured limit of its own.
+#
+# 14 sits one under the 15 the Gemini free tier allows, and it is a safe floor
+# on every provider. It is not a sensible ceiling on a paid key: at 14 a minute
+# the ~165 calls one candidate makes take twelve minutes of pure queueing.
+# `ESP_RPM` raises it -- set it to one under the requests-per-minute limit your
+# provider console shows for your account.
+DEFAULT_RPM = int(os.environ.get("ESP_RPM", "14"))
 MAX_RETRIES = 6
 
 _buckets: dict[str, Bucket] = {}
@@ -245,6 +253,10 @@ _TRANSIENT_MARKERS = (
     "503", "UNAVAILABLE",          # "currently experiencing high demand"
     "500", "INTERNAL",             # their side fell over
     "504", "DEADLINE_EXCEEDED",    # their gateway gave up, not our timeout
+    # Anthropic's way of saying 503. It was missing, so a busy Claude API was
+    # scored as a wrong answer on a paid key -- while the comment on
+    # `install_others` below claimed exactly this case was handled.
+    "529", "overloaded",
 )
 
 

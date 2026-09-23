@@ -19,6 +19,8 @@ import os
 from dataclasses import dataclass, field
 from typing import Any
 
+from esp.config import DEFAULT_LADDERS, provider_for
+
 # A candidate's step and time budget.
 #
 # The time budget is not a model-speed setting. Evaluation runs tasks concurrently
@@ -31,40 +33,40 @@ from typing import Any
 MAX_STEPS = int(os.environ.get("ESP_MAX_STEPS", "40"))
 MAX_EXECUTION_SECONDS = int(os.environ.get("ESP_MAX_EXECUTION_SECONDS", "600"))
 
-# Ordered cheapest-first. Position in this list is the "tier" a feature vector
-# sees, so the surrogate can learn "spending more here pays, spending there does not".
-# Measured daily caps on the free tier, read out of the 429 payloads themselves:
-#
-#     gemini-3.5-flash-lite    500 / day
-#     gemini-3.1-flash-lite    500 / day
-#     gemini-3-flash            20 / day
-#     gemini-3.6-flash          20 / day
-#
-# The "lite" models get 500 and the full models get 20. A candidate costs about
-# 165 requests over the 17 tasks, so one lite model's daily allowance buys three
-# candidates and a full model's buys none. Only the lite models are listed here:
-# a reassign_model mutation onto a 20/day model is a guaranteed quota failure,
-# and a quota failure scores a good topology as broken.
-#
-# gemini-2.5-* are excluded for a different reason -- reachable and in budget,
-# but the agent loop fails on them ("Agent stopped due to..."), which would
-# likewise blame the topology for the environment.
-# The models a genome may carry, cheapest first, and the network default.
+# The network default, and the models a genome may carry, cheapest first.
 #
 # Configurable because the provider is: neuro-san resolves the client class from
-# the model name, so "openrouter/free" reaches OpenRouter's free router and
-# "gemini-3.1-flash-lite" reaches Google, with no other change. Baking the names
-# in meant the whole project could only ever be run against one account.
+# the model name, so `claude-haiku-4-5` reaches Anthropic, `gpt-5-mini` reaches
+# OpenAI and `gemini-3.1-flash-lite` reaches Google, with no other change.
 #
-# Changing either changes every genome hash, because the model is part of the
-# genome -- which is correct and deliberate. A fitness measured on one model
-# does not describe a network running on another, so the cache must miss.
+# With nothing set, both describe the Gemini population the committed
+# measurements were taken on, so the offline half of the project -- search,
+# held-out analysis, the null sweep -- runs on a fresh clone with no key.
+#
+# The ladder follows the default model's provider unless it is set itself.
+# Setting ESP_DEFAULT_MODEL=claude-haiku-4-5 alone used to leave the ladder on
+# Gemini, and a `reassign_model` mutation would then hand an agent a model the
+# run held no key for: every call inside that agent fails, the candidate scores
+# zero, and the search learns that a good topology is bad.
+#
+# Position in the ladder is what `reassign_model` moves along. Changing either
+# setting changes every genome hash, because the model is part of the genome --
+# which is deliberate. A fitness measured on one model does not describe a
+# network running on another, so the cache must miss.
+DEFAULT_MODEL = os.environ.get("ESP_DEFAULT_MODEL", "gemini-3.1-flash-lite")
+
+
+def _default_ladder(model: str) -> str:
+    provider = provider_for(model)
+    cheap, strong = DEFAULT_LADDERS.get(provider or "gemini", DEFAULT_LADDERS["gemini"])
+    return f"{cheap},{strong}"
+
+
 MODEL_TIERS: list[str] = [
     name.strip() for name in os.environ.get(
-        "ESP_MODEL_TIERS", "gemini-3.5-flash-lite,gemini-3.5-flash").split(",")
+        "ESP_MODEL_TIERS", _default_ladder(DEFAULT_MODEL)).split(",")
     if name.strip()
 ]
-DEFAULT_MODEL = os.environ.get("ESP_DEFAULT_MODEL", "gemini-3.1-flash-lite")
 
 CORPUS_TOOL = "CorpusSearch"
 
