@@ -1,4 +1,4 @@
-.PHONY: install test lint lint-docs check check-key smoke probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
+.PHONY: install test lint lint-docs check check-key smoke figures probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -26,6 +26,10 @@ check-key:
 # dozen model calls in all. Everything else here is offline by design.
 smoke:
 	PYTHONPATH=$$PWD AGENT_TOOL_PATH=$$PWD python scripts/smoke_live.py
+
+# Every published figure about the Predictor, regenerated from committed data.
+figures:
+	PYTHONPATH=$$PWD python scripts/surrogate_figures.py
 
 # Google's free tier only: which Gemini models answer today, and what each one's
 # daily cap is. A search that starts on an exhausted model scores every

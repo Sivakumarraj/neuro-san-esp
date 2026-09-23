@@ -25,7 +25,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from esp.config import cost_tier, provider_for
+from esp.config import cost_tier, model_rank, provider_for
 from esp.eval.tasks import TASKS, Task
 from esp.genome.definition import DEFAULT_MODEL, MODEL_TIERS, Genome
 from esp.genome.seeds import ANSWER_STYLE
@@ -68,19 +68,6 @@ def serving_ladder() -> tuple[str, str]:
     return MODEL_TIERS[0], MODEL_TIERS[-1]
 
 
-def _rank(model: str) -> tuple[int, float]:
-    """Order models within a family: the rung first, then the release.
-
-    The rung alone is not enough. One of the two winning networks promoted its
-    router from gemini-3.1-flash-lite to gemini-3.5-flash-lite -- both the cheap
-    rung -- and ranking by rung alone put both on the same rung, which erased
-    the one decision the search found worth making.
-    """
-    found = re.search(r"(\d+)(?:[.-](\d+))?", model or "")
-    release = float(f"{found.group(1)}.{found.group(2) or 0}") if found else 0.0
-    return cost_tier(model), release
-
-
 def retarget(genome: Genome, cheap: str, strong: str) -> Genome:
     """The same network with every model moved to a new ladder.
 
@@ -91,13 +78,13 @@ def retarget(genome: Genome, cheap: str, strong: str) -> Genome:
     """
     moved = genome.clone()
     ladder = (cheap, strong)
-    base = _rank(genome.default_model)
+    base = model_rank(genome.default_model)
     default_rung = cost_tier(genome.default_model)
     moved.default_model = ladder[default_rung]
     for agent in moved.agents.values():
         if agent.model is None:
             continue
-        rank = _rank(agent.model)
+        rank = model_rank(agent.model)
         rung = 1 if rank > base else 0 if rank < base else default_rung
         agent.model = ladder[rung]
     return moved

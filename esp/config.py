@@ -14,6 +14,7 @@ stale .env silently overriding it would be very hard to debug.
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -164,6 +165,20 @@ def cost_tier(model: str) -> int:
     if markers is None:
         return 0
     return 0 if any(marker in name for marker in markers) else 1
+
+
+def model_rank(model: str) -> tuple[int, float]:
+    """Order models within a family: the rung first, then the release.
+
+    The rung alone is not enough. One of the two winning networks promoted its
+    router from gemini-3.1-flash-lite to gemini-3.5-flash-lite -- both the cheap
+    rung -- and a rung-only order put them level, erasing the one decision the
+    search found worth making. A version-free alias (`claude-sonnet`) has no
+    release number and sorts by its rung alone.
+    """
+    found = re.search(r"(\d+)(?:[.-](\d+))?", model or "")
+    release = float(f"{found.group(1)}.{found.group(2) or 0}") if found else 0.0
+    return cost_tier(model), release
 
 
 def load_env(path: Path | None = None) -> list[str]:
