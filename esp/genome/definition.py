@@ -24,6 +24,7 @@ from esp.config import (
     configured_provider,
     cost_tier,
     default_model_for,
+    llm_config,
     provider_for,
 )
 
@@ -269,7 +270,7 @@ class Genome:
 
             if agent.model:
                 lines.append('            "llm_config": '
-                             f'{{"model_name": "{agent.model}"}},')
+                             f'{json.dumps(llm_config(agent.model))},')
 
             lines.append("        },")
             blocks.append("\n".join(lines))
@@ -279,7 +280,7 @@ class Genome:
 
         return (
             "{\n"
-            f'    "llm_config": {{"model_name": "{self.default_model}"}},\n'
+            f'    "llm_config": {json.dumps(llm_config(self.default_model))},\n'
             '    "metadata": {"description": "ESP candidate network."},\n'
             f'    "max_steps": {MAX_STEPS},\n'
             f'    "max_execution_seconds": {MAX_EXECUTION_SECONDS},\n'

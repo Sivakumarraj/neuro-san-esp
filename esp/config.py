@@ -13,6 +13,7 @@ stale .env silently overriding it would be very hard to debug.
 
 from __future__ import annotations
 
+import functools
 import os
 import re
 from pathlib import Path
@@ -63,6 +64,34 @@ def provider_for(model: str) -> str | None:
         if name.startswith(prefix):
             return provider
     return None
+
+
+@functools.lru_cache(maxsize=1)
+def _listed_models() -> frozenset[str]:
+    """The model names neuro-san's own registry resolves, read by neuro-san."""
+    from neuro_san.internals.run_context.langchain.llms.default_llm_factory import (
+        DefaultLlmFactory,
+    )
+    factory = DefaultLlmFactory()
+    factory.load()
+    return frozenset(factory.llm_infos)
+
+
+def llm_config(model: str) -> dict[str, str]:
+    """The `llm_config` an agent needs to run on this model.
+
+    neuro-san resolves a bare `model_name` only when its registry lists it, so a
+    model released after the installed neuro-san (claude-opus-5-5, gpt-6) fails
+    inside every agent. Named together with its provider's class, neuro-san
+    passes the name to the provider unchanged, the way studio lets any model be
+    used. The class is added only for unlisted names: beside a listed alias it
+    stops neuro-san resolving it (`claude-sonnet` would reach Anthropic as-is)
+    and drops the entry's output-token limit.
+    """
+    provider = provider_for(model)
+    if provider is None or model in _listed_models():
+        return {"model_name": model}
+    return {"class": provider, "model_name": model}
 
 
 def key_name_for(model: str) -> str | None:

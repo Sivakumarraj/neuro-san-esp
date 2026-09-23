@@ -323,6 +323,40 @@ def test_a_newer_gemini_default_is_never_promoted_to_an_older_model():
         "gemini-3.8-flash got gemini-3.5-flash")
 
 
+@pytest.mark.parametrize("model, provider", [
+    ("claude-opus-5-5", "anthropic"), ("gpt-6", "openai"), ("gemini-9-flash", "gemini")])
+def test_a_model_newer_than_neuro_san_is_passed_to_its_provider(model, provider, monkeypatch):
+    """A bare name neuro-san does not list fails inside every agent."""
+    from neuro_san.internals.run_context.langchain.llms.default_llm_factory import (
+        DefaultLlmFactory,
+    )
+
+    from esp.config import KEY_FOR_PROVIDER, llm_config
+    monkeypatch.setenv(KEY_FOR_PROVIDER[provider], "not-a-real-key")
+    config = llm_config(model)
+    assert config == {"class": provider, "model_name": model}
+    factory = DefaultLlmFactory()
+    factory.load()
+    built = factory.create_llm(config).get_model()
+    assert model in (getattr(built, "model", None), getattr(built, "model_name", None))
+
+
+def test_a_listed_model_is_left_for_neuro_san_to_resolve():
+    """Naming the class beside `claude-sonnet` sends Anthropic the alias as-is."""
+    from esp.config import DEFAULT_LADDERS, llm_config
+    for model in {m for ladder in DEFAULT_LADDERS.values() for m in ladder}:
+        assert llm_config(model) == {"model_name": model}
+
+
+def test_a_network_on_a_model_newer_than_neuro_san_names_its_class():
+    out = _in_subprocess(
+        "from esp.eval import measurements\n"
+        "from esp.serving import presentable\n"
+        "print(presentable(measurements.best().genome).genome.to_hocon())",
+        ESP_DEFAULT_MODEL="claude-opus-5-5", ANTHROPIC_API_KEY="not-a-real-key")
+    assert '{"class": "anthropic", "model_name": "claude-opus-5-5"}' in out
+
+
 def test_the_gemini_default_is_unchanged_so_committed_hashes_still_match():
     from esp.genome.definition import DEFAULT_MODEL, MODEL_TIERS
     assert DEFAULT_MODEL == "gemini-3.1-flash-lite"
