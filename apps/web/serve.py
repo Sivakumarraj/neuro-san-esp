@@ -48,7 +48,7 @@ import uuid  # noqa: E402
 
 from esp.config import key_name_for, key_problem  # noqa: E402
 from esp.eval import measurements  # noqa: E402
-from esp.eval.runner import _ask, write_network  # noqa: E402
+from esp.eval.runner import _ask, never_answered, write_network  # noqa: E402
 from esp.eval.tasks import TASKS, score  # noqa: E402
 from esp.genome.definition import Genome  # noqa: E402
 from esp.genome.seeds import SEEDS  # noqa: E402
@@ -302,6 +302,34 @@ def page() -> str:
                 .replace("__CAVEAT__", caveat()))
 
 
+# What a person can do about each way a provider refuses, keyed on the words the
+# three providers use for it. Checked in order: an expired key can also be
+# reported alongside a 404 for the model it was trying to reach.
+_FAILURE_HINTS = (
+    (("UNAUTHENTICATED", "API key not valid", "PERMISSION_DENIED",
+      "authentication_error", "Incorrect API key", "invalid x-api-key"),
+     "The provider rejected the key. Fix it in .env, run `make check-key`, "
+     "then restart this server -- the key is read once, at startup."),
+    (("RESOURCE_EXHAUSTED", "429", "rate_limit", "quota"),
+     "The key's rate or daily limit is used up. Wait and ask again; on a free "
+     "Gemini key, GOOGLE_API_KEYS spreads the day over several projects."),
+    (("NOT_FOUND", "not_found_error", "model_not_found", "does not exist"),
+     "The key cannot use a model this network is set to. `make probe` lists "
+     "the models it can use; ESP_DEFAULT_MODEL picks one."),
+    (("Agent timed out", "max_execution_seconds"),
+     "An agent ran out of time, usually while queueing in the rate limiter. "
+     "ESP_MAX_EXECUTION_SECONDS raises the budget."),
+)
+
+
+def failure_hint(reply: str) -> str:
+    """What to do about an agent failure, ahead of the provider's own words."""
+    for markers, hint in _FAILURE_HINTS:
+        if any(marker in reply for marker in markers):
+            return hint
+    return "An agent failed before the network could answer."
+
+
 def build_app():
     from fastapi import FastAPI
     from fastapi.responses import HTMLResponse, JSONResponse
@@ -338,6 +366,13 @@ def build_app():
         except Exception as exc:      # a provider 429 must not 500 the page
             return JSONResponse(
                 {"error": f"{type(exc).__name__}: {exc}"[:300]}, status_code=502)
+        # neuro-san hands an agent's failure back as the reply text. Shown as an
+        # answer, a key the provider refused read as the network talking
+        # nonsense, under a 200 -- nothing on the page said to go and fix .env.
+        if never_answered(answer):
+            return JSONResponse(
+                {"error": f"{failure_hint(answer)} The provider said: {answer[:500]}"},
+                status_code=502)
 
         # If it is one of the benchmark questions, grade it in front of the
         # visitor. Claiming correctness without showing the expected answer

@@ -27,25 +27,42 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from esp.config import bootstrap, provider_keys, unusable_keys, verify_key
+from esp.config import bootstrap, key_name_for, provider_keys, unusable_keys, verify_key
 
 
-def problems(live: bool = True) -> list[str]:
-    """Everything wrong with the configured keys, in words a person can act on."""
+def problems(live: bool = True) -> tuple[list[str], list[str]]:
+    """What stops a run, then what is only left over, in words a person can act on.
+
+    Only the key the configured model calls with can stop a run. The devcontainer
+    copies .env.example to .env, so a placeholder on another provider's line is
+    what everybody who pastes a different provider's key is left with. Failing
+    on it sent people to fix a line their run never reads, while the preflight,
+    which checks the key in use, passed.
+    """
     bootstrap()
-    found: list[str] = [f"{name} {problem}"
-                        for name, problem in sorted(unusable_keys().items())]
+    from esp.genome.definition import DEFAULT_MODEL  # reads the env .env just set
 
+    broken = unusable_keys()
     usable = provider_keys()
-    if not usable and not found:
-        found.append(
-            "no provider key set -- copy .env.example to .env and paste "
-            "GOOGLE_API_KEY in")
-    elif usable and live:
-        accepted, verdict = verify_key(usable[0])
+    wanted = key_name_for(DEFAULT_MODEL)
+    in_use = wanted if wanted in usable else (None if wanted else next(iter(usable), None))
+
+    if in_use is None:
+        if broken:
+            return [f"{name} {problem}" for name, problem in sorted(broken.items())], []
+        if usable:
+            return [f"{DEFAULT_MODEL} needs {wanted}, which is not set -- set it, or "
+                    "ESP_DEFAULT_MODEL to a model of the provider you hold a key for"], []
+        return ["no provider key set -- in .env, uncomment the line for your "
+                "provider and paste its key in"], []
+
+    notes = [f"{name} {problem} -- ignored, this run uses {in_use}; comment the "
+             "line out to silence this" for name, problem in sorted(broken.items())]
+    if live:
+        accepted, verdict = verify_key(in_use)
         if not accepted:
-            found.append(f"{usable[0]} {verdict}")
-    return found
+            return [f"{in_use} {verdict}"], notes
+    return [], notes
 
 
 def main() -> int:
@@ -58,10 +75,12 @@ def main() -> int:
                         help="say nothing when the key is usable")
     args = parser.parse_args()
 
-    found = problems(live=not args.offline)
+    found, notes = problems(live=not args.offline)
     if not found:
         if not args.quiet_when_fine:
             print("provider key: usable")
+            for note in notes:
+                print(f"  note: {note}")
         return 0
 
     print()
