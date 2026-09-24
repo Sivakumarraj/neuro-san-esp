@@ -368,16 +368,17 @@ does with `claude-sonnet`, so a new release is picked up without an edit:
 | OpenAI | `OPENAI_API_KEY` | `gpt-5.4-mini` | `gpt-5.5` |
 | Google Gemini | `GOOGLE_API_KEY` | `gemini-3.1-flash-lite` | `gemini-3.5-flash` |
 
-**Any model of the three providers works**, including one newer than the installed neuro-san
-(`claude-opus-5-5`, `gpt-6`): a name neuro-san does not list is sent with its provider's class,
-and neuro-san passes it to the provider unchanged. `ESP_DEFAULT_MODEL=claude-opus` runs the workers on
-Opus, and the model takes the rung it belongs on, so a strong choice becomes the top of the
-ladder rather than sitting under Sonnet. `ESP_MODEL_TIERS` sets both rungs outright. OpenAI has
-no version-free alias in neuro-san's registry, so its rungs are the newest named there. Gemini's
-are the ones the committed measurements were taken on.
+**Any model of the three providers works** (`claude-opus-5-5`, `gpt-5.5`, `gemini-3.8-flash`),
+including one released after the installed neuro-san: a name neuro-san does not list is sent
+with its provider's class, and neuro-san passes it to the provider unchanged.
+`ESP_DEFAULT_MODEL=claude-opus` runs the workers on Opus, and the model takes the rung it belongs
+on, so a strong choice becomes the top of the ladder rather than sitting under Sonnet.
+`ESP_MODEL_TIERS` sets both rungs outright. OpenAI has no version-free alias in neuro-san's
+registry, so its rungs are the newest named there. Gemini's are the ones the committed
+measurements were taken on.
 
 ```bash
-cp .env.example .env      # paste your key in; .env is gitignored
+cp .env.example .env      # uncomment your provider's key line, paste the key; .env is gitignored
 make check-key            # asks the provider whether the key works
 python apps/optimizer/run_optimizer.py --check   # the full preflight
 ```
@@ -471,6 +472,11 @@ which have per-minute limits and no daily cap.
 ```bash
 python apps/web/serve.py  # then open http://localhost:7860
 ```
+
+In a Codespace, open port 7860 from the **Ports** tab with the globe icon, in a real browser tab.
+VS Code's preview shows the page but does not send the port's login with its requests, so every
+question fails with "could not reach its server" and no `POST /ask` line appears in the terminal.
+`make studio` serves neuro-san's own UI on port 4173 the same way.
 
 The page has two tabs. **Ask a network** is described below. **Measure networks** puts the
 same questions to up to four networks at once: the twelve committed ones, plus any HOCON you

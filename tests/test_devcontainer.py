@@ -52,3 +52,13 @@ def test_the_env_file_is_created_but_never_overwritten():
 def test_the_requirements_it_installs_actually_exist():
     assert (ROOT / "pyproject.toml").exists()
     assert (ROOT / ".env.example").exists()
+
+
+def test_both_pages_open_in_a_real_browser_tab():
+    """In VS Code's preview the page loads, but its requests do not carry the
+    forwarded port's login, so every question failed with "Failed to fetch"
+    and never reached the server."""
+    ports = config()["portsAttributes"]
+    for port in ("7860", "4173"):
+        assert int(port) in config()["forwardPorts"]
+        assert ports[port]["onAutoForward"] == "openBrowser", port

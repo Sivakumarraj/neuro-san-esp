@@ -323,8 +323,14 @@ def test_a_newer_gemini_default_is_never_promoted_to_an_older_model():
         "gemini-3.8-flash got gemini-3.5-flash")
 
 
-@pytest.mark.parametrize("model, provider", [
-    ("claude-opus-5-5", "anthropic"), ("gpt-6", "openai"), ("gemini-9-flash", "gemini")])
+# Stand-ins for a release newer than the installed neuro-san. Real names go
+# stale: claude-opus-5-5 was one until neuro-san 0.7.5 listed it, and the tests
+# then failed on the correct behaviour.
+_UNRELEASED = [("claude-opus-99", "anthropic"), ("gpt-99", "openai"),
+               ("gemini-99-flash", "gemini")]
+
+
+@pytest.mark.parametrize("model, provider", _UNRELEASED)
 def test_a_model_newer_than_neuro_san_is_passed_to_its_provider(model, provider, monkeypatch):
     """A bare name neuro-san does not list fails inside every agent."""
     from neuro_san.internals.run_context.langchain.llms.default_llm_factory import (
@@ -353,8 +359,8 @@ def test_a_network_on_a_model_newer_than_neuro_san_names_its_class():
         "from esp.eval import measurements\n"
         "from esp.serving import presentable\n"
         "print(presentable(measurements.best().genome).genome.to_hocon())",
-        ESP_DEFAULT_MODEL="claude-opus-5-5", ANTHROPIC_API_KEY="not-a-real-key")
-    assert '{"class": "anthropic", "model_name": "claude-opus-5-5"}' in out
+        ESP_DEFAULT_MODEL="claude-opus-99", ANTHROPIC_API_KEY="not-a-real-key")
+    assert '{"class": "anthropic", "model_name": "claude-opus-99"}' in out
 
 
 def test_the_gemini_default_is_unchanged_so_committed_hashes_still_match():

@@ -24,11 +24,16 @@
         }
     },
 
-    // The health probe neuro-san starts alongside the server. Forwarded rather
-    // than opened automatically: this is a background service, not a web app,
-    // and a browser tab popping up would be noise.
-    "forwardPorts": [8080, 8081],
+    // The two pages open in a real browser tab. In VS Code's preview the page
+    // loads but its requests do not carry the forwarded port's login, so every
+    // question failed with "Failed to fetch" before reaching the server.
+    // 7860 is `python apps/web/serve.py`; 4173 is `make studio`, neuro-san's
+    // own UI. The neuro-san server and its health probe are background
+    // services, forwarded silently.
+    "forwardPorts": [7860, 4173, 8080, 8081],
     "portsAttributes": {
+        "7860": {"label": "web page", "onAutoForward": "openBrowser"},
+        "4173": {"label": "neuro-san studio", "onAutoForward": "openBrowser"},
         "8080": {"label": "neuro-san", "onAutoForward": "silent"},
         "8081": {"label": "health", "onAutoForward": "silent"}
     }

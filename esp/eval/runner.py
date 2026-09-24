@@ -218,6 +218,11 @@ _INFRASTRUCTURE_MARKERS = (
 )
 
 
+def never_answered(reply: str) -> bool:
+    """Whether a reply is neuro-san reporting an agent failure, not an answer."""
+    return any(marker in reply for marker in _INFRASTRUCTURE_MARKERS)
+
+
 def _is_infrastructure_failure(result: TaskResult) -> bool:
     """Whether this task never produced an answer.
 
@@ -229,7 +234,7 @@ def _is_infrastructure_failure(result: TaskResult) -> bool:
         return False
     if result.error:
         return True
-    return any(marker in result.answer for marker in _INFRASTRUCTURE_MARKERS)
+    return never_answered(result.answer)
 
 
 def classify(results: list[TaskResult]) -> list[TaskResult]:

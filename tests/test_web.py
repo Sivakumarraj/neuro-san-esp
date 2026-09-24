@@ -93,6 +93,24 @@ def test_a_provider_failure_does_not_500_the_page(client, monkeypatch):
     assert "429" in response.json()["error"]
 
 
+@pytest.mark.parametrize("reply, hint", [
+    ("Error from Coordinator: Agent stopped due to exception Error calling model "
+     "'gemini-3.5-flash' (UNAUTHENTICATED): 401 UNAUTHENTICATED.", "rejected the key"),
+    ("Error from Coordinator: Agent stopped due to exception 429 RESOURCE_EXHAUSTED",
+     "limit is used up"),
+    ("Error from Coordinator: Agent stopped due to exception 404 NOT_FOUND", "make probe"),
+])
+def test_an_agent_failure_is_an_error_not_an_answer(client, monkeypatch, reply, hint):
+    """neuro-san returns an agent's failure as the reply text. It reached the
+    page under a 200, as the network's answer, and nothing said to fix .env."""
+    monkeypatch.setattr(serve, "_ask", lambda *a: (reply, {}, 1.0))
+    response = client.post("/ask", json={"question": "anything"})
+    assert response.status_code == 502
+    error = response.json()["error"]
+    assert hint in error
+    assert reply[:40] in error
+
+
 def test_the_question_cap_is_enforced(client, monkeypatch):
     """One careless loop would spend a 500-a-day budget in minutes."""
     monkeypatch.setattr(serve, "_ask", lambda *a: ("x", {}, 1.0))

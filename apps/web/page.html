@@ -132,6 +132,21 @@ function show(which){
   if(which==='measure' && !loaded) loadNets();
 }
 function pick(b){document.getElementById('q').value=b.dataset.q;ask()}
+// A request that never reaches the server throws a bare "TypeError: Failed to
+// fetch", which reads as a bad key. In a Codespace it is nearly always the page
+// open in VS Code's preview, which does not send the forwarded port's login.
+const UNREACHABLE='The page could not reach its server, so nothing was asked. Check the '
+  +'terminal: is python apps/web/serve.py still running? In a Codespace, open port 7860 '
+  +'from the Ports tab with the globe icon, in a real browser tab rather than the VS Code '
+  +'preview, or set the port\'s visibility to Public.';
+async function call(url, options){
+  let r;
+  try{ r=await fetch(url, options) }catch(e){ throw new Error(UNREACHABLE) }
+  const text=await r.text();
+  try{ return {ok:r.ok, data:JSON.parse(text)} }
+  catch(e){ throw new Error(`HTTP ${r.status} came back as a page rather than data, so `
+    +'something between this page and its server answered instead. '+UNREACHABLE) }
+}
 async function ask(){
   const q=document.getElementById('q').value.trim(); if(!q)return;
   const go=document.getElementById('go'), st=document.getElementById('status');
@@ -140,9 +155,8 @@ async function ask(){
   go.disabled=true; box.hidden=true;
   st.textContent='Running the network — a multi-hop question takes a minute or two.';
   try{
-    const r=await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json'},
-                               body:JSON.stringify({question:q})});
-    const d=await r.json();
+    const {data:d}=await call('/ask',{method:'POST',headers:{'Content-Type':'application/json'},
+                                      body:JSON.stringify({question:q})});
     box.hidden=false; meta.textContent='';
     if(d.error){ans.textContent='Error: '+d.error;return}
     ans.textContent=d.answer||'(the network returned no answer)';
@@ -153,13 +167,13 @@ async function ask(){
       g.appendChild(el('span',d.correct?'CORRECT':'WRONG',d.correct?'ok':'bad'));
       meta.appendChild(g);
     }
-  }catch(e){box.hidden=false;ans.textContent='Error: '+e}
+  }catch(e){box.hidden=false;ans.textContent='Error: '+e.message}
   finally{go.disabled=false;st.textContent=''}
 }
 async function loadNets(){
   const body=document.querySelector('#nets tbody');
-  try{ nets=await (await fetch('/api/networks')).json(); loaded=true; }
-  catch(e){ body.appendChild(el('tr')).appendChild(el('td','Could not load networks: '+e)); return }
+  try{ nets=(await call('/api/networks')).data; loaded=true; }
+  catch(e){ body.appendChild(el('tr')).appendChild(el('td','Could not load networks: '+e.message)); return }
   for(const n of nets){
     const tr=el('tr'), box=el('input'); box.type='checkbox';
     box.onchange=()=>{ if(box.checked){ if(chosen.size>=MAXNETS){box.checked=false;return}
@@ -196,16 +210,18 @@ async function runMeasure(){
   run.disabled=true; st.textContent='Starting…'; bar.hidden=false; bar.value=0;
   let r;
   try{
-    r=await fetch('/api/measure',{method:'POST',headers:{'Content-Type':'application/json'},
+    r=await call('/api/measure',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({networks:[...chosen], suite: custom?document.getElementById('suitetext').value:null})});
-  }catch(e){st.textContent='Error: '+e; run.disabled=false; return}
-  const d=await r.json();
-  if(!r.ok){st.textContent='Error: '+(d.error||r.status); run.disabled=false; bar.hidden=true; return}
+  }catch(e){st.textContent='Error: '+e.message; run.disabled=false; bar.hidden=true; return}
+  const d=r.data;
+  if(!r.ok){st.textContent='Error: '+(d.error||'the server refused'); run.disabled=false; bar.hidden=true; return}
   poll(d.job);
 }
 async function poll(id){
   const st=document.getElementById('mstatus'), bar=document.getElementById('progress');
-  const d=await (await fetch('/api/jobs/'+id)).json();
+  let d;
+  try{ d=(await call('/api/jobs/'+id)).data }
+  catch(e){ st.textContent='Error: '+e.message; document.getElementById('run').disabled=false; return }
   bar.max=d.total||1; bar.value=d.done;
   st.textContent=`${d.done} of ${d.total} answered`+(d.current?` — measuring ${d.current}`:'');
   if(d.state==='running'){ setTimeout(()=>poll(id),2000); return }
