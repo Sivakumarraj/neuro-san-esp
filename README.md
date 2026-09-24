@@ -473,6 +473,11 @@ which have per-minute limits and no daily cap.
 python apps/web/serve.py  # then open http://localhost:7860
 ```
 
+In a Codespace, open port 7860 from the **Ports** tab with the globe icon, in a real browser tab.
+VS Code's preview shows the page but does not send the port's login with its requests, so every
+question fails with "could not reach its server" and no `POST /ask` line appears in the terminal.
+`make studio` serves neuro-san's own UI on port 4173 the same way.
+
 The page has two tabs. **Ask a network** is described below. **Measure networks** puts the
 same questions to up to four networks at once: the twelve committed ones, plus any HOCON you
 place in `ESP_NETWORKS`. It uses the built-in benchmark or a JSON Lines file you paste, shows
