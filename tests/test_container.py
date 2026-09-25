@@ -8,8 +8,8 @@ describe it as running. `docker compose up -d` was a documented command that
 could not work.
 
 Parsing the Dockerfile is crude, and deliberately cheaper than the alternative:
-building the image in CI would take minutes on every push to catch a mistake
-that is a missing line in a COPY list.
+building the image on every `make validate` would take minutes to catch a
+mistake that is a missing line in a COPY list.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DOCKERFILE = (ROOT / "Dockerfile").read_text(encoding="utf-8")
 COMPOSE = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+HF_DOCKERFILE = (ROOT / "deploy/huggingface/Dockerfile").read_text(encoding="utf-8")
 
 
 def copied() -> set[str]:
@@ -85,12 +86,44 @@ def test_the_container_does_not_run_as_root():
     assert "USER esp" in DOCKERFILE
 
 
-def test_the_lint_command_in_the_image_matches_ci():
-    """A check service that lints less than CI does gives false confidence."""
-    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    ci_lint = re.search(r"ruff check ([\w /]+)", workflow).group(1).split()
-    image_lint = re.search(r"ruff check ([\w /]+)", COMPOSE).group(1).split()
-    assert set(ci_lint) == set(image_lint)
+def test_the_image_installs_the_lockfile_and_no_dev_tools():
+    """The image used to install ".[dev]" as an editable package: pytest, ruff
+    and the nsflow UI in a 1.16 GB container that runs none of them, resolved
+    to whatever pip picked on the day of the build."""
+    for dockerfile in (DOCKERFILE, HF_DOCKERFILE):
+        assert "pip install --no-cache-dir -r requirements.lock" in dockerfile
+        assert "--no-deps ." in dockerfile
+        installs = [line for line in dockerfile.splitlines() if line.startswith("RUN ")]
+        assert not any("[dev]" in line or " -e " in line for line in installs)
+
+
+def test_no_copy_source_is_excluded_from_the_build_context():
+    """.dockerignore listed results/ while the Hugging Face Dockerfile copied
+    it, so the only public deployment path failed to build at all."""
+    ignored = {line.strip().rstrip("/") for line in
+               (ROOT / ".dockerignore").read_text(encoding="utf-8").splitlines()
+               if line.strip() and not line.startswith(("#", "!"))}
+    for dockerfile in (DOCKERFILE, HF_DOCKERFILE):
+        for line in dockerfile.splitlines():
+            if line.startswith("COPY "):
+                for source in line.split()[1:-1]:
+                    top = source.strip("./").split("/")[0]
+                    assert top not in ignored, f"{top} is copied and ignored"
+
+
+def test_every_runtime_dependency_is_pinned_exactly():
+    """A floor with no ceiling let neuro-san 0.7.5 turn the suite red on a day
+    nobody changed anything. Upgrades are commits, not accidents."""
+    import tomllib
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    specs = list(project["project"]["dependencies"])
+    for extra in project["project"]["optional-dependencies"].values():
+        specs.extend(extra)
+    loose = [spec for spec in specs if "==" not in spec]
+    assert not loose, f"not pinned exactly: {loose}"
+    locked = (ROOT / "requirements.lock").read_text(encoding="utf-8")
+    assert all("==" in line for line in locked.splitlines()
+               if line.strip() and not line.startswith("#"))
 
 
 def test_no_service_demands_one_providers_key():

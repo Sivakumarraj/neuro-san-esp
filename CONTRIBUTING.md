@@ -11,11 +11,13 @@ Python 3.12 or newer.
 ```bash
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-make check
+make validate
 ```
 
-`make check` is what CI runs: `ruff` over the code, then the whole suite. The suite is
-offline by design. No test calls a model provider, and none needs a key, so it runs the
+`make validate` is the gate: run it before every commit. It runs what CI runs (lint over
+the code and the docs, the whole suite, a real offline search over the committed
+measurements) and puts every registry through neuro-san's own HOCON validator as well. The
+suite is offline by design. No test calls a model provider, and none needs a key, so it runs the
 same on every machine and never spends money.
 
 The docs are linted with the same markdown linter neuro-san uses:

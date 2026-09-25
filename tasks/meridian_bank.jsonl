@@ -1,0 +1,250 @@
+{"id": "B001", "question": "How many loading bays does Meridian Logistics depot D07 have? Answer with the number only.", "answers": ["8"], "hops": 1}
+{"id": "B002", "question": "What goods were carried under the contract affected by incident INC-4418?", "answers": ["paper stock"], "hops": 2}
+{"id": "B003", "question": "How many loading bays does the depot have that services the contract affected by incident INC-4436? Answer with the number only.", "answers": ["12"], "hops": 3}
+{"id": "B004", "question": "Clients Studio Flatpack and Ovingham Plastics each hold a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["2"], "hops": 4}
+{"id": "B005", "question": "Incidents INC-4436 and INC-4443 each affected a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["2"], "hops": 6}
+{"id": "B006", "question": "Incidents INC-4443, INC-4433 and INC-4449 each affected a contract serviced by a different depot. How many loading bays do those three depots have in total? Answer with the number only.", "answers": ["26"], "hops": 9}
+{"id": "B007", "question": "What goods are carried under contract C-2109?", "answers": ["glassware"], "hops": 1}
+{"id": "B008", "question": "In what year did the depot that services the contract with client Netherby Glass open? Answer with the number only.", "answers": ["2015"], "hops": 2}
+{"id": "B009", "question": "Incident INC-4411 affected a contract serviced by a depot. Who is that depot's manager?", "answers": ["J. Petrossian"], "hops": 3}
+{"id": "B010", "question": "Charging incidents INC-4416 and INC-4409 each at its own contract's late-delivery penalty rate, what is the total penalty owed for the two? Answer with the number only.", "answers": ["35375"], "hops": 4}
+{"id": "B011", "question": "Incidents INC-4416 and INC-4449 each affected a contract serviced by a depot. How many loading bays do those two depots have between them? Answer with the number only.", "answers": ["24"], "hops": 6}
+{"id": "B012", "question": "Incidents INC-4421, INC-4403 and INC-4439 each affected a contract serviced by a different depot. How many loading bays do those three depots have in total? Answer with the number only.", "answers": ["24"], "hops": 9}
+{"id": "B013", "question": "Which client holds Meridian Logistics contract C-2137?", "answers": ["Tallentire Feed"], "hops": 1}
+{"id": "B014", "question": "What goods were carried under the contract affected by incident INC-4444?", "answers": ["industrial chemicals"], "hops": 2}
+{"id": "B015", "question": "Incident INC-4458 affected a contract. In what year did the depot servicing that contract open? Answer with the number only.", "answers": ["2009"], "hops": 3}
+{"id": "B016", "question": "Incidents INC-4421 and INC-4444 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["73000"], "hops": 4}
+{"id": "B017", "question": "Incidents INC-4424 and INC-4411 each affected a contract serviced by a depot. How many loading bays do those two depots have between them? Answer with the number only.", "answers": ["20"], "hops": 6}
+{"id": "B018", "question": "Incidents INC-4459, INC-4432 and INC-4424 each affected a contract serviced by a different depot. How many loading bays do those three depots have in total? Answer with the number only.", "answers": ["32"], "hops": 9}
+{"id": "B019", "question": "What was the cause of incident INC-4451?", "answers": ["storm damage"], "hops": 1}
+{"id": "B020", "question": "Which client holds the contract affected by incident INC-4428?", "answers": ["Juniper Cosmetics"], "hops": 2}
+{"id": "B021", "question": "How many loading bays does the depot have that services the contract affected by incident INC-4432? Answer with the number only.", "answers": ["12"], "hops": 3}
+{"id": "B022", "question": "Charging incidents INC-4454 and INC-4411 each at its own contract's late-delivery penalty rate, what is the total penalty owed for the two? Answer with the number only.", "answers": ["37750"], "hops": 4}
+{"id": "B023", "question": "Incidents INC-4427 and INC-4419 each affected a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["14"], "hops": 6}
+{"id": "B024", "question": "Incidents INC-4421, INC-4438 and INC-4432 each affected a contract serviced by a different depot. How many loading bays do those three depots have in total? Answer with the number only.", "answers": ["36"], "hops": 9}
+{"id": "B025", "question": "What was the cause of incident INC-4438?", "answers": ["driver shortage"], "hops": 1}
+{"id": "B026", "question": "Incident INC-4414 ran late. At the late-delivery penalty rate of its contract, what penalty is owed? Answer with the number only.", "answers": ["66000"], "hops": 2}
+{"id": "B027", "question": "Incident INC-4454 affected a contract. Which city is the depot for that contract located in?", "answers": ["Malton"], "hops": 3}
+{"id": "B028", "question": "Charging incidents INC-4416 and INC-4448 each at its own contract's late-delivery penalty rate, what is the total penalty owed for the two? Answer with the number only.", "answers": ["40250"], "hops": 4}
+{"id": "B029", "question": "Incidents INC-4404 and INC-4459 each affected a contract serviced by a depot. How many loading bays do those two depots have between them? Answer with the number only.", "answers": ["12"], "hops": 6}
+{"id": "B030", "question": "Incidents INC-4408, INC-4428 and INC-4409 each affected a contract serviced by a different depot. How many loading bays do those three depots have in total? Answer with the number only.", "answers": ["20"], "hops": 9}
+{"id": "B031", "question": "Which city is Meridian Logistics depot D17 located in?", "answers": ["Northallerton"], "hops": 1}
+{"id": "B032", "question": "In what year did the depot that services the contract with client Ovingham Plastics open? Answer with the number only.", "answers": ["2018"], "hops": 2}
+{"id": "B033", "question": "How many loading bays does the depot have that services the contract affected by incident INC-4408? Answer with the number only.", "answers": ["4"], "hops": 3}
+{"id": "B034", "question": "Charging incidents INC-4428 and INC-4421 each at its own contract's late-delivery penalty rate, what is the total penalty owed for the two? Answer with the number only.", "answers": ["88000"], "hops": 4}
+{"id": "B035", "question": "Incidents INC-4459 and INC-4444 each affected a contract serviced by a depot. How many loading bays do those two depots have between them? Answer with the number only.", "answers": ["12"], "hops": 6}
+{"id": "B036", "question": "Incidents INC-4424, INC-4428 and INC-4449 each affected a contract serviced by a different depot. How many loading bays do those three depots have in total? Answer with the number only.", "answers": ["28"], "hops": 9}
+{"id": "B037", "question": "Which client holds Meridian Logistics contract C-2126?", "answers": ["Havelock Timber"], "hops": 1}
+{"id": "B038", "question": "Who manages the depot that services contract C-2121?", "answers": ["R. Ibarra"], "hops": 2}
+{"id": "B039", "question": "Incident INC-4438 affected a contract. In what year did the depot servicing that contract open? Answer with the number only.", "answers": ["2006"], "hops": 3}
+{"id": "B040", "question": "Clients Fairlight Media and Ovingham Plastics each hold a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["9"], "hops": 4}
+{"id": "B041", "question": "Incidents INC-4427 and INC-4458 each affected a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["8"], "hops": 6}
+{"id": "B042", "question": "Incidents INC-4454, INC-4459 and INC-4409 each affected a contract serviced by a different depot. How many loading bays do those three depots have in total? Answer with the number only.", "answers": ["32"], "hops": 9}
+{"id": "B043", "question": "Who is the depot manager of Meridian Logistics depot D16?", "answers": ["A. S\u00f8rensen"], "hops": 1}
+{"id": "B044", "question": "In what year did the depot that services the contract with client Fairlight Media open? Answer with the number only.", "answers": ["2009"], "hops": 2}
+{"id": "B045", "question": "Incident INC-4438 affected a contract serviced by a depot. Who is that depot's manager?", "answers": ["A. Okonkwo"], "hops": 3}
+{"id": "B046", "question": "Incidents INC-4418 and INC-4439 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["28750"], "hops": 4}
+{"id": "B047", "question": "Incidents INC-4438 and INC-4432 each affected a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["9"], "hops": 6}
+{"id": "B048", "question": "Incidents INC-4433, INC-4411 and INC-4436 each affected a contract serviced by a different depot. How many loading bays do those three depots have in total? Answer with the number only.", "answers": ["26"], "hops": 9}
+{"id": "B049", "question": "How many loading bays does Meridian Logistics depot D23 have? Answer with the number only.", "answers": ["6"], "hops": 1}
+{"id": "B050", "question": "Which city is the depot that services contract C-2111 located in?", "answers": ["Jarrow"], "hops": 2}
+{"id": "B051", "question": "How many loading bays does the depot have that services the contract affected by incident INC-4454? Answer with the number only.", "answers": ["12"], "hops": 3}
+{"id": "B052", "question": "Incidents INC-4428 and INC-4414 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["58500"], "hops": 4}
+{"id": "B053", "question": "Incidents INC-4438 and INC-4459 each affected a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["9"], "hops": 6}
+{"id": "B054", "question": "Incidents INC-4409, INC-4448 and INC-4456 each affected a contract serviced by a different depot. How many loading bays do those three depots have in total? Answer with the number only.", "answers": ["28"], "hops": 9}
+{"id": "B055", "question": "Who is the depot manager of Meridian Logistics depot D10?", "answers": ["A. Achterberg"], "hops": 1}
+{"id": "B056", "question": "Which client holds the contract affected by incident INC-4438?", "answers": ["Urswick Marine"], "hops": 2}
+{"id": "B057", "question": "Incident INC-4414 affected a contract. Which city is the depot for that contract located in?", "answers": ["Malton"], "hops": 3}
+{"id": "B058", "question": "Charging incidents INC-4433 and INC-4454 each at its own contract's late-delivery penalty rate, what is the total penalty owed for the two? Answer with the number only.", "answers": ["80500"], "hops": 4}
+{"id": "B059", "question": "Incidents INC-4456 and INC-4422 each affected a contract serviced by a depot. How many loading bays do those two depots have between them? Answer with the number only.", "answers": ["18"], "hops": 6}
+{"id": "B060", "question": "Incidents INC-4436, INC-4444 and INC-4418 each affected a contract serviced by a different depot. How many loading bays do those three depots have in total? Answer with the number only.", "answers": ["28"], "hops": 9}
+{"id": "B061", "question": "Who is the depot manager of Meridian Logistics depot D12?", "answers": ["A. Lindqvist"], "hops": 1}
+{"id": "B062", "question": "In what year did the depot that services the contract with client Inverleith Spirits open? Answer with the number only.", "answers": ["2001"], "hops": 2}
+{"id": "B063", "question": "Incident INC-4409 affected a contract. In what year did the depot servicing that contract open? Answer with the number only.", "answers": ["2006"], "hops": 3}
+{"id": "B064", "question": "Clients Brackenhill Seeds and Peregrine Chemicals each hold a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["7"], "hops": 4}
+{"id": "B065", "question": "Incidents INC-4459 and INC-4418 each affected a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["6"], "hops": 6}
+{"id": "B066", "question": "What goods are carried under contract C-2118?", "answers": ["paper stock"], "hops": 1}
+{"id": "B067", "question": "Which city is the depot that services contract C-2109 located in?", "answers": ["Northallerton"], "hops": 2}
+{"id": "B068", "question": "How many loading bays does the depot have that services the contract affected by incident INC-4424? Answer with the number only.", "answers": ["12"], "hops": 3}
+{"id": "B069", "question": "Incidents INC-4438 and INC-4454 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["137000"], "hops": 4}
+{"id": "B070", "question": "Incidents INC-4433 and INC-4404 each affected a contract serviced by a depot. How many loading bays do those two depots have between them? Answer with the number only.", "answers": ["10"], "hops": 6}
+{"id": "B071", "question": "Who is the depot manager of Meridian Logistics depot D03?", "answers": ["M. Ramaswamy"], "hops": 1}
+{"id": "B072", "question": "Who manages the depot that services contract C-2126?", "answers": ["A. Okonkwo"], "hops": 2}
+{"id": "B073", "question": "How many loading bays does the depot have that services the contract affected by incident INC-4444? Answer with the number only.", "answers": ["4"], "hops": 3}
+{"id": "B074", "question": "Incidents INC-4438 and INC-4458 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["65000"], "hops": 4}
+{"id": "B075", "question": "Incidents INC-4404 and INC-4424 each affected a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["10"], "hops": 6}
+{"id": "B076", "question": "Which city is Meridian Logistics depot D16 located in?", "answers": ["Malton"], "hops": 1}
+{"id": "B077", "question": "In what year did the depot that services the contract with client Silverbrook Dairy open? Answer with the number only.", "answers": ["2009"], "hops": 2}
+{"id": "B078", "question": "Incident INC-4437 affected a contract. Which city is the depot for that contract located in?", "answers": ["Ripon"], "hops": 3}
+{"id": "B079", "question": "Incidents INC-4403 and INC-4424 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["79625"], "hops": 4}
+{"id": "B080", "question": "Incidents INC-4426 and INC-4433 each affected a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["12"], "hops": 6}
+{"id": "B081", "question": "How many loading bays does Meridian Logistics depot D21 have? Answer with the number only.", "answers": ["4"], "hops": 1}
+{"id": "B082", "question": "Who manages the depot that services contract C-2133?", "answers": ["J. Castellanos"], "hops": 2}
+{"id": "B083", "question": "Incident INC-4424 affected a contract serviced by a depot. Who is that depot's manager?", "answers": ["S. Moln\u00e1r"], "hops": 3}
+{"id": "B084", "question": "Charging incidents INC-4403 and INC-4456 each at its own contract's late-delivery penalty rate, what is the total penalty owed for the two? Answer with the number only.", "answers": ["64375"], "hops": 4}
+{"id": "B085", "question": "Incidents INC-4456 and INC-4437 each affected a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["4"], "hops": 6}
+{"id": "B086", "question": "What goods are carried under contract C-2127?", "answers": ["brewing supplies"], "hops": 1}
+{"id": "B087", "question": "Who manages the depot that services contract C-2127?", "answers": ["S. Aduba"], "hops": 2}
+{"id": "B088", "question": "Incident INC-4421 affected a contract. In what year did the depot servicing that contract open? Answer with the number only.", "answers": ["2006"], "hops": 3}
+{"id": "B089", "question": "Incidents INC-4411 and INC-4459 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["16500"], "hops": 4}
+{"id": "B090", "question": "Incidents INC-4438 and INC-4427 each affected a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["5"], "hops": 6}
+{"id": "B091", "question": "How many loading bays does Meridian Logistics depot D09 have? Answer with the number only.", "answers": ["6"], "hops": 1}
+{"id": "B092", "question": "Incident INC-4433 ran late. At the late-delivery penalty rate of its contract, what penalty is owed? Answer with the number only.", "answers": ["52500"], "hops": 2}
+{"id": "B093", "question": "Incident INC-4438 affected a contract. Which city is the depot for that contract located in?", "answers": ["Halberd"], "hops": 3}
+{"id": "B094", "question": "Charging incidents INC-4449 and INC-4427 each at its own contract's late-delivery penalty rate, what is the total penalty owed for the two? Answer with the number only.", "answers": ["88125"], "hops": 4}
+{"id": "B095", "question": "Incidents INC-4432 and INC-4437 each affected a contract serviced by a depot. How many loading bays do those two depots have between them? Answer with the number only.", "answers": ["16"], "hops": 6}
+{"id": "B096", "question": "Which city is Meridian Logistics depot D22 located in?", "answers": ["Selby"], "hops": 1}
+{"id": "B097", "question": "Incident INC-4409 ran late. At the late-delivery penalty rate of its contract, what penalty is owed? Answer with the number only.", "answers": ["15125"], "hops": 2}
+{"id": "B098", "question": "Incident INC-4408 affected a contract serviced by a depot. Who is that depot's manager?", "answers": ["A. Achterberg"], "hops": 3}
+{"id": "B099", "question": "Charging incidents INC-4411 and INC-4426 each at its own contract's late-delivery penalty rate, what is the total penalty owed for the two? Answer with the number only.", "answers": ["132250"], "hops": 4}
+{"id": "B100", "question": "Incidents INC-4444 and INC-4451 each affected a contract serviced by a depot. How many loading bays do those two depots have between them? Answer with the number only.", "answers": ["12"], "hops": 6}
+{"id": "B101", "question": "Which city is Meridian Logistics depot D20 located in?", "answers": ["Quorn"], "hops": 1}
+{"id": "B102", "question": "Who manages the depot that services contract C-2109?", "answers": ["R. Ibarra"], "hops": 2}
+{"id": "B103", "question": "How many loading bays does the depot have that services the contract affected by incident INC-4411? Answer with the number only.", "answers": ["8"], "hops": 3}
+{"id": "B104", "question": "Incidents INC-4459 and INC-4411 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["16500"], "hops": 4}
+{"id": "B105", "question": "Incidents INC-4454 and INC-4448 each affected a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["19"], "hops": 6}
+{"id": "B106", "question": "Which client holds Meridian Logistics contract C-2132?", "answers": ["Netherby Glass"], "hops": 1}
+{"id": "B107", "question": "Which client holds the contract affected by incident INC-4449?", "answers": ["Lucent Glass"], "hops": 2}
+{"id": "B108", "question": "Incident INC-4403 affected a contract. Which city is the depot for that contract located in?", "answers": ["Denmark Hill"], "hops": 3}
+{"id": "B109", "question": "Incidents INC-4436 and INC-4451 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["129750"], "hops": 4}
+{"id": "B110", "question": "Incidents INC-4414 and INC-4408 each affected a contract serviced by a depot. How many loading bays do those two depots have between them? Answer with the number only.", "answers": ["16"], "hops": 6}
+{"id": "B111", "question": "Which client holds Meridian Logistics contract C-2103?", "answers": ["Studio Flatpack"], "hops": 1}
+{"id": "B112", "question": "Which client holds the contract affected by incident INC-4404?", "answers": ["Peregrine Chemicals"], "hops": 2}
+{"id": "B113", "question": "Incident INC-4426 affected a contract. Which city is the depot for that contract located in?", "answers": ["Halberd"], "hops": 3}
+{"id": "B114", "question": "Charging incidents INC-4403 and INC-4422 each at its own contract's late-delivery penalty rate, what is the total penalty owed for the two? Answer with the number only.", "answers": ["41125"], "hops": 4}
+{"id": "B115", "question": "Incidents INC-4456 and INC-4454 each affected a contract serviced by a depot. How many loading bays do those two depots have between them? Answer with the number only.", "answers": ["24"], "hops": 6}
+{"id": "B116", "question": "Who is the depot manager of Meridian Logistics depot D23?", "answers": ["J. Castellanos"], "hops": 1}
+{"id": "B117", "question": "Which city is the depot that services contract C-2127 located in?", "answers": ["Quorn"], "hops": 2}
+{"id": "B118", "question": "How many loading bays does the depot have that services the contract affected by incident INC-4459? Answer with the number only.", "answers": ["8"], "hops": 3}
+{"id": "B119", "question": "Incidents INC-4403 and INC-4432 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["115125"], "hops": 4}
+{"id": "B120", "question": "Incidents INC-4448 and INC-4414 each affected a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["19"], "hops": 6}
+{"id": "B121", "question": "Who is the depot manager of Meridian Logistics depot D21?", "answers": ["M. Renshaw"], "hops": 1}
+{"id": "B122", "question": "Who manages the depot that services contract C-2139?", "answers": ["A. Fairweather"], "hops": 2}
+{"id": "B123", "question": "Incident INC-4428 affected a contract. In what year did the depot servicing that contract open? Answer with the number only.", "answers": ["2003"], "hops": 3}
+{"id": "B124", "question": "Incidents INC-4458 and INC-4422 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["67000"], "hops": 4}
+{"id": "B125", "question": "Incidents INC-4424 and INC-4432 each affected a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["6"], "hops": 6}
+{"id": "B126", "question": "How many loading bays does Meridian Logistics depot D15 have? Answer with the number only.", "answers": ["12"], "hops": 1}
+{"id": "B127", "question": "Incident INC-4422 ran late. At the late-delivery penalty rate of its contract, what penalty is owed? Answer with the number only.", "answers": ["33000"], "hops": 2}
+{"id": "B128", "question": "Incident INC-4454 affected a contract serviced by a depot. Who is that depot's manager?", "answers": ["A. S\u00f8rensen"], "hops": 3}
+{"id": "B129", "question": "Incidents INC-4409 and INC-4424 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["72625"], "hops": 4}
+{"id": "B130", "question": "Incidents INC-4436 and INC-4424 each affected a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["9"], "hops": 6}
+{"id": "B131", "question": "Which city is Meridian Logistics depot D10 located in?", "answers": ["Garrowby"], "hops": 1}
+{"id": "B132", "question": "Which city is the depot that services contract C-2139 located in?", "answers": ["Ossett"], "hops": 2}
+{"id": "B133", "question": "How many loading bays does the depot have that services the contract affected by incident INC-4416? Answer with the number only.", "answers": ["12"], "hops": 3}
+{"id": "B134", "question": "Clients Lucent Glass and Peregrine Chemicals each hold a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["7"], "hops": 4}
+{"id": "B135", "question": "Incidents INC-4419 and INC-4444 each affected a contract serviced by a depot. How many loading bays do those two depots have between them? Answer with the number only.", "answers": ["12"], "hops": 6}
+{"id": "B136", "question": "Which city is Meridian Logistics depot D18 located in?", "answers": ["Ossett"], "hops": 1}
+{"id": "B137", "question": "Who manages the depot that services contract C-2116?", "answers": ["A. Okonkwo"], "hops": 2}
+{"id": "B138", "question": "Incident INC-4451 affected a contract. In what year did the depot servicing that contract open? Answer with the number only.", "answers": ["2015"], "hops": 3}
+{"id": "B139", "question": "Clients Inverleith Spirits and Netherby Glass each hold a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["14"], "hops": 4}
+{"id": "B140", "question": "Incidents INC-4454 and INC-4408 each affected a contract serviced by a depot. How many loading bays do those two depots have between them? Answer with the number only.", "answers": ["16"], "hops": 6}
+{"id": "B141", "question": "Which client holds Meridian Logistics contract C-2127?", "answers": ["Inverleith Spirits"], "hops": 1}
+{"id": "B142", "question": "What goods were carried under the contract affected by incident INC-4438?", "answers": ["paper stock"], "hops": 2}
+{"id": "B143", "question": "Incident INC-4449 affected a contract. Which city is the depot for that contract located in?", "answers": ["Northallerton"], "hops": 3}
+{"id": "B144", "question": "Incidents INC-4416 and INC-4451 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["17000"], "hops": 4}
+{"id": "B145", "question": "Incidents INC-4437 and INC-4418 each affected a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["1"], "hops": 6}
+{"id": "B146", "question": "What goods are carried under contract C-2124?", "answers": ["industrial chemicals"], "hops": 1}
+{"id": "B147", "question": "Which city is the depot that services contract C-2118 located in?", "answers": ["Selby"], "hops": 2}
+{"id": "B148", "question": "Incident INC-4422 affected a contract. Which city is the depot for that contract located in?", "answers": ["Lowmoor"], "hops": 3}
+{"id": "B149", "question": "Charging incidents INC-4418 and INC-4458 each at its own contract's late-delivery penalty rate, what is the total penalty owed for the two? Answer with the number only.", "answers": ["180000"], "hops": 4}
+{"id": "B150", "question": "Incidents INC-4456 and INC-4418 each affected a contract serviced by a depot. How many loading bays do those two depots have between them? Answer with the number only.", "answers": ["24"], "hops": 6}
+{"id": "B151", "question": "Which client holds Meridian Logistics contract C-2136?", "answers": ["Stourbridge Tiles"], "hops": 1}
+{"id": "B152", "question": "Who manages the depot that services contract C-2114?", "answers": ["A. S\u00f8rensen"], "hops": 2}
+{"id": "B153", "question": "How many loading bays does the depot have that services the contract affected by incident INC-4404? Answer with the number only.", "answers": ["4"], "hops": 3}
+{"id": "B154", "question": "Incidents INC-4454 and INC-4424 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["59750"], "hops": 4}
+{"id": "B155", "question": "Incidents INC-4439 and INC-4433 each affected a contract serviced by a depot. How many loading bays do those two depots have between them? Answer with the number only.", "answers": ["10"], "hops": 6}
+{"id": "B156", "question": "What goods are carried under contract C-2104?", "answers": ["industrial chemicals"], "hops": 1}
+{"id": "B157", "question": "Which city is the depot that services contract C-2132 located in?", "answers": ["Ludlow"], "hops": 2}
+{"id": "B158", "question": "Incident INC-4456 affected a contract serviced by a depot. Who is that depot's manager?", "answers": ["A. Okonkwo"], "hops": 3}
+{"id": "B159", "question": "Incidents INC-4403 and INC-4439 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["43125"], "hops": 4}
+{"id": "B160", "question": "Incidents INC-4414 and INC-4424 each affected a contract serviced by a depot. How many loading bays do those two depots have between them? Answer with the number only.", "answers": ["24"], "hops": 6}
+{"id": "B161", "question": "What goods are carried under contract C-2133?", "answers": ["flat-pack furniture"], "hops": 1}
+{"id": "B162", "question": "In what year did the depot that services the contract with client Quire Paper open? Answer with the number only.", "answers": ["1999"], "hops": 2}
+{"id": "B163", "question": "Incident INC-4404 affected a contract. In what year did the depot servicing that contract open? Answer with the number only.", "answers": ["1999"], "hops": 3}
+{"id": "B164", "question": "Clients Tallentire Feed and Juniper Cosmetics each hold a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["7"], "hops": 4}
+{"id": "B165", "question": "Who is the depot manager of Meridian Logistics depot D22?", "answers": ["S. Moln\u00e1r"], "hops": 1}
+{"id": "B166", "question": "Which city is the depot that services contract C-2122 located in?", "answers": ["Lowmoor"], "hops": 2}
+{"id": "B167", "question": "Incident INC-4433 affected a contract. Which city is the depot for that contract located in?", "answers": ["Tadcaster"], "hops": 3}
+{"id": "B168", "question": "Incidents INC-4421 and INC-4403 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["72375"], "hops": 4}
+{"id": "B169", "question": "What goods are carried under contract C-2114?", "answers": ["industrial chemicals"], "hops": 1}
+{"id": "B170", "question": "Which city is the depot that services contract C-2138 located in?", "answers": ["Halberd"], "hops": 2}
+{"id": "B171", "question": "Incident INC-4458 affected a contract serviced by a depot. Who is that depot's manager?", "answers": ["S. Moln\u00e1r"], "hops": 3}
+{"id": "B172", "question": "Incidents INC-4408 and INC-4456 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["42500"], "hops": 4}
+{"id": "B173", "question": "Who is the depot manager of Meridian Logistics depot D20?", "answers": ["S. Aduba"], "hops": 1}
+{"id": "B174", "question": "Which client holds the contract affected by incident INC-4424?", "answers": ["Fairlight Media"], "hops": 2}
+{"id": "B175", "question": "Incident INC-4433 affected a contract. In what year did the depot servicing that contract open? Answer with the number only.", "answers": ["2018"], "hops": 3}
+{"id": "B176", "question": "Clients Fairlight Media and Wetheral Joinery each hold a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["7"], "hops": 4}
+{"id": "B177", "question": "How many loading bays does Meridian Logistics depot D22 have? Answer with the number only.", "answers": ["12"], "hops": 1}
+{"id": "B178", "question": "Which client holds the contract affected by incident INC-4411?", "answers": ["Sable Freight"], "hops": 2}
+{"id": "B179", "question": "Incident INC-4403 affected a contract. In what year did the depot servicing that contract open? Answer with the number only.", "answers": ["2016"], "hops": 3}
+{"id": "B180", "question": "Charging incidents INC-4427 and INC-4449 each at its own contract's late-delivery penalty rate, what is the total penalty owed for the two? Answer with the number only.", "answers": ["88125"], "hops": 4}
+{"id": "B181", "question": "What was the cause of incident INC-4428?", "answers": ["a bridge closure"], "hops": 1}
+{"id": "B182", "question": "What goods were carried under the contract affected by incident INC-4449?", "answers": ["glassware"], "hops": 2}
+{"id": "B183", "question": "Incident INC-4451 affected a contract. Which city is the depot for that contract located in?", "answers": ["Jarrow"], "hops": 3}
+{"id": "B184", "question": "Charging incidents INC-4459 and INC-4404 each at its own contract's late-delivery penalty rate, what is the total penalty owed for the two? Answer with the number only.", "answers": ["45000"], "hops": 4}
+{"id": "B185", "question": "What was the cause of incident INC-4421?", "answers": ["a failed refrigeration unit"], "hops": 1}
+{"id": "B186", "question": "What goods were carried under the contract affected by incident INC-4414?", "answers": ["industrial chemicals"], "hops": 2}
+{"id": "B187", "question": "How many loading bays does the depot have that services the contract affected by incident INC-4451? Answer with the number only.", "answers": ["8"], "hops": 3}
+{"id": "B188", "question": "Incidents INC-4454 and INC-4456 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["28250"], "hops": 4}
+{"id": "B189", "question": "What goods are carried under contract C-2108?", "answers": ["paper stock"], "hops": 1}
+{"id": "B190", "question": "Which client holds the contract affected by incident INC-4426?", "answers": ["Havelock Timber"], "hops": 2}
+{"id": "B191", "question": "Incident INC-4409 affected a contract. Which city is the depot for that contract located in?", "answers": ["Northallerton"], "hops": 3}
+{"id": "B192", "question": "Incidents INC-4443 and INC-4454 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["23625"], "hops": 4}
+{"id": "B193", "question": "How many loading bays does Meridian Logistics depot D03 have? Answer with the number only.", "answers": ["6"], "hops": 1}
+{"id": "B194", "question": "Which city is the depot that services contract C-2137 located in?", "answers": ["Ripon"], "hops": 2}
+{"id": "B195", "question": "Incident INC-4456 affected a contract. Which city is the depot for that contract located in?", "answers": ["Halberd"], "hops": 3}
+{"id": "B196", "question": "Clients Havelock Timber and Silverbrook Dairy each hold a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["3"], "hops": 4}
+{"id": "B197", "question": "Which client holds Meridian Logistics contract C-2118?", "answers": ["Silverbrook Dairy"], "hops": 1}
+{"id": "B198", "question": "In what year did the depot that services the contract with client Lucent Glass open? Answer with the number only.", "answers": ["2006"], "hops": 2}
+{"id": "B199", "question": "Incident INC-4443 affected a contract. Which city is the depot for that contract located in?", "answers": ["Denmark Hill"], "hops": 3}
+{"id": "B200", "question": "Clients Vantage Optics and Thornbury Ceramics each hold a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["9"], "hops": 4}
+{"id": "B201", "question": "What goods were carried under the contract affected by incident INC-4426?", "answers": ["consumer electronics"], "hops": 2}
+{"id": "B202", "question": "Incident INC-4427 affected a contract. Which city is the depot for that contract located in?", "answers": ["Quorn"], "hops": 3}
+{"id": "B203", "question": "Charging incidents INC-4456 and INC-4403 each at its own contract's late-delivery penalty rate, what is the total penalty owed for the two? Answer with the number only.", "answers": ["64375"], "hops": 4}
+{"id": "B204", "question": "Incident INC-4454 ran late. At the late-delivery penalty rate of its contract, what penalty is owed? Answer with the number only.", "answers": ["28000"], "hops": 2}
+{"id": "B205", "question": "Incident INC-4427 affected a contract serviced by a depot. Who is that depot's manager?", "answers": ["S. Aduba"], "hops": 3}
+{"id": "B206", "question": "Clients Sable Freight and Peregrine Chemicals each hold a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["16"], "hops": 4}
+{"id": "B207", "question": "What goods were carried under the contract affected by incident INC-4432?", "answers": ["automotive parts"], "hops": 2}
+{"id": "B208", "question": "How many loading bays does the depot have that services the contract affected by incident INC-4418? Answer with the number only.", "answers": ["12"], "hops": 3}
+{"id": "B209", "question": "Incidents INC-4427 and INC-4416 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["48625"], "hops": 4}
+{"id": "B210", "question": "Which city is the depot that services contract C-2119 located in?", "answers": ["Jarrow"], "hops": 2}
+{"id": "B211", "question": "Incident INC-4418 affected a contract. Which city is the depot for that contract located in?", "answers": ["Selby"], "hops": 3}
+{"id": "B212", "question": "Incidents INC-4454 and INC-4451 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["24750"], "hops": 4}
+{"id": "B213", "question": "Which client holds the contract affected by incident INC-4414?", "answers": ["Marchmont Labs"], "hops": 2}
+{"id": "B214", "question": "Incident INC-4444 affected a contract. In what year did the depot servicing that contract open? Answer with the number only.", "answers": ["1999"], "hops": 3}
+{"id": "B215", "question": "Charging incidents INC-4422 and INC-4448 each at its own contract's late-delivery penalty rate, what is the total penalty owed for the two? Answer with the number only.", "answers": ["53000"], "hops": 4}
+{"id": "B216", "question": "Incident INC-4458 ran late. At the late-delivery penalty rate of its contract, what penalty is owed? Answer with the number only.", "answers": ["100000"], "hops": 2}
+{"id": "B217", "question": "Incident INC-4448 affected a contract. Which city is the depot for that contract located in?", "answers": ["Garrowby"], "hops": 3}
+{"id": "B218", "question": "Incidents INC-4443 and INC-4409 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.", "answers": ["10750"], "hops": 4}
+{"id": "B219", "question": "Which city is the depot that services contract C-2136 located in?", "answers": ["Malton"], "hops": 2}
+{"id": "B220", "question": "How many loading bays does the depot have that services the contract affected by incident INC-4414? Answer with the number only.", "answers": ["12"], "hops": 3}
+{"id": "B221", "question": "Clients Havelock Timber and Wetheral Joinery each hold a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["10"], "hops": 4}
+{"id": "B222", "question": "Incident INC-4416 ran late. At the late-delivery penalty rate of its contract, what penalty is owed? Answer with the number only.", "answers": ["20250"], "hops": 2}
+{"id": "B223", "question": "How many loading bays does the depot have that services the contract affected by incident INC-4448? Answer with the number only.", "answers": ["4"], "hops": 3}
+{"id": "B224", "question": "Charging incidents INC-4403 and INC-4426 each at its own contract's late-delivery penalty rate, what is the total penalty owed for the two? Answer with the number only.", "answers": ["130625"], "hops": 4}
+{"id": "B225", "question": "What goods were carried under the contract affected by incident INC-4451?", "answers": ["bulk grain"], "hops": 2}
+{"id": "B226", "question": "Incident INC-4448 affected a contract serviced by a depot. Who is that depot's manager?", "answers": ["A. Achterberg"], "hops": 3}
+{"id": "B227", "question": "Clients Inverleith Spirits and Wetheral Joinery each hold a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["15"], "hops": 4}
+{"id": "B228", "question": "Incident INC-4426 ran late. At the late-delivery penalty rate of its contract, what penalty is owed? Answer with the number only.", "answers": ["122500"], "hops": 2}
+{"id": "B229", "question": "Incident INC-4419 affected a contract serviced by a depot. Who is that depot's manager?", "answers": ["J. Petrossian"], "hops": 3}
+{"id": "B230", "question": "Clients Peregrine Chemicals and Studio Flatpack each hold a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.", "answers": ["17"], "hops": 4}
+{"id": "B231", "question": "Which city is the depot that services contract C-2116 located in?", "answers": ["Halberd"], "hops": 2}
+{"id": "B232", "question": "Incident INC-4424 affected a contract. Which city is the depot for that contract located in?", "answers": ["Selby"], "hops": 3}
+{"id": "B233", "question": "What goods were carried under the contract affected by incident INC-4456?", "answers": ["consumer electronics"], "hops": 2}
+{"id": "B234", "question": "Incident INC-4404 affected a contract. Which city is the depot for that contract located in?", "answers": ["Garrowby"], "hops": 3}
+{"id": "B235", "question": "In what year did the depot that services the contract with client Tallentire Feed open? Answer with the number only.", "answers": ["2010"], "hops": 2}
+{"id": "B236", "question": "Incident INC-4456 affected a contract. In what year did the depot servicing that contract open? Answer with the number only.", "answers": ["2006"], "hops": 3}
+{"id": "B237", "question": "In what year did the depot that services the contract with client Cobalt Instruments open? Answer with the number only.", "answers": ["2006"], "hops": 2}
+{"id": "B238", "question": "Incident INC-4411 affected a contract. In what year did the depot servicing that contract open? Answer with the number only.", "answers": ["2015"], "hops": 3}
+{"id": "B239", "question": "What goods were carried under the contract affected by incident INC-4433?", "answers": ["flat-pack furniture"], "hops": 2}
+{"id": "B240", "question": "Incident INC-4421 affected a contract. Which city is the depot for that contract located in?", "answers": ["Northallerton"], "hops": 3}
+{"id": "B241", "question": "What goods were carried under the contract affected by incident INC-4404?", "answers": ["industrial chemicals"], "hops": 2}
+{"id": "B242", "question": "Incident INC-4422 affected a contract serviced by a depot. Who is that depot's manager?", "answers": ["M. Ramaswamy"], "hops": 3}
+{"id": "B243", "question": "What goods were carried under the contract affected by incident INC-4421?", "answers": ["bulk grain"], "hops": 2}
+{"id": "B244", "question": "Incident INC-4403 affected a contract serviced by a depot. Who is that depot's manager?", "answers": ["S. Oyelaran"], "hops": 3}
+{"id": "B245", "question": "Who manages the depot that services contract C-2104?", "answers": ["A. Achterberg"], "hops": 2}
+{"id": "B246", "question": "Incident INC-4414 affected a contract. In what year did the depot servicing that contract open? Answer with the number only.", "answers": ["2018"], "hops": 3}
+{"id": "B247", "question": "Which client holds the contract affected by incident INC-4422?", "answers": ["Cobalt Instruments"], "hops": 2}
+{"id": "B248", "question": "Incident INC-4418 affected a contract serviced by a depot. Who is that depot's manager?", "answers": ["S. Moln\u00e1r"], "hops": 3}
+{"id": "B249", "question": "In what year did the depot that services the contract with client Peregrine Chemicals open? Answer with the number only.", "answers": ["1999"], "hops": 2}
+{"id": "B250", "question": "How many loading bays does the depot have that services the contract affected by incident INC-4428? Answer with the number only.", "answers": ["4"], "hops": 3}

@@ -53,6 +53,11 @@ NOTES: dict[str, str] = {
         "124 documents, one seed.",
     "esp/eval/tasks.py":
         "17 questions of one to four hops, with exact answers and the scorer.",
+    "esp/eval/bank.py":
+        "250 held-out questions combining one to nine documents, about entities "
+        "the 17 never name, answers computed from the world.",
+    "tasks/meridian_bank.jsonl":
+        "The held-out bank as a question file, for `make measure` or the web page.",
     "esp/eval/corpus_tool.py":
         "The retrieval tool the candidates share. Deterministic term overlap, "
         "three documents.",
@@ -125,6 +130,7 @@ NOTES: dict[str, str] = {
     "esp/report/plots.py": "Fitness curve, surrogate scatter, Pareto front.",
     "Dockerfile": "The service image.",
     "compose.yaml": "The service, with its state volume.",
+    "requirements.lock": "The whole runtime dependency tree, pinned exactly.",
     ".github/workflows/ci.yml": "Lint, tests and a real offline search on every push.",
     "Makefile": "Every command in this document has a target here.",
     "SECURITY.md": "Keys are read from the environment and never committed.",
@@ -582,7 +588,7 @@ class Dossier(Layout):
         self.proof("lint",
                    "Ruff over every package, with the rule set pinned in "
                    "pyproject.toml rather than left at the tool's defaults &mdash; "
-                   "default drift turned CI red once already.")
+                   "default drift turned the build red once already.")
 
         self.story.append(PageBreak())
         self.h1("Proof, continued", "The part that costs nothing and proves the most.")

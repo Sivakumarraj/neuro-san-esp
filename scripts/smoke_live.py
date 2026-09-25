@@ -32,7 +32,7 @@ os.environ.setdefault("AGENT_TOOL_PATH", str(ROOT))
 os.environ.setdefault("PYTHONPATH", str(ROOT))
 
 from esp.eval import measurements  # noqa: E402
-from esp.eval.runner import _ask, _total_tokens, write_network  # noqa: E402
+from esp.eval.runner import _ask, _total_tokens, never_answered, write_network  # noqa: E402
 from esp.eval.tasks import score  # noqa: E402
 from esp.service.preflight import failures, report, run_checks  # noqa: E402
 from esp.serving import SHOWCASE, display_question, presentable  # noqa: E402
@@ -72,11 +72,18 @@ def main() -> int:
             answer, accounting, seconds = "", {}, time.monotonic() - started
             error = f"{type(exc).__name__}: {exc}"[:300]
         tokens = _total_tokens(accounting)
-        correct = bool(answer) and score(task.accepted, answer)
+        # neuro-san hands an agent's failure back as the reply text. Counted as
+        # an answer, a model returning 503 on three of four questions printed
+        # WRONG three times and exited 0: an outage reported as the champion
+        # being wrong, the one confusion this project exists to prevent.
+        failed = bool(answer) and never_answered(answer)
+        answered = bool(answer) and not failed
+        correct = answered and score(task.accepted, answer)
         results.append({"task": task.task_id, "hops": task.hops, "tokens": tokens,
                         "seconds": round(seconds, 1), "correct": correct,
-                        "answered": bool(answer), "error": error})
-        verdict = "CORRECT" if correct else ("WRONG" if answer else "NO ANSWER")
+                        "answered": answered, "error": error})
+        verdict = ("CORRECT" if correct else "WRONG" if answered else
+                   "FAILED" if failed else "NO ANSWER")
         print(f"[{verdict:9}] {task.task_id} ({task.hops} hop{'s' * (task.hops != 1)}) "
               f"{question}\n            expected {task.answer!r}; {tokens:,} tokens, "
               f"{seconds:.0f}s{'; ' + error if error else ''}")
@@ -90,8 +97,9 @@ def main() -> int:
                       "correct": sum(r["correct"] for r in results),
                       "tokens": spent, "provider": served.provider}))
     if answered < len(results) or spent == 0:
-        print("\nbroken pipeline: a question got no answer, or no model was called",
-              file=sys.stderr)
+        print("\nnot a clean run: a question got no answer (a FAILED line is the "
+              "provider or an agent failing, not the network answering wrong), "
+              "or no model was called", file=sys.stderr)
         return 1
     return 0
 

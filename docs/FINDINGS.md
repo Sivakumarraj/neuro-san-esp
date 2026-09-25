@@ -216,13 +216,21 @@ sample size does not contain.
 | The designer's shape, mean held-out rank | 10.4 of 12 |
 | Mean held-out rank, the nine evolved networks | 5.8 of 12 |
 | Mean held-out rank, the three seeds | 8.5 of 12 |
-| Best evolved network beat the best seed on held-out tasks | **100% of splits** |
+| Best evolved beat best seed, each chosen on the selection half | 66% of splits |
 
 The comparison is genuinely out of sample: the winner is chosen on the selection
 half and judged on tasks that took no part in choosing it. Evolved networks
-outrank hand-written ones by two and a half places on average, and in two
-hundred splits there was not one where the best seed beat the best evolved
-network.
+outrank hand-written ones by two and a half places on average.
+
+**A correction.** This table used to end with "best evolved network beat the
+best seed on held-out tasks: 100% of splits". No command printed it, and it was
+not a held-out result: it picked each group's best by its score on the held-out
+half itself, and it set the best of nine evolved networks against the best of
+three seeds, which favours the larger group before any network is compared.
+Choosing each group's best on the selection half and judging it on the other,
+as every other row here does, gives 66%. `make holdout` now prints both, the
+in-sample one labelled as such, so the old figure cannot be quoted as a
+held-out result again.
 
 So the claim this evidence supports is the population-level one — **evolutionary
 search over neuro-san topologies produces better networks than the shape the
@@ -235,6 +243,42 @@ world, so this measures stability across questions rather than transfer to a new
 domain, which would be a stronger test and needs a second world. And the
 selection half is itself only nine tasks, so the winner it picks is noisier than
 a real search's would be after a fuller run.
+
+## The held-out bank: the first out-of-sample measurement
+
+Every figure above selects and judges networks on the same seventeen questions, or on
+halves of them. `esp/eval/bank.py` generates 250 more over the same corpus, about
+entities the seventeen never name, with every answer re-derived from the corpus text by a
+test. The first live run on it, on 25 September 2026 with a free Gemini key, measured two
+networks on the first 24 questions, four at each depth. `make bank-report` reproduces this
+table from `results/heldout_bank/`, with no key.
+
+| | Held out (24) | Tokens | On the 17 | Tokens |
+| --- | --- | --- | --- | --- |
+| `seed:designer_shaped` | **23 / 24** | 159,086 | 14 / 17 | 385,280 |
+| `mut:reassign_model` 6859dd | 21 / 24 | 176,740 | 15 / 17 | 260,052 |
+
+**The evolved network did not beat the designer's shape on questions it was not selected
+on.** It answered two fewer and spent 11% more tokens, reversing the 32% saving it showed
+on the seventeen. The whole difference sits in one shape, the four-document penalty
+arithmetic, where it got 1 of 4 and the designer 3 of 4; at every other depth, including
+the nine-document sums, both answered 4 of 4. Paired question by question, two questions
+separate them and both favour the designer, an exact McNemar p of 0.5: **no difference is
+established in either direction**. What the run settles is narrower, and it matters for
+the headline: out of sample, it gives no support to the evolved network being better.
+
+**The bank is easier than the seventeen for these networks.** The designer scored 96% here
+against 82% on the seventeen, whose two whole-corpus aggregates (T07 and T08) nearly every
+network fails, and the bank asks nothing like them. A bank that separates networks needs
+harder shapes, such as aggregates over all forty contracts that a three-document retrieval
+cannot answer in one call. That is the next change, and it is not made here.
+
+**Why only two networks and 24 questions.** The free tier allows 500 requests a day on each
+flash-lite model and a question costs about ten. The champion, `3bf9c0`, could not be
+measured at all: its router runs on gemini-3.5-flash, which the free tier allows about 20
+requests a day, and which answered 503 "high demand" to three of four smoke-test questions
+the same day. Network `6859dd` was chosen because it is evolved, ranked second, and runs
+only on the 500-a-day models.
 
 ## What the Predictor is, exactly
 
@@ -377,8 +421,9 @@ as chance.
 
 **The Predictor picks better than chance.** It picks the best network nearly twice as often
 as a random picker does, with well under half the regret. Of 20,000 simulated random
-pickers on the same held-out sets, none did as well (p < 0.0001). The sets overlap, since
-each network is in 55 of them, so this is not 220 independent trials. It says nothing about
+pickers on the same held-out sets, none did as well. That is a description, not a p-value:
+the simulation treats the 220 sets as independent, and they are not, since each network is
+in 55 of them, so the effective sample is nearer twelve than 220. It says nothing about
 networks outside this population. It is still the first direct evidence in this repository
 that the surrogate helps the search choose.
 

@@ -28,6 +28,7 @@ from esp.config import (
     verify_key,
 )
 from esp.eval.failover import (
+    DAILY_CAPS,
     EXCLUDED,
     LADDER,
     REQUESTS_PER_CANDIDATE,
@@ -119,9 +120,14 @@ def run_checks(root: Path | None = None, live: bool = False) -> list[Check]:
         f"{model} needs {key}" for model in MODEL_TIERS
         if (key := key_name_for(model)) is not None
         and key != wanted and key not in present})
+    # Named by role. The tiers and the failover ladder are different lists that
+    # can share models, and printed bare two lines apart they read as one list
+    # that disagrees with itself.
+    tiers = (f"workers on {MODEL_TIERS[0]}, a promoted router on {MODEL_TIERS[-1]}"
+             if len(MODEL_TIERS) > 1 else ", ".join(MODEL_TIERS))
     checks.append(Check(
         "model tiers", not stranded,
-        ", ".join(MODEL_TIERS) if not stranded else
+        tiers if not stranded else
         "; ".join(stranded) + " -- set ESP_MODEL_TIERS to models of the "
         "provider you hold a key for"))
 
@@ -214,7 +220,7 @@ def run_checks(root: Path | None = None, live: bool = False) -> list[Check]:
     daily = daily_budget() * key_multiplier
     candidates = daily // REQUESTS_PER_CANDIDATE
     key_note = f" ({key_multiplier} keys)" if key_multiplier > 1 else ""
-    detail = (f"{ladder} -- {daily} requests/day{key_note} "
+    detail = (f"daily-cap failover order {ladder} -- {daily} requests/day{key_note} "
               f"= about {candidates} candidate(s)")
     if EXCLUDED:
         # Silently dropping these is how a four-rung ladder came to spend 20
@@ -223,6 +229,20 @@ def run_checks(root: Path | None = None, live: bool = False) -> list[Check]:
         detail += "; excluded: " + ", ".join(
             f"{model} ({why})" for model, why in EXCLUDED.items())
     checks.append(Check("model ladder", bool(LADDER), detail))
+
+    # The promoted router's own daily cap. Measured networks that won did so by
+    # putting the router on the stronger rung, and on Google's free tier that
+    # model allows about twenty requests a day -- a router makes several per
+    # question, so such a network answers only a handful of questions a day.
+    # Warned, not refused: a paid key has no such cap and cannot be told apart.
+    router = MODEL_TIERS[-1] if MODEL_TIERS else None
+    cap = DAILY_CAPS.get(router) if router else None
+    if router and cap is not None and cap < REQUESTS_PER_CANDIDATE:
+        checks.append(Check(
+            "router quota", False,
+            f"{router} allows about {cap} requests/day on the free tier; a "
+            f"network with its router promoted to it answers only a few "
+            f"questions a day on a free key", fatal=False))
 
     return checks
 

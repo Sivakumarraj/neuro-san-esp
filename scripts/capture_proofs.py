@@ -177,8 +177,21 @@ def main() -> int:
 
     (PROOF_DIR / "index.json").write_text(
         json.dumps(index, indent=2), encoding="utf-8")
-    # A failing proof is still a proof, so this does not fail the build. The
-    # exit codes are recorded and the dossier prints them.
+
+    # A failing proof is still recorded -- the transcript is evidence either
+    # way. But it fails the command: this used to return 0 on a red test
+    # transcript, so `make dossier` went on to print a PDF whose proofs no
+    # longer passed, beside an index a reader would take as green.
+    failed = [r["name"] for r in index
+              if not r.get("carried_forward") and "exit_code" in r
+              and r["exit_code"] != 0]
+    kept = [r["name"] for r in index if r.get("carried_forward")]
+    attested = [r["name"] for r in index if r.get("attested")]
+    print(f"\n{len(index)} proofs: {len(failed)} failed, {len(kept)} carried "
+          f"forward, {len(attested)} attested by hand rather than captured")
+    if failed:
+        print(f"FAILED: {', '.join(failed)}. Recorded, and not fit to publish.")
+        return 1
     return 0
 
 

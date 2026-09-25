@@ -459,3 +459,19 @@ def test_the_committed_analysis_does_not_depend_on_the_configured_provider():
             "from esp.surrogate.predictor import features\n"
             "print(repr(np.vstack([features(m.genome) for m in measurements.load()]).tolist()))")
     assert _in_subprocess(code) == _in_subprocess(code, ANTHROPIC_API_KEY=ANTHROPIC_KEY)
+
+
+def test_the_demoted_network_is_the_same_network_on_one_model():
+    from esp.serving import demoted
+    champion = measurements.best().genome
+    down = demoted(champion)
+    assert down is not None, "the champion promotes its router"
+    assert all(agent.model is None for agent in down.agents.values())
+    assert set(down.agents) == set(champion.agents) and down.top == champion.top
+    assert champion.agents[champion.top].model, "demoting must not touch the original"
+
+
+def test_nothing_is_demoted_when_nothing_was_promoted():
+    from esp.genome.seeds import SEEDS
+    from esp.serving import demoted
+    assert all(demoted(make()) is None for make in SEEDS.values())

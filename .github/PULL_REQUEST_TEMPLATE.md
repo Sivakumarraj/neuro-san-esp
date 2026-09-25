@@ -20,7 +20,7 @@
 
 ## Checklist
 
-- [ ] `make check` passes (lint and the full offline suite)
+- [ ] `make validate` passes (lint, docs, HOCON validator, the full offline suite)
 - [ ] `pymarkdown --config .pymarkdownlint.yaml scan *.md docs/*.md` is clean
 - [ ] Tests added or updated for the behaviour changed
 - [ ] Every figure in the docs that this touches is recomputed by a test, not typed

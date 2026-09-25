@@ -90,6 +90,36 @@ def retarget(genome: Genome, cheap: str, strong: str) -> Genome:
     return moved
 
 
+# What a provider says when a model is busy or out of quota, rather than when the
+# request itself is wrong. Found on the first live run: the champion's router
+# model answered 503 "high demand" to three of four questions on a free key.
+_UNAVAILABLE = ("503", "UNAVAILABLE", "high demand", "overloaded", "529",
+                "RESOURCE_EXHAUSTED", "429", "quota")
+
+
+def unavailable(reply: str) -> bool:
+    """Whether a failed reply is a model being unavailable, the one failure a
+    different model can answer instead."""
+    return any(marker in reply for marker in _UNAVAILABLE)
+
+
+def demoted(genome: Genome) -> Genome | None:
+    """The same network with every agent back on the default model.
+
+    What a page can serve while a promoted model is busy or out of its daily
+    quota, instead of an error. It is not the measured network -- the promotion
+    is part of what earned the score -- so whoever serves it must say so. None
+    when no agent is promoted, because then there is nothing to fall back from.
+    """
+    if not any(agent.model and agent.model != genome.default_model
+               for agent in genome.agents.values()):
+        return None
+    down = genome.clone()
+    for agent in down.agents.values():
+        agent.model = None
+    return down
+
+
 def conversational(genome: Genome) -> Genome:
     """The same network, with its front man asked to explain its answer."""
     talking = genome.clone()

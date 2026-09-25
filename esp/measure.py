@@ -11,14 +11,16 @@ repository evolves:
 
 A question file is JSON Lines, one question per line:
 
-    {"question": "Which city is depot D08 in?", "answer": "Pickering"}
+    {"question": "Which city is depot D08 in?", "answer": "Eastgate"}
     {"id": "Q2", "question": "...", "answers": ["C-2139", "C2139"], "hops": 3}
 
 `answer` or `answers` lists what counts as correct; a reply is correct if it
 *contains* one of them (numbers match on whole-number boundaries, so "4" does
 not match "INC-4429"). `id` and `hops` are optional. With no `--tasks`, the
 built-in seventeen-question Meridian Logistics benchmark is used, which needs a
-network whose tools can search the Meridian corpus.
+network whose tools can search the Meridian corpus. `--tasks meridian-bank` is the
+250-question held-out bank over the same corpus, and `meridian-bank:40` its first
+forty, balanced across depths.
 
 What comes back is what this repository's own results are built from:
 accuracy, accuracy over the questions the network actually finished, how many
@@ -42,6 +44,10 @@ from esp.eval.runner import MAX_WORKERS, TaskResult, refuse_unmeasured, run_suit
 from esp.eval.tasks import TASKS, Task
 
 BUILTIN = "meridian"
+# The 250-question held-out bank (esp/eval/bank.py). `meridian-bank:40` asks its
+# first forty, which the bank orders to be balanced across depths -- a free-tier
+# key cannot afford all 250 in a day.
+BANK = "meridian-bank"
 
 
 class SuiteError(ValueError):
@@ -139,6 +145,14 @@ def load_suite(path: str | Path | None) -> tuple[str, list[Task]]:
     """A named question set: the built-in one, or a file."""
     if path in (None, "", BUILTIN):
         return BUILTIN, builtin_suite()
+    if isinstance(path, str) and (path == BANK or path.startswith(BANK + ":")):
+        from esp.eval.bank import BANK as QUESTIONS
+        count = path.partition(":")[2]
+        if not count:
+            return BANK, list(QUESTIONS)
+        if not count.isdigit() or not 0 < int(count) <= len(QUESTIONS):
+            raise SuiteError(f"{BANK}:N takes a count from 1 to {len(QUESTIONS)}, not {count!r}")
+        return path, list(QUESTIONS[:int(count)])
     path = Path(path)
     return path.name, parse_suite(path.read_text(encoding="utf-8"))
 
@@ -253,7 +267,8 @@ def main(argv: list[str] | None = None) -> int:
         description="Measure a neuro-san agent network on a set of questions.")
     parser.add_argument("network", help="a HOCON file, or a network name in the manifest")
     parser.add_argument("--tasks", default=BUILTIN,
-                        help="JSON Lines question file (default: the built-in benchmark)")
+                        help="JSON Lines question file, meridian (the built-in 17, "
+                             "default), meridian-bank or meridian-bank:N")
     parser.add_argument("--tools", default=None,
                         help="directory holding the network's coded tools "
                              "(sets AGENT_TOOL_PATH)")

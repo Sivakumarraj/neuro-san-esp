@@ -1,4 +1,4 @@
-.PHONY: install test lint lint-docs check check-key smoke measure figures ablation probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
+.PHONY: install test lint lint-docs check validate hocon offline-check bank bank-report check-key smoke measure figures ablation probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -13,8 +13,28 @@ lint:
 lint-docs:
 	pymarkdown --config .pymarkdownlint.yaml scan *.md docs/*.md
 
-# Everything CI enforces, in one command.
-check: lint lint-docs test
+# The gate. Run it before every commit; nothing is merged that fails it. No key,
+# no network, no budget: lint, the docs, every registry through neuro-san's own
+# validator, the whole suite, and a real offline search over the committed
+# measurements. CI runs the same checks on every push; running them here first
+# means a push is never the first time they run.
+validate: lint lint-docs hocon test offline-check
+
+# Kept so older instructions still work.
+check: validate
+
+# neuro-san's own validator over every served registry. The contract tests in
+# tests/test_hocon_contract.py cover what the validator cannot know.
+hocon:
+	@for f in registries/optimizer.hocon registries/evaluator.hocon; do \
+	  AGENT_TOOL_PATH=$$PWD PYTHONPATH=$$PWD python -m neuro_san.client.hocon_validator_cli $$f \
+	    || exit 1; \
+	done
+
+# Phase B and C over the committed measurements, small enough to run on every
+# validate. A step that can genuinely fail: it trains on real data.
+offline-check:
+	PYTHONPATH=$$PWD python scripts/offline_search.py --cache tests/fixtures/cache --pool 200
 
 # Does the configured provider accept the key? One free call -- listing models
 # costs nothing -- asked before anything long or public starts.
@@ -33,6 +53,18 @@ smoke:
 #   make measure NETWORK=registries/my_network.hocon TASKS=my_questions.jsonl
 measure:
 	PYTHONPATH=$$PWD AGENT_TOOL_PATH=$${AGENT_TOOL_PATH:-$$PWD} python -m esp.measure $(NETWORK) --tasks $${TASKS:-meridian}
+
+# The 250-question held-out bank, written out as a question file anyone can
+# read, paste into the web page, or hand to `make measure TASKS=...`. Generated,
+# so this only needs re-running when esp/eval/bank.py changes; a test fails if
+# the committed file drifts from the generator.
+bank:
+	PYTHONPATH=$$PWD python -c "from esp.eval.bank import BANK, to_jsonl; open('tasks/meridian_bank.jsonl', 'w').write(to_jsonl(BANK))"
+
+# The held-out bank measurements, from the committed reports: each network beside
+# what it scored on the seventeen it was selected on, by depth, and paired.
+bank-report:
+	PYTHONPATH=$$PWD python scripts/bank_report.py
 
 # Every published figure about the Predictor, regenerated from committed data.
 figures:

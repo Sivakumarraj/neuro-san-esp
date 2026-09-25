@@ -125,13 +125,22 @@ def main() -> int:
     # term is large enough to carry the total into respectable territory
     # regardless. Scalarised into one model this was invisible, which is the
     # whole reason the surrogate now reports per objective.
+    # Gated exactly as a service wake gates it. This script used to print the
+    # warning and rank with the backwards model anyway, so `make offline` and
+    # the service it demonstrates ordered the same candidates differently.
+    gated = quality.gated_outcomes()
     for useless in quality.useless_outcomes():
         margin = quality.margin(useless)
         shown = "" if margin is None else f" (margin {margin:+.3f})"
-        print(f"  !! the {useless} model does not beat its own null{shown}. "
-              f"Phase C still weights it, so that part of the objective is "
-              f"noise.")
-    surrogate.fit(genomes, outcomes)
+        if useless in gated:
+            print(f"  !! the {useless} model does not beat its own null{shown}. "
+                  f"It is excluded from the ranking below, as a service wake "
+                  f"excludes it.")
+        else:
+            print(f"  !! the {useless} model does not beat its own null{shown}, "
+                  f"but no null was measured for it, so it is kept and its "
+                  f"part of the ranking is suspect.")
+    surrogate.fit(genomes, outcomes, gated=gated)
 
     print(f"\nPhase C -- evolving {args.pool} candidates against it")
     rng = random.Random(args.seed)
@@ -203,6 +212,16 @@ def main() -> int:
               f"{args.top} candidates in generation order. Phase C's cost "
               f"claim holds; its selection claim does not, until there are "
               f"more real evaluations.")
+
+    # Ties said out loud. Five candidates at the same predicted fitness are not
+    # a top five; the order among them is the order they were bred in.
+    if surrogate.ranks() and ranked:
+        best = round(float(ranked[0][1]), 4)
+        tied = sum(1 for _, predicted in ranked if round(float(predicted), 4) == best)
+        if tied > 1:
+            print(f"\n  {tied} candidates tie at the top ({best:+.4f}). The "
+                  f"Predictor cannot separate them; among them the order below "
+                  f"is generation order.")
 
     heading = ("Top" if surrogate.ranks() else "First")
     ordering = ("by predicted fitness" if surrogate.ranks()

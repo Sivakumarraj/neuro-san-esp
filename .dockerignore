@@ -5,7 +5,9 @@
 .ruff_cache
 __pycache__
 *.egg-info
-results
+build
+# results/ is NOT ignored: the Hugging Face image copies it for the page's
+# run history. Ignoring it made that build fail with '"/results": not found'.
 # Never send a key to the build daemon, and never let a future COPY bake one in.
 .env
 .env.*

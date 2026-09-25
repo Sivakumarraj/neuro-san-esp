@@ -84,7 +84,7 @@ benchmark (__COUNT__ multi-hop questions over the Meridian Logistics corpus)</la
 <label><input type=radio name=suite value=custom onchange=estimate()> Your own, as JSON Lines</label>
 <div id=custom hidden>
 <textarea id=suitetext rows=6 oninput=estimate()
- placeholder='{"question": "Which city is depot D08 in?", "answer": "Pickering"}'></textarea>
+ placeholder='{"question": "Which city is depot D08 in?", "answer": "Eastgate"}'></textarea>
 <div class=row><input type=file id=suitefile accept=".jsonl,.json,.txt" onchange=loadfile(this)>
 <span class=sub style="margin:0">One object per line: <code>question</code>, and <code>answer</code>
 or <code>answers</code>. A reply is correct if it contains one of them.</span></div>
@@ -162,6 +162,7 @@ async function ask(){
     ans.textContent=d.answer||'(the network returned no answer)';
     meta.appendChild(el('div',`${d.agents} agents · ${d.seconds}s · ${d.provider}`
       +` · router ${d.router_model}, workers ${d.worker_model}`));
+    if(d.fallback){meta.appendChild(el('div',d.fallback,'bad'))}
     if(d.expected){
       const g=el('div','Benchmark answer: '+d.expected+' — ');
       g.appendChild(el('span',d.correct?'CORRECT':'WRONG',d.correct?'ok':'bad'));
