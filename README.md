@@ -34,6 +34,12 @@ Predictor and the sample-efficiency argument. In shape this is nearer to **LEAF*
 (*Evolutionary Neural AutoML for Deep Learning*, GECCO 2019), which evolves architectures
 and size, with agents where LEAF had layers.
 
+**How it was built.** Most of the implementation was written with Claude Code, under my
+direction. My part was the design decisions and running it against real model calls to find
+what it got wrong: about a dozen defects, nearly all of which made a good topology score
+badly. They are listed in
+[docs/FINDINGS.md](docs/FINDINGS.md#what-measurement-changed).
+
 ## Measure your own network
 
 The measurement is not tied to the networks this repository evolved. **Any network neuro-san
@@ -54,7 +60,7 @@ A question file is JSON Lines, one question per line; `answers` may list several
 forms, and `id` and `hops` are optional:
 
 ```json
-{"question": "Which city is depot D08 in?", "answer": "Pickering"}
+{"question": "Which city is depot D08 in?", "answer": "Eastgate"}
 {"id": "Q2", "question": "Which contract has the highest penalty?", "answers": ["C-2139", "C2139"]}
 ```
 
@@ -65,6 +71,15 @@ report. The file is validated before anything is paid for. A run that measured t
 environment rather than the network is refused, not reported: no model called, every
 question erroring, or a provider quota. With no question file, the built-in
 seventeen-question benchmark below is used.
+
+**A held-out bank of 250 questions.** Seventeen questions cannot rank individual networks
+(see the results below), so `TASKS=meridian-bank` asks 250 more over the same corpus. Each
+combines one to nine documents, never names an entity the seventeen name, and has its
+answer computed from the seeded world; a test re-derives every answer from the corpus text
+with a solver that shares no code with the generator. `TASKS=meridian-bank:40` asks the
+first forty, which are ordered to cover every depth, for a key that cannot afford all 250 in
+a day. `tasks/meridian_bank.jsonl` is the same bank as a question file, and `make bank`
+regenerates it.
 
 ## Results
 
@@ -102,9 +117,15 @@ studio` puts all twelve in neuro-san's own UI at once.
 selecting on one half, the winner of that half never tops the other half and averages rank
 7.2 of 12: seventeen tasks are too few to order individual networks, and the gap between
 +0.8941 and +0.8453 is inside the noise. What does survive the split is the population
-claim — the best evolved network beat the best seed on held-out tasks in **100% of 200
-splits**, and evolved networks outrank the hand-written ones by two and a half places.
-`make holdout` reproduces both halves of that from committed data, no key needed, and
+claim — the searched winner beat the designer's shape on held-out tasks in **90% of 200
+splits**, and evolved networks outrank the hand-written ones by two and a half places on
+average. Chosen on one half and judged on the other, the best evolved network beat the best
+seed in 66% of splits. An earlier version of this README said 100%: that figure picked each
+group's best by looking at the held-out half, so it was not a held-out test, and it is now
+printed with that label. The first measurement on genuinely new questions does not
+support the claim for the one evolved network tested: on 24 held-out bank questions it
+answered 21 against the designer's 23 (`make bank-report`). `make holdout` reproduces every
+figure here from committed data, no key needed, and
 [docs/FINDINGS.md](docs/FINDINGS.md#held-out-tasks-what-this-task-set-can-and-cannot-support)
 works through it.
 
@@ -126,6 +147,17 @@ Full numbers, the failure analysis and the prior art are in
 
 ## Limitations
 
+- **Out of sample, the evolved advantage has not reproduced.** On 24 questions from the
+  held-out bank, the one evolved network the free tier could afford to measure answered 21
+  against the designer's 23, with 11% more tokens. Two discordant questions establish
+  nothing either way, but nothing on new questions yet supports "evolved beats designer".
+  The bank also proved easier than the seventeen (the designer scored 96% on it), so it
+  needs harder shapes before it can separate networks. See
+  [docs/FINDINGS.md](docs/FINDINGS.md#the-held-out-bank-the-first-out-of-sample-measurement).
+- **The champion cannot be served reliably on a free Gemini key.** Its router runs on
+  gemini-3.5-flash, which the free tier allows about 20 requests a day and which returned
+  503 on three of four questions in a live run. The web page now retries such a question
+  once with every agent on the workers' model, and labels that answer as unmeasured.
 - **The surrogate beats chance offline. Online it is untested, and its gate costs it.**
   On held-out networks it picks the best of three 62% of the time against 33% for a random
   picker, and 72% with the gate off (`make ablation`). The held-out sets overlap, so these
@@ -342,7 +374,7 @@ Python 3.12+. Works the same in Codespaces, a devcontainer, or a laptop.
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"      # adds the test tools and the accelerator UI
 
-make check       # ruff + the full test suite
+make validate    # lint, docs, HOCON validator, the full suite, an offline search
 make offline     # phases B and C: breed and rank candidates, zero LLM calls
 ```
 
@@ -482,9 +514,11 @@ The page has two tabs. **Ask a network** is described below. **Measure networks*
 same questions to up to four networks at once: the twelve committed ones, plus any HOCON you
 place in `ESP_NETWORKS`. It uses the built-in benchmark or a JSON Lines file you paste, shows
 progress, and marks the Pareto front. It also gives a question-by-question grid and a JSON
-download. Measuring is paid for, so a deployment caps the total runs (`ESP_WEB_MAX_MEASURE`)
-and runs one measurement at a time. A network is never uploaded: it names Python classes to
-import.
+download. Measuring is paid for, so a deployment caps the runs per UTC day
+(`ESP_WEB_MAX_MEASURE`) and runs one measurement at a time. Questions are capped per day
+(`ESP_WEB_MAX_QUESTIONS`) and per visitor per hour (`ESP_WEB_PER_CLIENT_HOURLY`), and the
+counts survive a restart when `ESP_WEB_SPEND_FILE` is set, as the Docker images do. A
+network is never uploaded: it names Python classes to import.
 
 One process, no separate backend, no second repository. The page runs questions through the
 measured champion on neuro-san's direct session, the same code path the evaluator measures
@@ -528,7 +562,7 @@ and the agent count differ in front of you. Reading that off a table is not the
 same as watching two topologies answer.
 
 ```text
-studio_evolved_reassign_model
+r01_evolved_reassign_model_3bf9c008
   "Rank 1 of 12 by measured fitness (+0.8941): evolved by the reassign_model
    operator. Scored 94.12% on 17 multi-hop questions using 359,600 tokens
    across 5 agent(s), measured on gemini-3.1-flash-lite. Genome 3bf9c008d880c3fc."
@@ -589,7 +623,7 @@ the cron in `registries/manifest.hocon` with `user_id: system`, no client attach
 ## Testing and verification
 
 ```bash
-make check      # ruff + the full suite, exactly what CI runs
+make validate   # what CI runs, plus neuro-san's HOCON validator; run before committing
 make verify     # start a real neuro-san server and prove it fires the optimiser
 make offline    # the free half of ESP, end to end, no key
 make holdout    # select on half the tasks, judge on the other half, no key

@@ -25,6 +25,8 @@ from fastapi.testclient import TestClient  # noqa: E402
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setattr(serve, "_asked", {"count": 0})
+    monkeypatch.setattr(serve, "_recent", {})
+    monkeypatch.setattr(serve, "SPEND_FILE", None)
     return TestClient(serve.build_app())
 
 
@@ -119,6 +121,85 @@ def test_the_question_cap_is_enforced(client, monkeypatch):
         assert client.post("/ask", json={"question": "q"}).status_code == 200
     blocked = client.post("/ask", json={"question": "q"})
     assert blocked.status_code == 429
+
+
+def test_one_visitor_cannot_spend_everybodys_day(client, monkeypatch):
+    """The daily cap guards the key's bill; the per-visitor share keeps one
+    person's loop from using up the page for everyone else."""
+    monkeypatch.setattr(serve, "_ask", lambda *a: ("x", {}, 1.0))
+    monkeypatch.setattr(serve, "PER_CLIENT_HOURLY", 2)
+    for _ in range(2):
+        assert client.post("/ask", json={"question": "q"}).status_code == 200
+    blocked = client.post("/ask", json={"question": "q"})
+    assert blocked.status_code == 429 and "per visitor" in blocked.json()["error"]
+    assert serve._asked["count"] == 2, "a refused question was counted"
+
+
+def test_the_forwarded_address_is_only_trusted_when_told_to(client, monkeypatch):
+    """Behind no proxy, X-Forwarded-For is whatever the visitor typed."""
+    monkeypatch.setattr(serve, "_ask", lambda *a: ("x", {}, 1.0))
+    monkeypatch.setattr(serve, "PER_CLIENT_HOURLY", 1)
+    first = client.post("/ask", json={"question": "q"}, headers={"x-forwarded-for": "1.1.1.1"})
+    forged = client.post("/ask", json={"question": "q"}, headers={"x-forwarded-for": "2.2.2.2"})
+    assert first.status_code == 200 and forged.status_code == 429
+    monkeypatch.setattr(serve, "TRUST_PROXY", True)
+    monkeypatch.setattr(serve, "_recent", {})
+    for address in ("1.1.1.1", "2.2.2.2"):
+        response = client.post("/ask", json={"question": "q"},
+                               headers={"x-forwarded-for": f"9.9.9.9, {address}"})
+        assert response.status_code == 200
+
+
+def test_the_days_spend_survives_a_restart(client, monkeypatch, tmp_path):
+    """Held only in memory, the count went back to zero on every restart, so a
+    crash loop had no cap at all."""
+    monkeypatch.setattr(serve, "_ask", lambda *a: ("x", {}, 1.0))
+    monkeypatch.setattr(serve, "SPEND_FILE", str(tmp_path / "spend.json"))
+    monkeypatch.setattr(serve, "_spend_day", {"day": None})
+    monkeypatch.setattr(serve, "MAX_QUESTIONS", 3)
+    for _ in range(3):
+        assert client.post("/ask", json={"question": "q"}).status_code == 200
+    # A restart: memory is gone, the file is not.
+    monkeypatch.setattr(serve, "_asked", {"count": 0})
+    monkeypatch.setattr(serve, "_spend_day", {"day": None})
+    monkeypatch.setattr(serve, "_recent", {})
+    assert client.post("/ask", json={"question": "q"}).status_code == 429
+
+
+def test_a_new_day_starts_a_new_budget(client, monkeypatch):
+    monkeypatch.setattr(serve, "_ask", lambda *a: ("x", {}, 1.0))
+    monkeypatch.setattr(serve, "MAX_QUESTIONS", 1)
+    assert client.post("/ask", json={"question": "q"}).status_code == 200
+    assert client.post("/ask", json={"question": "q"}).status_code == 429
+    monkeypatch.setattr(serve, "_today", lambda: "2999-01-01")
+    assert client.post("/ask", json={"question": "q"}).status_code == 200
+
+
+@pytest.mark.parametrize("secret", [
+    "AIzaSyD" + "x" * 32, "AQ.Ex" + "y" * 40, "sk-ant-" + "z" * 40])
+def test_no_error_ever_carries_a_key(client, monkeypatch, secret):
+    """Errors reach whoever holds the link. A provider that echoes a request
+    detail must never put the key on the page."""
+    def boom(*a):
+        raise OSError(f"401 bad key {secret}")
+
+    monkeypatch.setattr(serve, "_ask", boom)
+    error = client.post("/ask", json={"question": "q"}).json()["error"]
+    assert secret not in error and "[redacted key]" in error
+    reply = ("Error from Coordinator: Agent stopped due to exception "
+             f"401 UNAUTHENTICATED {secret}")
+    monkeypatch.setattr(serve, "_ask", lambda *a: (reply, {}, 1.0))
+    error = client.post("/ask", json={"question": "q"}).json()["error"]
+    assert secret not in error
+
+
+def test_finished_measurements_do_not_accumulate_for_ever(monkeypatch):
+    monkeypatch.setattr(serve, "MAX_KEPT_JOBS", 2)
+    jobs = {f"j{i}": {"state": "done"} for i in range(5)}
+    jobs["live"] = {"state": "running"}
+    monkeypatch.setattr(serve, "_jobs", jobs)
+    serve._prune_jobs()
+    assert list(serve._jobs) == ["j3", "j4", "live"]
 
 
 def test_an_empty_question_costs_nothing(client, monkeypatch):
@@ -290,6 +371,7 @@ def _wait(client, job_id):
 def measuring(monkeypatch):
     monkeypatch.setattr(serve, "_measured", {"count": 0})
     monkeypatch.setattr(serve, "_jobs", {})
+    monkeypatch.setattr(serve, "SPEND_FILE", None)
     monkeypatch.setattr(serve, "MAX_MEASURE", 1000)
     return TestClient(serve.build_app())
 
@@ -383,3 +465,42 @@ def test_the_pages_script_parses(client):
     done = subprocess.run([node, "-e", "new Function(require('fs').readFileSync(0,'utf8'))"],
                           input=script, capture_output=True, text=True, timeout=30)
     assert done.returncode == 0, done.stderr
+
+
+def test_a_busy_router_falls_back_and_says_so(client, monkeypatch):
+    """The champion's router runs on a model the free tier allows about twenty
+    requests a day, and on the first live run it answered 503 "high demand" to
+    three of four questions. The page retries once with every agent on the
+    workers' model, and labels the answer as coming from an unmeasured variant."""
+    if serve.FALLBACK_HOCON is None:
+        pytest.skip("the served champion promotes no agent")
+    busy = ("Error from Coordinator: Agent stopped due to exception 503 UNAVAILABLE. "
+            "This model is currently experiencing high demand.")
+    calls = []
+
+    def ask(hocon, question):
+        calls.append(hocon)
+        return (busy, {}, 1.0) if hocon == serve.HOCON else ("J. Vasquez", {}, 2.0)
+
+    monkeypatch.setattr(serve, "_ask", ask)
+    body = client.post("/ask", json={"question": "who manages D08?"}).json()
+    assert calls == [serve.HOCON, serve.FALLBACK_HOCON]
+    assert body["answer"] == "J. Vasquez"
+    assert "has not been measured" in body["fallback"]
+    assert body["router_model"] == body["worker_model"]
+
+
+def test_a_refused_key_is_not_retried(client, monkeypatch):
+    """Only an unavailable model is worth a second paid attempt. A bad key
+    fails the same way on every model."""
+    calls = []
+    refused = ("Error from Coordinator: Agent stopped due to exception 401 "
+               "UNAUTHENTICATED API key not valid")
+    monkeypatch.setattr(serve, "_ask", lambda *a: calls.append(1) or (refused, {}, 1.0))
+    assert client.post("/ask", json={"question": "q"}).status_code == 502
+    assert len(calls) == 1
+
+
+def test_an_answer_from_the_measured_network_claims_no_fallback(client, monkeypatch):
+    monkeypatch.setattr(serve, "_ask", lambda *a: ("J. Vasquez", {}, 1.0))
+    assert client.post("/ask", json={"question": "q"}).json()["fallback"] is None

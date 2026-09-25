@@ -179,7 +179,8 @@ def test_the_declared_nsflow_can_run_against_the_declared_neuro_san():
         for requirement in requirements:
             if not requirement.startswith("nsflow"):
                 continue
-            floor = re.search(r">=\s*(\d+)\.(\d+)", requirement)
+            # An exact pin counts as a floor: it is the strictest one there is.
+            floor = re.search(r"(?:>=|==)\s*(\d+)\.(\d+)", requirement)
             assert floor, f"{extra}: nsflow needs a version floor: {requirement}"
             major, minor = int(floor.group(1)), int(floor.group(2))
             assert (major, minor) >= (0, 7), (

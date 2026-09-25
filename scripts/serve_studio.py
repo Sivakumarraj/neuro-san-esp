@@ -45,9 +45,22 @@ ROOT = Path(__file__).resolve().parent.parent
 REGISTRY = ROOT / "registries"
 
 # Generated files, one per measured network plus the manifest that lists them.
-# Prefixed so `make clean` and .gitignore can name them as a set, and so a
-# hand-edited copy cannot be mistaken for something maintained.
+# The manifest is prefixed; each network file leads with its fitness rank, so
+# .gitignore can name them as a set and a hand-edited copy cannot be mistaken
+# for something maintained. The rank leads because the file name is the agent
+# name in the UI, and nsflow's sidebar truncates it: under a shared "studio_"
+# prefix all twelve networks read "studio..." and none could be told apart.
 PREFIX = "studio_"
+RANKED = re.compile(r"^r\d\d_")
+
+
+def file_stem(name: str, rank: int) -> str:
+    return f"r{rank:02d}_{name}"
+
+
+def served_name(path: Path) -> str:
+    """The network name a generated file was written for, rank removed."""
+    return RANKED.sub("", path.stem)
 
 
 def _base_name(record) -> str:
@@ -99,10 +112,15 @@ def write(records, include_optimizer: bool = True) -> tuple[list[Path], Path]:
     written: list[Path] = []
     entries: list[str] = []
 
+    # Last run's files first: ranks move when the population changes, and a
+    # stale file under an old rank would be a network nobody measured as that.
+    for stale in [*REGISTRY.glob("r[0-9][0-9]_*.hocon"), *REGISTRY.glob(f"{PREFIX}*.hocon")]:
+        stale.unlink()
+
     names = agent_names(records)
     for rank, (record, name) in enumerate(zip(records, names, strict=True),
                                          start=1):
-        path = REGISTRY / f"{PREFIX}{name}.hocon"
+        path = REGISTRY / f"{file_stem(name, rank)}.hocon"
         served = presentable(record.genome)
         metadata = {
             "description": (describe(record, rank, len(records)) + " "
@@ -148,14 +166,15 @@ def write(records, include_optimizer: bool = True) -> tuple[list[Path], Path]:
     lines += ["}", ""]
     manifest.write_text("\n".join(lines), encoding="utf-8")
 
-    # Every measured network has to reach the UI. A name collision used to lose
-    # two of them to an overwrite, which is exactly the kind of quiet shortfall
-    # this project keeps finding, so it is checked rather than assumed.
-    if len({path.name for path in written}) != len(records):
+    # Every measured network has to reach the UI under a name of its own. A
+    # name collision used to lose two of them to an overwrite, which is exactly
+    # the kind of quiet shortfall this project keeps finding. The rank keeps the
+    # files apart now, but two networks a person cannot tell apart by name are
+    # the same failure one step later, so the names are checked, not the files.
+    if len(set(names)) != len(records) or len({p.name for p in written}) != len(records):
         raise SystemExit(
-            f"{len(records)} networks produced "
-            f"{len({p.name for p in written})} distinct registry files -- "
-            "refusing to serve a manifest that has lost one")
+            f"{len(records)} networks produced {len(set(names))} distinct "
+            "names -- refusing to serve a manifest that has lost one")
     return written, manifest
 
 
@@ -182,7 +201,7 @@ def main() -> int:
           f"{REGISTRY.relative_to(ROOT)}/:\n")
     for rank, (record, path) in enumerate(zip(records, written, strict=True),
                                           start=1):
-        print(f"  {rank:>2}. {path.stem.removeprefix(PREFIX):26} "
+        print(f"  {rank:>2}. {path.stem:32} "
               f"fitness {record.fitness:+.4f}  acc {record.accuracy:.4f}  "
               f"{record.tokens:>8,} tokens  {record.agents} agent(s)")
 

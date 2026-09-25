@@ -69,3 +69,24 @@ Please report a vulnerability privately, through GitHub's private vulnerability
 reporting on this repository (**Security → Report a vulnerability**), not in a
 public issue. Include what an attacker controls, what they reach, and the
 smallest reproduction you have. Reports are acknowledged within a week.
+
+## The public web page
+
+Every question is paid for, so `apps/web/serve.py` caps questions and measurement runs per
+UTC day, gives each visitor a share per hour, and keeps the day's counts in
+`ESP_WEB_SPEND_FILE` so a restart does not reset them. Any error shown to a visitor passes
+through a filter that replaces anything shaped like a provider key, because provider errors
+sometimes echo request details. A visitor can never upload a network: a network names Python
+classes to import, so accepting one would be accepting code.
+
+## Dependencies and known advisories
+
+Every direct dependency is pinned exactly in `pyproject.toml`, and `requirements.lock` pins
+the whole runtime tree the Docker images install. Upgrades are deliberate commits that re-run
+`make validate`.
+
+- **click, PYSEC-2026-2132.** Fixed in 8.3.3, which is what `requirements.lock` and the
+  images install. The `studio` and `dev` extras cannot follow yet: nsflow depends on gTTS,
+  and gTTS 2.5.4 (the newest) requires `click<8.2`. That leaves 8.1.8 in a developer's
+  environment running `make studio`, never in the runtime image. Nothing in this project
+  passes untrusted input to a click command line.

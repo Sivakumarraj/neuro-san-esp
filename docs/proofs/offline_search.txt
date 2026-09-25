@@ -3,25 +3,27 @@ Run `make baseline` with a key to train on your own instead.
 
 Phase B -- training the Predictor on 12 real evaluations from tests/fixtures/cache
   one model per outcome objective; fitness is derived from their predictions, not learned
-  outcome surrogate on 12 samples: fitness +0.648 (accuracy +0.680 (null -0.081), tokens -0.634 (null -0.004))
+  outcome surrogate on 12 samples: fitness +0.669 (accuracy +0.650 (null -0.138), tokens -0.501 (null -0.074))
   the null in brackets is what this same cross-validation returns on shuffled targets --
   on a population this small it is not zero, so the margin over it is the real figure:
-    accuracy  margin over its own null: +0.761
-    tokens    margin over its own null: -0.630
-  !! the tokens model does not beat its own null (margin -0.630). Phase C still weights it, so that part of the objective is noise.
+    accuracy  margin over its own null: +0.787
+    tokens    margin over its own null: -0.427
+  !! the tokens model does not beat its own null (margin -0.427). It is excluded from the ranking below, as a service wake excludes it.
 
 Phase C -- evolving 2000 candidates against it
   348 distinct viable, 7475 rejected as invalid, 62942 duplicates, 9235 already measured
   NOTE: asked for 2000 and the reachable space yielded 348. The numbers below describe what was actually generated.
-  bred in 5.53s, scored in 0.02s, zero provider calls
-  ~0.047 ms per candidate to rank
+  bred in 4.70s, scored in 0.01s, zero provider calls
+  ~0.041 ms per candidate to rank
+
+  21 candidates tie at the top (+0.8962). The Predictor cannot separate them; among them the order below is generation order.
 
 Top 5 by predicted fitness:
-  +0.8941  1e577dd4b4ac043f  agents=5 depth=2  via reassign_model
-  +0.8941  e07c77770d8f522b  agents=5 depth=2  via reassign_model
-  +0.8941  864949c8758c7e7c  agents=5 depth=2  via reassign_model
-  +0.8941  889099b651b394e1  agents=5 depth=2  via reassign_model
-  +0.8898  082719663a081155  agents=5 depth=2  via toggle_search
+  +0.8962  f10a8379aed06bc7  agents=5 depth=2  via reassign_model
+  +0.8962  a1e6f5fa98bf20a7  agents=5 depth=2  via reassign_model
+  +0.8962  f92bf210d0ab1ba4  agents=5 depth=2  via reassign_model
+  +0.8962  491d8a17616edf0b  agents=5 depth=2  via reassign_model
+  +0.8962  dfd7c1fc0e11e2eb  agents=5 depth=2  via reassign_model
 
 Phase C scored 348 candidates in 0.0s. The same number evaluated for real, at roughly 8 minutes each, would take about 46 hours.
 Phase C ranks. It does not measure -- only Phase D does.

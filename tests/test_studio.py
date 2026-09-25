@@ -114,7 +114,7 @@ def test_every_served_network_renders_as_a_real_neuro_san_network(
         tools = config["tools"]
         assert tools, f"{path.name} serves no agents"
 
-        record = by_name[path.stem.removeprefix(serve_studio.PREFIX)]
+        record = by_name[serve_studio.served_name(path)]
         # The network's own metadata, which is what the UI shows beside its
         # name -- not the front agent's function description, which describes
         # what that one agent does.

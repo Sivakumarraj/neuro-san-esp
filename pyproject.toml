@@ -7,41 +7,46 @@ requires-python = ">=3.12"
 # were undeclared for a while and nothing noticed locally, because a developer
 # venv had them from something else -- CI is the only place that installs from
 # this list alone, and it went red the moment a test imported the report.
+# Every direct dependency is pinned exactly, and requirements.lock pins the
+# whole runtime tree. A floor with no ceiling is how neuro-san 0.7.5 turned two
+# tests red on a day nobody touched this repository: it started listing a model
+# the tests used as "one neuro-san does not know". Upgrades happen on purpose,
+# in a commit that re-runs `make validate`, never on whatever day pip resolves.
 dependencies = [
-    "neuro-san>=0.6.95",
+    "neuro-san==0.7.5",
     # neuro-san lazily imports the provider driver, so a clean install had no
     # way to call Google at all: every model in `make probe` reported BROKEN
     # with "No fully-specified LLM found in llm_config", which reads as ten
     # broken models rather than one missing package. Same shape as the
     # undeclared reportlab -- it works forever on a machine that happens to
     # have it, and only a fresh environment can notice.
-    "langchain-google-genai>=2.0",
+    "langchain-google-genai==4.4.0",
     # Claude support. neuro-san ships an `anthropic` client class and picks it
     # from the model name, but it requires langchain-openai and *not*
     # langchain-anthropic -- so `ESP_DEFAULT_MODEL=claude-sonnet-5` works on a
     # machine that happens to have the driver and fails on a clean install,
     # which is the fourth time this repository would have made that mistake.
-    "langchain-anthropic>=1.0",
-    "scikit-learn>=1.5",
+    "langchain-anthropic==1.7.3",
+    "scikit-learn==1.9.1",
     # Imported directly by the surrogate's rank correlation, so declared
     # directly. It arrives anyway as a hard requirement of scikit-learn, which
     # is exactly the reasoning that left reportlab and the Google driver
     # undeclared: a package that happens to be present is not a package this
     # project is entitled to import.
-    "scipy>=1.10",
-    "numpy>=1.26",
-    "matplotlib>=3.8",
+    "scipy==1.18.1",
+    "numpy==2.5.3",
+    "matplotlib==3.11.2",
     # apps/web serves the measured champion behind a URL. Runtime, not an
     # extra: the shipped container's whole job is to run it.
-    "fastapi>=0.110",
-    "uvicorn>=0.29",
-    "reportlab>=4.0",
-    "pillow>=10.0",
+    "fastapi==0.141.1",
+    "uvicorn==0.53.0",
+    "reportlab==5.0.1",
+    "pillow==12.3.0",
     # ratelimit steers the Google client's API key at runtime by writing a
     # SecretStr onto its google_api_key field -- multi-key rotation depends on
     # it. langchain pulls pydantic transitively, but the ratelimit import is
     # direct and a clean install without it fails on the first key swap.
-    "pydantic>=2.0",
+    "pydantic==2.13.5",
 ]
 
 [project.optional-dependencies]
@@ -49,7 +54,7 @@ dependencies = [
 # package is only needed by somebody actually running on OpenRouter. Declared
 # rather than left to the lazy install, because a dependency nobody declared is
 # exactly the bug that broke CI when reportlab turned out to be undeclared.
-openrouter = ["langchain-openrouter>=0.1"]
+openrouter = ["langchain-openrouter==0.2.9"]
 # `make studio` serves every measured network in neuro-san's accelerator UI,
 # which is nsflow. It was undeclared, and that was the third time this
 # repository has made the same mistake: it was installed in the environment
@@ -62,7 +67,7 @@ openrouter = ["langchain-openrouter>=0.1"]
 # The floor is 0.7 for a reason that bites silently. nsflow 0.6.x pins
 # neuro-san<0.7, this project's floor resolves neuro-san to 0.7.x, and pip will
 # happily install a 0.6.x nsflow into an environment it cannot run in.
-studio = ["nsflow>=0.7"]
+studio = ["nsflow==0.7.3"]
 # pypdf is a test dependency, not a runtime one: the report tests read the
 # rendered PDF back to prove a claim reached the page, rather than trusting that
 # the data structure behind it was right.
@@ -73,8 +78,8 @@ studio = ["nsflow>=0.7"]
 #
 # pytest-cov and pymarkdownlnt are what CI runs beyond the suite: coverage of the
 # `esp` package, and the same markdown linter neuro-san gates its docs with.
-dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.6", "pymarkdownlnt>=0.9",
-       "pypdf>=4.0", "nsflow>=0.7"]
+dev = ["pytest==9.1.1", "pytest-cov==7.1.0", "ruff==0.16.8", "pymarkdownlnt==0.9.40",
+       "pypdf==6.19.0", "pyhocon==0.3.63", "nsflow==0.7.3"]
 
 [tool.setuptools.packages.find]
 include = ["esp*"]

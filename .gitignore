@@ -13,6 +13,10 @@ results/*
 !results/history.json
 !results/figures/
 !results/figures/*.png
+# The held-out bank measurements, for the same reason: paid for once, on a free
+# tier that allows a few dozen questions a day, and `make bank-report` reads them.
+!results/heldout_bank/
+!results/heldout_bank/*.json
 
 # The live cache is machine-local and quota-dependent. The committed
 # measurements live in tests/fixtures/cache instead, so CI can reproduce them.
@@ -36,6 +40,7 @@ registries/champion_manifest.hocon
 # that earned the score, and then the thing being served would not be the
 # thing that was measured.
 registries/studio_*.hocon
+registries/r[0-9][0-9]_*.hocon
 
 # nsflow's own local database, created in the working directory the moment the
 # accelerator UI starts. One deployment's chat history and session rows, and
@@ -61,3 +66,4 @@ state/state.json
 state/state.json.tmp
 state/lease.json
 state/lease.json.guard
+build/

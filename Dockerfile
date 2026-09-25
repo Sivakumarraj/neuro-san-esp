@@ -17,19 +17,28 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app \
     AGENT_TOOL_PATH=/app \
     AGENT_MANIFEST_FILE=/app/registries/manifest.hocon \
-    ESP_STATE=/app/state
+    ESP_STATE=/app/state \
+    ESP_WEB_SPEND_FILE=/app/state/web_spend.json
 
 WORKDIR /app
 
-# Dependencies first, so a source change does not re-resolve the whole tree.
+# The runtime tree, exactly as locked, before any source: a source change then
+# reuses this layer instead of re-resolving 119 packages. Runtime only -- this
+# used to install ".[dev]" as an editable package, which shipped pytest, ruff,
+# coverage and the whole nsflow UI (1.16 GB) into a container that runs none
+# of them, and resolved whatever versions pip picked on the day of the build.
+COPY requirements.lock ./
+RUN pip install --no-cache-dir -r requirements.lock
+
 COPY pyproject.toml README.md ./
 COPY esp ./esp
-RUN pip install --no-cache-dir -e ".[dev]" pyhocon
+RUN pip install --no-cache-dir --no-deps .
 
-COPY tests ./tests
 COPY scripts ./scripts
 COPY apps ./apps
 COPY registries ./registries
+# The committed measurements: the offline search's default input, and the
+# population the optimiser adopts instead of starting again from the seeds.
 COPY tests/fixtures ./tests/fixtures
 COPY Makefile ./
 

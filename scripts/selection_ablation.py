@@ -154,12 +154,22 @@ def main() -> int:
               f"{np.mean(pairs):.1%} of {len(pairs)}")
 
     # How often a random picker on these same triples does at least as well.
+    # Treat it as a descriptive comparison, not a p-value: the simulation draws
+    # each triple independently, and these triples are not independent -- all
+    # of them are cut from the same twelve networks, so each network appears in
+    # dozens of them. The effective sample is nearer twelve than two hundred.
     rng = np.random.default_rng(args.seed)
     draws = (rng.random((20_000, n)) < np.array(random_hit)).sum(axis=1)
     for name in ("gated", "ungated", "no_tokens"):
         hits = sum(h for h, _, _ in rows[name])
-        print(f"  P(a random picker does at least as well as the {name} Predictor) "
-              f"= {float(np.mean(draws >= hits)):.4f}")
+        print(f"  share of random pickers doing at least as well as the {name} "
+              f"Predictor = {float(np.mean(draws >= hits)):.4f}")
+    print(f"\n  Not a p-value. The {n} triples share twelve networks between "
+          f"them,\n  so they are far from independent; read the rates above as "
+          f"a\n  description of these twelve networks, not as a significance test.")
+    print("  The gate removing tokens helps nothing here: ungated beats gated. "
+          "Unexplained,\n  and left as an open question rather than tuned "
+          "away on twelve samples.")
     return 0
 
 

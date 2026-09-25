@@ -17,7 +17,7 @@ from esp import measure as m
 from esp.eval import runner
 
 SUITE = "\n".join([
-    json.dumps({"id": "A", "question": "Which city is depot D08 in?", "answer": "Pickering"}),
+    json.dumps({"id": "A", "question": "Which city is depot D08 in?", "answer": "Eastgate"}),
     json.dumps({"id": "B", "question": "Highest penalty?", "answers": ["C-2139", "C2139"],
                 "hops": 3}),
     json.dumps({"id": "C", "question": "How many bays?", "answer": 4}),
@@ -68,7 +68,7 @@ def test_the_builtin_suite_is_the_benchmark_every_result_used():
 # ------------------------------------------------------------- the verdict
 
 def test_each_reply_is_classified_and_kept_whole(monkeypatch):
-    long_reply = "The depot is in Pickering. " + "Evidence. " * 300
+    long_reply = "The depot is in Eastgate. " + "Evidence. " * 300
     monkeypatch.setattr(runner, "_ask", replying({
         "Which city is depot D08 in?": long_reply,
         "Highest penalty?": "It is contract C2139.",
@@ -88,7 +88,7 @@ def test_each_reply_is_classified_and_kept_whole(monkeypatch):
 
 def test_results_come_back_in_question_order_and_progress_is_reported(monkeypatch):
     monkeypatch.setattr(runner, "_ask", replying({
-        "Which city is depot D08 in?": "Pickering", "Highest penalty?": "C-2139",
+        "Which city is depot D08 in?": "Eastgate", "Highest penalty?": "C-2139",
         "How many bays?": "4"}))
     seen = []
     report = m.measure("any.hocon", m.parse_suite(SUITE), on_result=seen.append)
@@ -106,12 +106,12 @@ def test_a_run_that_called_no_model_is_refused_not_reported(monkeypatch):
 
 def test_a_report_serialises_with_the_question_and_expected_answer(monkeypatch):
     monkeypatch.setattr(runner, "_ask", replying({
-        "Which city is depot D08 in?": "Pickering", "Highest penalty?": "no idea",
+        "Which city is depot D08 in?": "Eastgate", "Highest penalty?": "no idea",
         "How many bays?": "4"}))
     blob = m.measure("net.hocon", m.parse_suite(SUITE), suite="mine").as_dict()
     first = blob["results"][0]
     assert first["question"] == "Which city is depot D08 in?"
-    assert first["expected"] == "Pickering"
+    assert first["expected"] == "Eastgate"
     assert blob["questions_asked"] == 3 and blob["suite"] == "mine"
     json.dumps(blob)                                  # must be serialisable
 
@@ -122,7 +122,7 @@ def test_the_command_line_measures_and_writes_json(monkeypatch, tmp_path, capsys
     questions = tmp_path / "q.jsonl"
     questions.write_text(SUITE, encoding="utf-8")
     monkeypatch.setattr(runner, "_ask", replying({
-        "Which city is depot D08 in?": "Pickering", "Highest penalty?": "C-2139",
+        "Which city is depot D08 in?": "Eastgate", "Highest penalty?": "C-2139",
         "How many bays?": "4"}))
     out = tmp_path / "report.json"
     assert m.main(["net.hocon", "--tasks", str(questions), "--json", str(out)]) == 0

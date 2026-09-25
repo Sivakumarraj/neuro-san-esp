@@ -93,6 +93,20 @@ class Outcome:
     # deciding the order, not that the networks fail to generalise.
     fitness_rho: list[float] = field(default_factory=list)
     accuracy_rho: list[float] = field(default_factory=list)
+    # Evolved against hand-written, as groups. Each group's best is chosen on
+    # the selection half and judged on the held-out half, exactly as the single
+    # winner above is. Strictly greater: a tie is not a win.
+    evolved_beat_seed: int = 0
+    # The same comparison with each group's best picked by its held-out score.
+    # Kept only so the figure the documents once quoted can be reproduced and
+    # labelled: it looks at the held-out half to choose, so it is not a
+    # held-out test, and it sets the best of nine evolved networks against the
+    # best of three seeds.
+    evolved_beat_seed_in_sample: int = 0
+    evolved_mean_ranks: list[float] = field(default_factory=list)
+    seed_mean_ranks: list[float] = field(default_factory=list)
+    evolved_count: int = 0
+    seed_count: int = 0
 
     @property
     def mean_fitness_rho(self) -> float:
@@ -130,6 +144,25 @@ class Outcome:
     @property
     def mean_margin(self) -> float:
         return sum(self.margins) / len(self.margins) if self.margins else 0.0
+
+    @property
+    def evolved_beat_seed_rate(self) -> float:
+        return self.evolved_beat_seed / self.splits if self.splits else 0.0
+
+    @property
+    def evolved_beat_seed_in_sample_rate(self) -> float:
+        return (self.evolved_beat_seed_in_sample / self.splits
+                if self.splits else 0.0)
+
+    @property
+    def mean_evolved_rank(self) -> float:
+        ranks = self.evolved_mean_ranks
+        return sum(ranks) / len(ranks) if ranks else 0.0
+
+    @property
+    def mean_seed_rank(self) -> float:
+        ranks = self.seed_mean_ranks
+        return sum(ranks) / len(ranks) if ranks else 0.0
 
     def top_ranked_rate(self, within: int) -> float:
         """How often the selection winner landed in the held-out top `within`."""
@@ -179,6 +212,11 @@ def task_ids(cache_dir=None) -> tuple[str, ...]:
     return tuple(sorted(shared))
 
 
+def _best_on(group: list[Network], tasks: tuple[str, ...]) -> Network:
+    """The group's best on these tasks, ties broken by hash as everywhere here."""
+    return max(group, key=lambda net: (net.fitness_on(tasks), net.genome_hash))
+
+
 def analyse(cache_dir=None, splits: int = SPLITS, seed: int = 20260821,
             held_out_fraction: float = HELD_OUT_FRACTION) -> Outcome:
     """Rank the population on half the tasks; score the winner on the rest."""
@@ -195,6 +233,9 @@ def analyse(cache_dir=None, splits: int = SPLITS, seed: int = 20260821,
                       held_out_tasks=held_out_size)
     designer = next((n for n in population
                      if n.origin == "seed:designer_shaped"), None)
+    evolved = [n for n in population if not n.origin.startswith("seed:")]
+    seeds = [n for n in population if n.origin.startswith("seed:")]
+    outcome.evolved_count, outcome.seed_count = len(evolved), len(seeds)
     rng = random.Random(seed)
 
     for _split in range(splits):
@@ -224,6 +265,19 @@ def analyse(cache_dir=None, splits: int = SPLITS, seed: int = 20260821,
             outcome.designer_ranks.append(designer_rank)
             outcome.margins.append(chosen.fitness_on(held_out)
                                    - designer.fitness_on(held_out))
+
+        if evolved and seeds:
+            if (_best_on(evolved, selection).fitness_on(held_out)
+                    > _best_on(seeds, selection).fitness_on(held_out)):
+                outcome.evolved_beat_seed += 1
+            if (_best_on(evolved, held_out).fitness_on(held_out)
+                    > _best_on(seeds, held_out).fitness_on(held_out)):
+                outcome.evolved_beat_seed_in_sample += 1
+            place = {n.genome_hash: i for i, n in enumerate(by_held_out, start=1)}
+            outcome.evolved_mean_ranks.append(
+                sum(place[n.genome_hash] for n in evolved) / len(evolved))
+            outcome.seed_mean_ranks.append(
+                sum(place[n.genome_hash] for n in seeds) / len(seeds))
 
         # Tie-aware, because accuracy over eight tasks takes nine values and
         # ties are the normal case. The hand-rolled double-argsort this once

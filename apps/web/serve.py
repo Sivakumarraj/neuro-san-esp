@@ -43,8 +43,18 @@ from esp.config import bootstrap  # noqa: E402
 bootstrap()
 
 import html  # noqa: E402
+import re  # noqa: E402
 import threading  # noqa: E402
 import uuid  # noqa: E402
+from collections import deque  # noqa: E402
+from datetime import UTC, datetime  # noqa: E402
+
+try:
+    # Module level, because `from __future__ import annotations` makes FastAPI
+    # resolve every handler annotation against these globals -- see test_web.
+    from fastapi import Request
+except ImportError:                 # the page cannot run without fastapi anyway
+    Request = None
 
 from esp.config import key_name_for, key_problem  # noqa: E402
 from esp.eval import measurements  # noqa: E402
@@ -55,7 +65,14 @@ from esp.genome.seeds import SEEDS  # noqa: E402
 from esp.measure import BUILTIN, Candidate, SuiteError, catalog, pareto, parse_suite  # noqa: E402
 from esp.measure import measure as measure_network  # noqa: E402
 from esp.service.state import Evaluated, ServiceState  # noqa: E402
-from esp.serving import SHOWCASE, display_question, graded, presentable  # noqa: E402
+from esp.serving import (  # noqa: E402
+    SHOWCASE,
+    demoted,
+    display_question,
+    graded,
+    presentable,
+    unavailable,
+)
 from esp.surrogate.predictor import MIN_SAMPLES  # noqa: E402
 
 # A visitor is not a benchmark run, and every question is paid for: a multi-hop
@@ -63,6 +80,27 @@ from esp.surrogate.predictor import MIN_SAMPLES  # noqa: E402
 # answer before it stops, so one careless loop cannot run up the key's bill.
 MAX_QUESTIONS = int(os.environ.get("ESP_WEB_MAX_QUESTIONS", "40"))
 _asked = {"count": 0}
+
+# One visitor must not be able to spend everybody's day. The daily cap above is
+# the budget guarantee; this is fairness inside it. Keyed on the connecting
+# address -- behind a proxy that is the proxy, so ESP_WEB_TRUST_PROXY=true reads
+# the last X-Forwarded-For entry instead: the address the proxy itself saw. A
+# proxy appends to that header, so earlier entries are whatever the visitor sent.
+# Only set it behind exactly one proxy that does so (Hugging Face Spaces).
+PER_CLIENT_HOURLY = int(os.environ.get("ESP_WEB_PER_CLIENT_HOURLY", "10"))
+TRUST_PROXY = os.environ.get("ESP_WEB_TRUST_PROXY", "").lower() in {"1", "true", "yes"}
+_recent: dict[str, deque] = {}
+
+# Both caps are per UTC day, because provider quotas are. Held in memory, the
+# count went back to zero on every restart, so a crash loop had no cap at all.
+# ESP_WEB_SPEND_FILE keeps it across restarts; the images set it under state/.
+SPEND_FILE = os.environ.get("ESP_WEB_SPEND_FILE") or None
+_budget_lock = threading.Lock()
+_spend_day = {"day": None}
+
+# Finished measurements kept for their result pages. Without a bound, a
+# long-running deployment grows this for ever.
+MAX_KEPT_JOBS = 50
 
 # Measuring is the expensive half of the page: one network on the built-in
 # benchmark is seventeen multi-hop runs, about 165 model calls. A deployment
@@ -82,6 +120,84 @@ _measured = {"count": 0}
 _jobs: dict[str, dict] = {}
 _job_lock = threading.Lock()
 _candidates: dict[str, Candidate] | None = None
+
+
+# Anything shaped like a provider key. Errors are shown to whoever holds the
+# link, and a provider that echoes a request detail must never put a key on it.
+_KEY_SHAPES = re.compile(
+    r"(AIza[0-9A-Za-z_-]{16,}|AQ\.[0-9A-Za-z_-]{16,}|sk-[0-9A-Za-z_-]{16,})")
+
+
+def redact(text: str) -> str:
+    return _KEY_SHAPES.sub("[redacted key]", text)
+
+
+def _today() -> str:
+    return datetime.now(UTC).strftime("%Y-%m-%d")
+
+
+def _roll_day() -> None:
+    """Start a new day's counts, loading today's from disk once if kept there.
+    Call with _budget_lock held."""
+    today = _today()
+    if _spend_day["day"] == today:
+        return
+    _spend_day["day"] = today
+    _asked["count"], _measured["count"] = 0, 0
+    if SPEND_FILE:
+        try:
+            saved = json.loads(Path(SPEND_FILE).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+        if saved.get("day") == today:
+            _asked["count"] = int(saved.get("asked", 0))
+            _measured["count"] = int(saved.get("measured", 0))
+
+
+def _save_spend() -> None:
+    """Write the day's counts. Call with _budget_lock held."""
+    if not SPEND_FILE:
+        return
+    path = Path(SPEND_FILE)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        scratch = path.with_suffix(".tmp")
+        scratch.write_text(json.dumps({"day": _spend_day["day"], "asked": _asked["count"],
+                                       "measured": _measured["count"]}), encoding="utf-8")
+        scratch.replace(path)
+    except OSError as exc:        # a full disk must not take the page down
+        print(f"could not keep the spend count: {exc}", file=sys.stderr)
+
+
+def client_key(request) -> str:
+    if request is None:
+        return "unknown"
+    if TRUST_PROXY:
+        forwarded = request.headers.get("x-forwarded-for", "")
+        if forwarded.strip():
+            return forwarded.split(",")[-1].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _over_client_limit(key: str) -> bool:
+    """Record one question for this client unless it is over its hourly share.
+    Call with _budget_lock held."""
+    now = time.monotonic()
+    window = _recent.setdefault(key, deque())
+    while window and now - window[0] > 3600:
+        window.popleft()
+    if len(window) >= PER_CLIENT_HOURLY:
+        return True
+    window.append(now)
+    return False
+
+
+def _prune_jobs() -> None:
+    """Drop the oldest finished measurements beyond MAX_KEPT_JOBS. Call with
+    _job_lock held; dicts keep insertion order, so the first are the oldest."""
+    finished = [job_id for job_id, job in _jobs.items() if job["state"] != "running"]
+    for job_id in finished[:max(0, len(finished) - MAX_KEPT_JOBS)]:
+        del _jobs[job_id]
 
 
 def candidates() -> dict[str, Candidate]:
@@ -108,14 +224,14 @@ def run_job(job: dict, chosen: list[Candidate], tasks: list, suite: str) -> None
                                        **report.as_dict()})
             except (OSError, SuiteError) as exc:
                 job["reports"].append({"id": candidate.id, "name": candidate.name,
-                                       "error": str(exc)[:300]})
+                                       "error": redact(str(exc))[:300]})
             # A refused network still used up its share of the run, so progress
             # reaches the total whatever happened to it.
             job["done"] = before + len(tasks)
         pareto(job["reports"])
         job["state"] = "done"
     except Exception as exc:                       # reported to the page, never raised
-        job["state"], job["error"] = "error", f"{type(exc).__name__}: {exc}"[:300]
+        job["state"], job["error"] = "error", redact(f"{type(exc).__name__}: {exc}")[:300]
     finally:
         job["current"] = None
 
@@ -180,6 +296,10 @@ def champion():
 NAME, GENOME, RECORD = champion()
 SERVED = presentable(GENOME)
 HOCON = str(write_network(SERVED.genome))
+# Every agent on the default model, for when a promoted model is busy or out of
+# quota. Rendered once, at startup, like the network it stands in for.
+_FALLBACK = demoted(SERVED.genome)
+FALLBACK_HOCON = str(write_network(_FALLBACK)) if _FALLBACK else None
 
 # Declared at module scope, and that is not a style choice. This file uses
 # `from __future__ import annotations`, so every annotation is a string that
@@ -347,31 +467,65 @@ def build_app():
                 "asked": _asked["count"], "cap": MAX_QUESTIONS}
 
     @app.post("/ask")
-    def ask(payload: Question) -> JSONResponse:
-        if _asked["count"] >= MAX_QUESTIONS:
-            return JSONResponse(
-                {"error": f"this deployment has answered its limit of "
-                          f"{MAX_QUESTIONS} questions -- every answer is paid "
-                          f"for, so a public page stops rather than running up "
-                          f"the key's bill. ESP_WEB_MAX_QUESTIONS raises it."},
-                status_code=429)
+    def ask(payload: Question, request: Request = None) -> JSONResponse:
         question = payload.question.strip()[:1000]
         if not question:
             return JSONResponse({"error": "empty question"}, status_code=400)
 
-        _asked["count"] += 1
+        # Checked and counted in one step. Handlers run on a thread pool, and
+        # a read-then-increment without the lock let two questions through on
+        # the last unit of budget.
+        with _budget_lock:
+            _roll_day()
+            if _asked["count"] >= MAX_QUESTIONS:
+                return JSONResponse(
+                    {"error": f"this deployment has answered its limit of "
+                              f"{MAX_QUESTIONS} questions for today -- every answer "
+                              f"is paid for, so a public page stops rather than "
+                              f"running up the key's bill. ESP_WEB_MAX_QUESTIONS "
+                              f"raises it."},
+                    status_code=429)
+            if _over_client_limit(client_key(request)):
+                return JSONResponse(
+                    {"error": f"you have asked {PER_CLIENT_HOURLY} questions in the "
+                              f"last hour, this page's share per visitor. Please "
+                              f"try again later."},
+                    status_code=429)
+            _asked["count"] += 1
+            _save_spend()
+
         started = time.monotonic()
         try:
             answer, _, seconds = _ask(HOCON, question)
         except Exception as exc:      # a provider 429 must not 500 the page
             return JSONResponse(
-                {"error": f"{type(exc).__name__}: {exc}"[:300]}, status_code=502)
+                {"error": redact(f"{type(exc).__name__}: {exc}")[:300]}, status_code=502)
+        # A promoted router on a model that is busy or out of its daily quota
+        # (gemini-3.5-flash allows about twenty requests a day on a free key)
+        # left the page erroring on most questions. One retry with every agent
+        # on the workers' model, labelled, rather than an error.
+        fallback = None
+        router = (SERVED.genome.agents[SERVED.genome.top].model
+                  or SERVED.genome.default_model)
+        if never_answered(answer) and unavailable(answer) and FALLBACK_HOCON:
+            try:
+                retry, _, retry_seconds = _ask(FALLBACK_HOCON, question)
+            except Exception:           # the original failure is the one to report
+                retry = ""
+            if retry and not never_answered(retry):
+                answer, seconds = retry, (seconds or 0) + (retry_seconds or 0)
+                router = SERVED.genome.default_model
+                fallback = (f"The measured router model was unavailable, so this "
+                            f"answer ran with every agent on "
+                            f"{SERVED.genome.default_model}. That variant has not "
+                            f"been measured.")
+
         # neuro-san hands an agent's failure back as the reply text. Shown as an
         # answer, a key the provider refused read as the network talking
         # nonsense, under a 200 -- nothing on the page said to go and fix .env.
         if never_answered(answer):
             return JSONResponse(
-                {"error": f"{failure_hint(answer)} The provider said: {answer[:500]}"},
+                {"error": redact(f"{failure_hint(answer)} The provider said: {answer[:500]}")},
                 status_code=502)
 
         # If it is one of the benchmark questions, grade it in front of the
@@ -389,9 +543,9 @@ def build_app():
             "agents": len(SERVED.genome.reachable()),
             "seconds": round(seconds or (time.monotonic() - started), 1),
             "provider": SERVED.provider,
-            "router_model": SERVED.genome.agents[SERVED.genome.top].model
-                            or SERVED.genome.default_model,
+            "router_model": router,
             "worker_model": SERVED.genome.default_model,
+            "fallback": fallback,
             "expected": expected,
             "correct": score(expected, answer) if expected else None,
         })
@@ -429,7 +583,9 @@ def build_app():
                     status_code=400)
 
         runs = len(wanted) * len(tasks)
-        with _job_lock:
+        with _job_lock, _budget_lock:
+            _roll_day()
+            _prune_jobs()
             if any(j["state"] == "running" for j in _jobs.values()):
                 return JSONResponse({"error": "a measurement is already running on this "
                                               "deployment -- try again when it finishes"},
@@ -441,6 +597,7 @@ def build_app():
                               f"left of its {MAX_MEASURE}. Every run is paid for; "
                               "ESP_WEB_MAX_MEASURE raises the limit."}, status_code=429)
             _measured["count"] += runs
+            _save_spend()
             job_id = uuid.uuid4().hex[:12]
             job = {"id": job_id, "state": "running", "done": 0, "total": runs,
                    "suite": suite, "current": None, "reports": [], "error": None}

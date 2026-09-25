@@ -331,3 +331,19 @@ def test_an_unreadable_state_file_is_reported_not_raised(tmp_path, monkeypatch):
     monkeypatch.setattr(preflight, "STATE_DIR", tmp_path)
     check = next(c for c in preflight.run_checks() if c.name == "population provider")
     assert not check.ok and "unreadable" in check.detail
+
+
+def test_a_router_on_a_twenty_a_day_model_is_warned_about(monkeypatch):
+    """The winning networks put the router on the stronger rung. On Google's
+    free tier that model allows about twenty requests a day, so a served
+    champion answers a handful of questions and then stops -- found on a live
+    run, not predicted. A warning, because a paid key cannot be told apart."""
+    from esp.service import preflight
+
+    monkeypatch.setattr(preflight, "MODEL_TIERS", ["gemini-3.5-flash-lite", "gemini-3.5-flash"])
+    checks = [c for c in preflight.run_checks() if c.name == "router quota"]
+    if preflight.provider_for(preflight.DEFAULT_MODEL) != "gemini":
+        assert not checks
+        return
+    assert len(checks) == 1 and not checks[0].fatal
+    assert "gemini-3.5-flash" in checks[0].detail

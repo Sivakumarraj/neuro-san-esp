@@ -11,12 +11,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app \
     AGENT_TOOL_PATH=/app \
     ESP_STATE=/app/state \
-    PORT=7860
+    PORT=7860 \
+    ESP_WEB_SPEND_FILE=/app/state/web_spend.json \
+    ESP_WEB_TRUST_PROXY=true
 
 WORKDIR /app
+COPY requirements.lock ./
+RUN pip install --no-cache-dir -r requirements.lock
 COPY pyproject.toml README.md ./
 COPY esp ./esp
-RUN pip install --no-cache-dir -e "."
+RUN pip install --no-cache-dir --no-deps .
 
 COPY apps ./apps
 COPY registries ./registries

@@ -70,6 +70,23 @@ def main() -> int:
               "took no part in\n  choosing the winner. That is the claim this "
               "task set supports.")
 
+    if outcome.evolved_count and outcome.seed_count:
+        print(f"\nEvolved networks against hand-written ones "
+              f"({outcome.evolved_count} evolved, {outcome.seed_count} seeds):")
+        print(f"  mean held-out rank, evolved             : "
+              f"{outcome.mean_evolved_rank:>6.2f} of {outcome.population}")
+        print(f"  mean held-out rank, seeds               : "
+              f"{outcome.mean_seed_rank:>6.2f} of {outcome.population}")
+        print(f"  best evolved beat best seed, held out   : "
+              f"{outcome.evolved_beat_seed_rate:>6.1%} of splits")
+        print("    (each group's best chosen on the selection half, judged on "
+              "the other)")
+        print(f"  the same, best picked on the held-out half: "
+              f"{outcome.evolved_beat_seed_in_sample_rate:>6.1%} of splits")
+        print("    (NOT a held-out test: it looks at the half it judges on, and "
+              "sets\n    the best of the evolved group against the best of "
+              "the seeds.\n    Printed so the figure is never quoted as one.)")
+
     print("\nWhich network half the tasks picked:")
     for origin, count in sorted(outcome.winners.items(), key=lambda p: -p[1]):
         print(f"  {origin:24} {count:>5}  ({count / outcome.splits:>5.1%})")
