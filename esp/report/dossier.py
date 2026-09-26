@@ -128,6 +128,8 @@ NOTES: dict[str, str] = {
         "Starts a real neuro-san server and proves it fires the optimiser with "
         "no user and no client attached.",
     "SERVING.md": "How to deploy the service, and what is verified about it.",
+    "docs/DESIGN.md": "How the search works, part by part.",
+    "docs/GUIDE.md": "Running it: providers, the web page, the accelerator UI, the service.",
     "esp/report/layout.py": "Shared page furniture for both PDFs.",
     "esp/report/build.py": "The run report.",
     "esp/report/dossier.py": "This document.",
@@ -692,12 +694,6 @@ class Dossier(Layout):
     def _findings(self) -> None:
         self.h1("What running it changed",
                 "Seven things that could not have been reasoned out from the code.")
-        # Said where the defects are listed, because that is what it explains:
-        # the same sentence the README carries, so the two never disagree.
-        self.p("Most of this implementation was written with Claude Code, under my "
-               "direction. My part was the design decisions and running it against "
-               "real model calls to find what it got wrong. What follows is what "
-               "that found.")
 
         for title, text in [
             ("The front man was the wrong agent, silently",
