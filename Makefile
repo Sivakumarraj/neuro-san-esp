@@ -1,4 +1,4 @@
-.PHONY: install test lint lint-docs check validate hocon offline-check bank bank-report cost-report experiment guide check-key smoke measure figures ablation probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
+.PHONY: install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool experiment guide check-key smoke measure figures ablation probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -70,6 +70,13 @@ bank-report:
 # while every agent runs the same model; the search's best move breaks that.
 cost-report:
 	PYTHONPATH=$$PWD python scripts/cost_report.py
+
+# The pool benchmark: measure a pool of networks once, then compare search
+# strategies over it in hundreds of replicate searches for free. Plan and price
+# only unless told: REHEARSE=1 runs everything against a simulated provider for
+# $0; GO=1 spends. Resumes from the cache if stopped.
+pool:
+	PYTHONPATH=$$PWD AGENT_TOOL_PATH=$$PWD python scripts/pool_benchmark.py $(if $(GO),--go,) $(if $(REHEARSE),--rehearse --replicates 100,)
 
 # The same-budget experiment: a Predictor-guided search against a random-choice
 # one, each selecting on meridian-select and judged on meridian-judge. Prints the

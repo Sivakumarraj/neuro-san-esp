@@ -75,3 +75,9 @@ state/state.json.tmp
 state/lease.json
 state/lease.json.guard
 build/
+# The $0 rehearsal of the pool benchmark: simulated, labelled so, and kept as
+# the record of how many question-runs the paid run makes.
+!results/rehearsal/
+results/rehearsal/*
+!results/rehearsal/totals.json
+!results/rehearsal/compare.json
