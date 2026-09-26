@@ -131,6 +131,18 @@ spread is wide: the token null itself ranges from −0.42 to +0.03 across seeds.
 the right statistic; it is not a precise one. Full account in
 [FINDINGS.md](FINDINGS.md#what-the-predictor-is-exactly).
 
+## The v2 pieces: dollars, a per-question Predictor, a pool
+
+Three additions sit beside the v1 loop without changing it, because every committed result
+was selected under the v1 fitness.
+
+| | What it is | Where it lives |
+| --- | --- | --- |
+| **Dollar fitness** | Accuracy, less dollars per question (from the provider's own accounting of each run), less size. Same shape as the v1 fitness with tokens replaced by money, so a pricier router is charged what it costs. A dated price table exists only for planning a run before it is paid for. | `esp/eval/pricing.py` |
+| **Per-question Predictor** | Predicts the chance a network answers a question right, from the network's structure beside the question's kind, so every question-run is a training row. An ensemble over bootstrap resamples of networks gives a spread, and an optional upper-confidence bonus spends it. Cost is predicted per network. Fitness is derived, never learned. | `esp/surrogate/per_question.py` |
+| **Pool benchmark** | A pool of bred networks measured once on the select questions, then hundreds of replicate searches over the measured table, each strategy starting from the same networks. A search sees half the select questions and its pick is scored on the other half. Finalists and the designer's shape are judged on 200 held-out questions. | `esp/evolve/pool.py` |
+| **Rehearsal** | A simulated provider with `run_suite`'s signature, answers drawn at a planted chance and tokens and dollars at v1's scale, so every stage of the paid run is exercised for $0 and the question-runs counted exactly. Nothing it writes is a result. | `esp/eval/rehearsal.py` |
+
 ## It runs as a service, not a batch job
 
 The first version was a script that planned forty evaluations and died when the provider

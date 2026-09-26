@@ -112,6 +112,24 @@ make smoke
 > builds refuse to cache that, but zeros already on disk keep replaying:
 > `rm -rf .esp-cache` and run the preflight again.
 
+### The paid run
+
+The pool benchmark is the run a paid key is for. Rehearse it first; it costs nothing and
+prints exactly how many question-runs the real one makes:
+
+```bash
+make pool                 # the plan and its price
+make pool REHEARSE=1      # every stage against a simulated provider, $0
+make pool GO=1            # the real run: preflight, pool, replicates, judging
+```
+
+Before `GO=1`, measure the designer's shape on 20 select questions with the new key
+(`python -m esp.measure registries/r11_seed_designer_shaped.hocon --tasks meridian-select:20`,
+well under a dollar) to see what a
+question really costs on that provider, and set a spending limit on the key itself in the
+provider's console. A stop for quota or a restart resumes from the cache; nothing is paid
+for twice.
+
 ### On Google's free tier
 
 Gemini's free tier caps requests per model per day, and some models cannot fund a single
