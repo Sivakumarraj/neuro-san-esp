@@ -292,7 +292,7 @@ combined across incidents, hours times rate, summed or differenced. That is the 
 evolved network also missed on the bank; arithmetic over several documents, not retrieval,
 is where these networks fail. The report is in `results/calibration/`.
 
-### Next: the same-budget experiment, built and not yet run
+### The same-budget experiment, built and not yet run
 
 Twelve networks and seventeen questions cannot say whether the Predictor helps, and the
 bank above cannot rank networks. `make experiment` is built to answer both, and has not been
@@ -303,6 +303,73 @@ about entities the select set never names. At the default budget it measures abo
 networks, so each arm's Predictor trains on up to 49 rather than 12. Its logic is tested end
 to end against a fake provider (`tests/test_experiment.py`); its answer is not known yet, and
 this section will report it whichever way it falls.
+
+### The token price hid the router
+
+The fitness counts tokens. Every committed measurement also records what the provider charged
+for it, and in dollars the ranking tells a different story (`make cost-report`):
+
+| Network | Accuracy | Tokens vs designer | Dollars vs designer |
+| --- | --- | --- | --- |
+| `mut:reassign_model`, best measured | 0.9412 | −7% | +63% |
+| `mut:reassign_model`, the champion | 0.8824 | −33% | −9% |
+| `mut:split_agent` | 0.8824 | −29% | −22% |
+
+The best network is cheaper in tokens and much dearer in money, because its router runs
+gemini-3.5-flash while the designer's shape runs everything on gemini-3.1-flash-lite: 0.504
+dollars a million tokens against 0.288. The champion, chosen as the cheapest win by tokens,
+is not the cheapest network at its accuracy in dollars; `mut:split_agent` is. On the 24 bank
+questions the champion also cost 31% more than the designer's shape. So the v1 fitness is
+left as it was, because every committed result was selected under it, and the pool benchmark
+selects on `esp.eval.pricing.fitness_dollars` instead.
+
+### Two hundred judge questions, four new kinds
+
+A paired test on seventeen questions needs a gap of more than 30 accuracy points to register;
+on a hundred, about a dozen. `meridian-judge-200` adds a hundred questions to the judge set,
+from the same half of the company, of four kinds none of the other sets asks: counts and sums
+over a time window, totals over only the records that pass a condition, differences between
+two records, and questions the documents cannot answer (a contract that does not exist, a
+field no document records). Every one of them carries the same instruction to answer "not
+stated" when the documents do not say, so the instruction gives nothing away, and a network
+that invents an answer is wrong. No answer covers more than a quarter of the set, so a
+network cannot score by always saying "2". The corpus is unchanged, so every v1 measurement
+stands. `tests/test_judge_plus.py` re-derives every answer from the document text.
+
+### The pool benchmark, and two things its rehearsal found
+
+One search per method is one sample of that method. The pool benchmark (`esp/evolve/pool.py`,
+`make pool`) measures a pool of 120 networks once and compares strategies over it in hundreds
+of replicate searches for free. It has not been run on a real provider. Building it against a
+simulated provider found two things worth recording before anyone pays for it.
+
+- **Scoring a pick on the answers it was chosen by rewards luck.** On a pool of pure noise, a
+  per-question Predictor looked significantly better than random choice: its preference was
+  consistent, the pool is fixed, and it happened to prefer the network that was lucky on
+  those questions. A search now sees half the select questions and what it picks is scored on
+  the other half. On pure noise the advantage disappears, as it should, and a planted
+  relationship is still found (`tests/test_pool.py`).
+- **A tree-based Predictor cannot extrapolate.** Where larger teams do better and the
+  measured start contained no team as large as the best in the pool, the Predictor could not
+  guess it and did no better than chance. It ranks inside the range it has seen, which is
+  why the paid run measures a broad pool rather than a handful.
+
+The full-size rehearsal (`make pool REHEARSE=1`) made exactly the 9,000 question-runs the plan
+prices, 7,200 for the pool and 1,800 for judging, in about seven minutes and for nothing. Its
+comparisons are of a simulated world with a planted relationship, so they say nothing about
+real networks; `results/rehearsal/` keeps them, labelled as simulated.
+
+### A Predictor that learns per question
+
+`esp/surrogate/per_question.py` predicts, for a network and a question, the chance of a right
+answer, from the network's structure beside the question's kind, so twelve networks on
+seventeen questions are 204 training rows rather than 12. On a planted population where more
+agents help totals and hurt joins, it ranks unseen networks on totals alone at a rank
+correlation above 0.6, where even a perfect estimate of each network's overall average does
+worse, because the average cannot say which network is good at which kind. It is tested for
+learning more from more networks, narrower uncertainty with more data, and determinism
+(`tests/test_per_question.py`). On real measurements it has not been tested yet; the pool
+benchmark is where it will be.
 
 ## What the Predictor is, exactly
 

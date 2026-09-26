@@ -32,10 +32,18 @@ Learning*, GECCO 2019), which evolves architectures, with agents where LEAF had 
   124 documents, invented so no model can answer from memory. Every answer is computed from
   the same seed that writes the documents.
 - **Four question sets over it**: the original 17 multi-hop questions; a 250-question
-  held-out bank; and `meridian-select` (60) and `meridian-judge` (100), harder sets built
-  from disjoint halves of the company for the scale-up experiment.
+  held-out bank; `meridian-select` (60) to choose on; and `meridian-judge-200` to judge on,
+  from the other half of the company, with a hundred questions of four newer kinds: time
+  filters, conditions, comparisons, and questions the documents cannot answer.
+- **Cost in dollars, beside tokens.** Tokens are a fair price only while every agent runs
+  the same model, and the search's best move breaks that (`make cost-report`).
 - **The ESP loop**: a seed population measured for real, one Predictor per outcome
   objective, thousands of candidates ranked for free, and only the most promising paid for.
+- **A per-question Predictor**, which learns from every question a network answered rather
+  than one average per network, with an ensemble for uncertainty.
+- **A pool benchmark**: measure a pool of networks once, then compare search strategies
+  over it in hundreds of replicate searches for free, and rehearse the whole paid run
+  against a simulated provider for $0 (`make pool`).
 - **A same-budget experiment** that runs the search with the Predictor and without it, and
   judges both winners on questions neither was selected on.
 - **A service**: an event-invoked optimiser on neuro-san's own periodic scheduler that
@@ -51,7 +59,7 @@ Learning*, GECCO 2019), which evolves architectures, with agents where LEAF had 
 flowchart LR
     subgraph World["Generated test world"]
         Docs["124 documents"]
-        Q["Question sets<br/>17 · bank 250 · select 60 · judge 100"]
+        Q["Question sets<br/>17 · bank 250 · select 60 · judge 200"]
     end
 
     subgraph Search["ESP search"]
@@ -146,6 +154,10 @@ the web page, the accelerator UI, and running the optimiser as a service.
 
 - **Both wins came from one change:** the stronger model on the router, the cheap one on the
   workers. It is a per-agent setting neuro-san already exposes and nothing tunes.
+- **In dollars the best network is not cheaper.** It used 7% fewer tokens than the
+  designer's shape and cost 63% more ($0.181 against $0.111 for the 17 questions), because
+  its router runs a pricier model. The fitness above counts tokens, so it cannot see that;
+  the pool benchmark selects on dollars (`make cost-report`).
 - **Seventeen questions cannot rank individual networks.** Selecting on half and judging on
   the other half, the winner averages rank 7.2 of 12. What survives the split is the
   population claim: the searched winner beats the designer's shape in **90% of 200 splits**
@@ -169,7 +181,10 @@ prior art.
 ## Limitations
 
 - **Twelve networks and seventeen questions are too few** to say whether the Predictor helps
-  the search. `make experiment` is built to answer that, and needs a paid key to run.
+  the search. The pool benchmark is built to answer that, and needs a paid key to run.
+- **A tree-based Predictor cannot extrapolate.** It ranks networks inside the range it has
+  seen; it cannot guess that a team larger than any it measured would do better. A pool
+  spread over many shapes is the remedy, not a cleverer model.
 - **One task domain.** Held-out questions come from the same generated world, so what is
   measured is stability across questions, not transfer to a new domain.
 - **One provider.** All measurements are on Gemini. The code runs unchanged on Anthropic and
@@ -181,24 +196,34 @@ prior art.
   search agent designs. What is new here is doing it for neuro-san, which has no fitness
   function at all.
 
-## The scale-up experiment
+## The paid run: the pool benchmark
 
-`make experiment` runs the search twice from the same start with the same budget: once with
-the Predictor choosing which candidates to pay for, once choosing at random. Both select on
-`meridian-select`, 60 questions, 40% of them whole-corpus aggregates that one search call
-cannot answer. Each winner and the designer's shape are then judged on `meridian-judge`, 100
-questions about entities the select set never names, and compared question by question with
-an exact McNemar test.
+One search per method is one sample of that method, however large the search. So the paid
+run measures a **pool** of networks once and compares search strategies over it many times
+for free, the way NAS-Bench-101 and 201 made architecture-search methods comparable.
+
+1. **Pool.** 120 networks bred from the seeds, one to six mutations away, each measured on
+   the 60 `meridian-select` questions.
+2. **Replicates, free.** Hundreds of searches over the measured pool, each choosing which
+   networks to "pay" for by random choice, a network-level Predictor, or the per-question
+   Predictor with and without an upper-confidence bonus. A search sees half the select
+   questions; what it picks is scored on the other half. Scoring on the answers it chose by
+   would reward luck: on a pool of pure noise, a strategy with any consistent preference
+   looked significantly better than random until that split was added.
+3. **Judge.** The best networks by select fitness, and the designer's shape, on the 200
+   judge questions none of them was chosen on, compared question by question.
 
 ```bash
-make experiment          # prints the plan and its price; spends nothing
-make experiment GO=1     # runs it, and resumes from the cache if stopped
+make pool                # prints the plan and its price; spends nothing
+make pool REHEARSE=1     # the whole run against a simulated provider, for $0
+make pool GO=1           # measures and judges, and resumes from the cache if stopped
 ```
 
-At the default budget it measures about 89 networks, so each arm's Predictor trains on up to
-49 instead of 12: about 5,600 question-runs and 56,000 model calls. It first checks that the
-designer scores under 90% on the select set, and stops before the search if not, because an
-exam every network passes cannot rank them.
+The plan is 9,000 question-runs: about $151 with every agent on Claude Haiku 4.5, $302 on
+Claude Sonnet 5, or $49 on Gemini Flash-Lite at the rate this project's runs have cost, at
+12,000 tokens a question. The rehearsal counts the question-runs exactly and exercises every
+stage, including a stop for quota and a resume. The earlier two-arm design, `make
+experiment`, is still available.
 
 ## Repository layout
 
@@ -225,6 +250,8 @@ make validate      # lint, docs, HOCON validator, the full suite, an offline sea
 make verify        # a real neuro-san server firing the optimiser on its schedule
 make figures       # every Predictor figure, regenerated from committed data
 make bank-report   # the held-out bank comparison, from committed reports
+make cost-report   # every network in tokens and in dollars
+make pool REHEARSE=1   # the paid run end to end against a simulated provider, $0
 ```
 
 The suite re-derives every question's answer from the documents, checks the registries
