@@ -131,11 +131,11 @@ def _apply_key(client, key: str) -> None:
     except ImportError:  # pragma: no cover
         return
     current = getattr(client, "google_api_key", None)
-    try:
+    # Only a value that is not a SecretStr can fail here; anything else wrong
+    # with the client should surface, not vanish.
+    with contextlib.suppress(AttributeError, TypeError):
         if current is not None and current.get_secret_value() == key:
             return
-    except Exception:
-        pass
     with contextlib.suppress(Exception):
         object.__setattr__(client, "google_api_key", SecretStr(key))
 

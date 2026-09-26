@@ -408,12 +408,35 @@ def evaluation_from_cache(raw: dict) -> Evaluation:
     return Evaluation(**raw)
 
 
+def suite_key(tasks: list[Task] | None) -> str | None:
+    """A short fingerprint of a question set, or None for the built-in 17.
+
+    The cache used to be keyed by genome alone, so a network measured on any
+    other questions was handed its old seventeen-question result from the
+    cache -- a measurement of the wrong exam, returned as if it were this one.
+    The built-in set keeps the flat layout every committed measurement and
+    reader already use; any other set gets a directory of its own.
+    """
+    if tasks is None or list(tasks) == list(TASKS):
+        return None
+    import hashlib
+    body = json.dumps([[t.task_id, t.question, list(t.accepted or (t.answer,))]
+                       for t in tasks], sort_keys=True)
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()[:12]
+
+
+def cache_path_for(genome: Genome, tasks: list[Task] | None = None) -> Path:
+    key = suite_key(tasks)
+    base = CACHE_DIR if key is None else CACHE_DIR / "suites" / key
+    return base / f"{genome.genome_hash()}.json"
+
+
 def evaluate(genome: Genome, tasks: list[Task] | None = None,
              use_cache: bool = True) -> Evaluation:
     tasks = tasks or TASKS
     digest = genome.genome_hash()
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    cache_path = CACHE_DIR / f"{digest}.json"
+    cache_path = cache_path_for(genome, tasks)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
 
     if use_cache and cache_path.exists():
         evaluation = evaluation_from_cache(json.loads(cache_path.read_text()))

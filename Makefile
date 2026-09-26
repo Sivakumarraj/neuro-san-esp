@@ -1,4 +1,4 @@
-.PHONY: install test lint lint-docs check validate hocon offline-check bank bank-report check-key smoke measure figures ablation probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
+.PHONY: install test lint lint-docs check validate hocon offline-check bank bank-report experiment guide check-key smoke measure figures ablation probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -65,6 +65,12 @@ bank:
 # what it scored on the seventeen it was selected on, by depth, and paired.
 bank-report:
 	PYTHONPATH=$$PWD python scripts/bank_report.py
+
+# The same-budget experiment: a Predictor-guided search against a random-choice
+# one, each selecting on meridian-select and judged on meridian-judge. Prints the
+# plan and its price and stops; GO=1 spends. Resumes from the cache if stopped.
+experiment:
+	PYTHONPATH=$$PWD AGENT_TOOL_PATH=$$PWD python scripts/experiment.py $(if $(GO),--go,)
 
 # Every published figure about the Predictor, regenerated from committed data.
 figures:
@@ -137,6 +143,12 @@ explainer:
 # a simpler document, it is a less true one.
 primer:
 	PYTHONPATH=$$PWD python -m esp.report.primer
+
+# How the repository runs, for a beginner: every word, the exam, how a team
+# answers and is scored, every command with real output. Built from the code and
+# committed data, so its examples cannot drift from the project.
+guide:
+	PYTHONPATH=$$PWD python -m esp.report.guide
 
 # The whole project as one PDF: the gap it fills, every file, the service, the
 # captured proofs, and the run report carried in full.

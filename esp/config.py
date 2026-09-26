@@ -226,9 +226,13 @@ def load_env(path: Path | None = None) -> list[str]:
         value = value.strip()
         # Quotes are what a person types when a value has spaces in it; they are
         # not part of the value. An API key carrying a stray quote fails with an
-        # authentication error that says nothing about quoting.
-        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-            value = value[1:-1]
+        # authentication error that says nothing about quoting. The same goes
+        # for a trailing comment: `KEY=value  # note` kept "# note" as part of
+        # the key.
+        if value[:1] in ("\"", "'") and value[0] in value[1:]:
+            value = value[1:value.index(value[0], 1)]
+        elif " #" in value:
+            value = value[:value.index(" #")].rstrip()
         if name and name not in os.environ:
             os.environ[name] = value
             applied.append(name)

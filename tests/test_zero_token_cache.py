@@ -43,7 +43,7 @@ def test_an_evaluation_that_spent_nothing_is_not_cached(tmp_path, monkeypatch):
     with pytest.raises(OSError, match="zero tokens"):
         evaluate(genome, tasks=TASKS[:3], use_cache=False)
 
-    written = list((tmp_path / "cache").glob("*.json"))
+    written = list((tmp_path / "cache").rglob("*.json"))
     assert not written, f"a zero-token evaluation was cached: {written}"
 
 
@@ -140,7 +140,7 @@ def test_a_run_where_every_task_blew_the_recursion_cap_is_not_cached(
     genome = next(iter(SEEDS.values()))()
     with pytest.raises(OSError, match="gave up before answering"):
         evaluate(genome, tasks=TASKS[:4], use_cache=False)
-    assert not list((tmp_path / "cache").glob("*.json"))
+    assert not list((tmp_path / "cache").rglob("*.json"))
 
 
 def test_a_run_where_every_task_timed_out_is_not_cached(tmp_path, monkeypatch):
@@ -181,7 +181,7 @@ def test_some_unfinished_tasks_are_still_a_real_measurement(
                           use_cache=False)
 
     assert evaluation.incomplete == 1
-    assert len(list((tmp_path / "cache").glob("*.json"))) == 1
+    assert len(list((tmp_path / "cache").rglob("*.json"))) == 1
 
 
 def test_the_committed_measurements_all_answered_something():

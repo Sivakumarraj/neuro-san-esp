@@ -56,6 +56,12 @@ NOTES: dict[str, str] = {
     "esp/eval/bank.py":
         "250 held-out questions combining one to nine documents, about entities "
         "the 17 never name, answers computed from the world.",
+    "esp/eval/suites.py":
+        "The scale-up exam: 60 questions to select on and 100 to judge on, from "
+        "disjoint halves of the company, 40% whole-corpus aggregates.",
+    "esp/evolve/experiment.py":
+        "The same-budget experiment: Predictor-guided search against random "
+        "choice, judged on questions neither selected on.",
     "tasks/meridian_bank.jsonl":
         "The held-out bank as a question file, for `make measure` or the web page.",
     "esp/eval/corpus_tool.py":
@@ -122,9 +128,13 @@ NOTES: dict[str, str] = {
         "Starts a real neuro-san server and proves it fires the optimiser with "
         "no user and no client attached.",
     "SERVING.md": "How to deploy the service, and what is verified about it.",
+    "docs/DESIGN.md": "How the search works, part by part.",
+    "docs/GUIDE.md": "Running it: providers, the web page, the accelerator UI, the service.",
     "esp/report/layout.py": "Shared page furniture for both PDFs.",
     "esp/report/build.py": "The run report.",
     "esp/report/dossier.py": "This document.",
+    "esp/report/guide.py":
+        "The beginner's guide: every word, the exam, every command, with real examples.",
     "esp/report/primer.py":
         "The same project with no jargon, for a reader who has never seen it.",
     "esp/report/plots.py": "Fitness curve, surrogate scatter, Pareto front.",
@@ -686,12 +696,6 @@ class Dossier(Layout):
     def _findings(self) -> None:
         self.h1("What running it changed",
                 "Seven things that could not have been reasoned out from the code.")
-        # Said where the defects are listed, because that is what it explains:
-        # the same sentence the README carries, so the two never disagree.
-        self.p("Most of this implementation was written with Claude Code, under my "
-               "direction. My part was the design decisions and running it against "
-               "real model calls to find what it got wrong. What follows is what "
-               "that found.")
 
         for title, text in [
             ("The front man was the wrong agent, silently",

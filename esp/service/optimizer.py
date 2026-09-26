@@ -13,7 +13,9 @@ is a normal ending, not an error.
 from __future__ import annotations
 
 import random
+import sys
 import time
+import traceback
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -367,6 +369,9 @@ def wake(state: ServiceState | None = None, rng: random.Random | None = None,
                 break
             except Exception as exc:
                 stopped = f"{type(exc).__name__}: {exc}"[:160]
+                # The wake report carries one line; the stack goes to the
+                # service log, where an operator of an unattended wake looks.
+                traceback.print_exc(file=sys.stderr)
                 break
 
             state.add(Evaluated(
