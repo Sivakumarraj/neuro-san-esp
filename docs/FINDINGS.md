@@ -280,6 +280,18 @@ requests a day, and which answered 503 "high demand" to three of four smoke-test
 the same day. Network `6859dd` was chosen because it is evolved, ranked second, and runs
 only on the 500-a-day models.
 
+### The harder select set, calibrated
+
+The bank could not rank networks because the designer's shape scored 96% on it. The select
+set was built harder on purpose, and its first live measurement, on 26 September 2026 with a
+free Gemini key, confirms it: on its first 20 questions, which cover every kind it asks, the
+designer's shape answered **16 of 20 (80%)**, using 194,828 tokens. That is under the 90%
+ceiling the experiment checks before it spends anything, so the set leaves room to tell
+networks apart. All four misses are the same kind of question: late-delivery penalties
+combined across incidents, hours times rate, summed or differenced. That is the shape the
+evolved network also missed on the bank; arithmetic over several documents, not retrieval,
+is where these networks fail. The report is in `results/calibration/`.
+
 ### Next: the same-budget experiment, built and not yet run
 
 Twelve networks and seventeen questions cannot say whether the Predictor helps, and the

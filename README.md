@@ -153,6 +153,9 @@ the web page, the accelerator UI, and running the optimiser as a service.
 - **On genuinely new questions it has not reproduced yet.** On 24 held-out bank questions,
   the evolved network measured answered 21 against the designer's 23 (`make bank-report`).
   Two discordant questions establish nothing either way.
+- **The harder select set leaves room to rank.** On the first 20 of its questions the
+  designer's shape scored 16 of 20 (80%), against 96% on the bank. All four misses were
+  penalty arithmetic across several documents.
 - **The Predictor beats chance offline.** When the first search used it, with nine
   measurements, its rank correlation was **−0.333**, worse than chance. Trained on nine of
   the twelve, it picks the best of three unseen networks **62%** of the time against 33% by

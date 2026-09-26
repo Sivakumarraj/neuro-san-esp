@@ -17,6 +17,9 @@ results/*
 # tier that allows a few dozen questions a day, and `make bank-report` reads them.
 !results/heldout_bank/
 !results/heldout_bank/*.json
+# The calibration of the select set, which the experiment's first gate reads.
+!results/calibration/
+!results/calibration/*.json
 # The same-budget experiment's summary and each arm's history.
 !results/experiment/
 !results/experiment/summary.json
