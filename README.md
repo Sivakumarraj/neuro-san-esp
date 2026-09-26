@@ -72,6 +72,19 @@ environment rather than the network is refused, not reported: no model called, e
 question erroring, or a provider quota. With no question file, the built-in
 seventeen-question benchmark below is used.
 
+**The scale-up: does the Predictor help at all?** `make experiment` runs the search twice
+from the same start with the same budget: once with the Predictor choosing which candidates
+to pay for (ESP), once choosing at random (the control). Both select on `meridian-select`, 60
+questions of which 40% are whole-corpus aggregates that a three-document search cannot answer
+in one call. Each winner and the designer's shape are then judged on `meridian-judge`, 100
+questions about entities the select set never names, and compared question by question with
+an exact McNemar test. Run bare, it prints the plan and its price (about 5,600 question-runs
+and 56,000 model calls at the default budget of 40 candidates per arm) and spends nothing;
+`make experiment GO=1` runs it. It first checks that the designer scores under 90% on the
+select set, and stops before the search if not, because an exam every network passes cannot
+rank them. A stopped run resumes from the cache without paying twice. It needs a paid key:
+the free tier allows about 1,000 calls a day.
+
 **A held-out bank of 250 questions.** Seventeen questions cannot rank individual networks
 (see the results below), so `TASKS=meridian-bank` asks 250 more over the same corpus. Each
 combines one to nine documents, never names an entity the seventeen name, and has its

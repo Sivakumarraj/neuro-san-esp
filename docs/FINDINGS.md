@@ -280,6 +280,18 @@ requests a day, and which answered 503 "high demand" to three of four smoke-test
 the same day. Network `6859dd` was chosen because it is evolved, ranked second, and runs
 only on the 500-a-day models.
 
+### Next: the same-budget experiment, built and not yet run
+
+Twelve networks and seventeen questions cannot say whether the Predictor helps, and the
+bank above cannot rank networks. `make experiment` is built to answer both, and has not been
+run: it needs a paid key. It searches twice from the same start with the same budget, once
+choosing candidates by the Predictor and once at random; selects on 60 harder questions, 40%
+whole-corpus aggregates; and judges each winner and the designer's shape on 100 questions
+about entities the select set never names. At the default budget it measures about 89
+networks, so each arm's Predictor trains on up to 49 rather than 12. Its logic is tested end
+to end against a fake provider (`tests/test_experiment.py`); its answer is not known yet, and
+this section will report it whichever way it falls.
+
 ## What the Predictor is, exactly
 
 Asked directly in review — twice, and the second time by a co-author of the ESP paper, who

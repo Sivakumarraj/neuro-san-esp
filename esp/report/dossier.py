@@ -56,6 +56,12 @@ NOTES: dict[str, str] = {
     "esp/eval/bank.py":
         "250 held-out questions combining one to nine documents, about entities "
         "the 17 never name, answers computed from the world.",
+    "esp/eval/suites.py":
+        "The scale-up exam: 60 questions to select on and 100 to judge on, from "
+        "disjoint halves of the company, 40% whole-corpus aggregates.",
+    "esp/evolve/experiment.py":
+        "The same-budget experiment: Predictor-guided search against random "
+        "choice, judged on questions neither selected on.",
     "tasks/meridian_bank.jsonl":
         "The held-out bank as a question file, for `make measure` or the web page.",
     "esp/eval/corpus_tool.py":

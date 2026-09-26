@@ -17,6 +17,11 @@ results/*
 # tier that allows a few dozen questions a day, and `make bank-report` reads them.
 !results/heldout_bank/
 !results/heldout_bank/*.json
+# The same-budget experiment's summary and each arm's history.
+!results/experiment/
+!results/experiment/summary.json
+!results/experiment/*/
+!results/experiment/*/history.json
 
 # The live cache is machine-local and quota-dependent. The committed
 # measurements live in tests/fixtures/cache instead, so CI can reproduce them.

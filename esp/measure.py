@@ -50,6 +50,27 @@ BUILTIN = "meridian"
 BANK = "meridian-bank"
 
 
+def _bank() -> list[Task]:
+    from esp.eval.bank import BANK as QUESTIONS
+    return QUESTIONS
+
+
+def _select() -> list[Task]:
+    from esp.eval.suites import SELECT
+    return SELECT
+
+
+def _judge() -> list[Task]:
+    from esp.eval.suites import JUDGE
+    return JUDGE
+
+
+# Every question set that has a name, each loaded only when asked for. The
+# scale-up experiment selects on meridian-select and judges on meridian-judge,
+# which share no entity (esp/eval/suites.py).
+NAMED = {BANK: _bank, "meridian-select": _select, "meridian-judge": _judge}
+
+
 class SuiteError(ValueError):
     """A question file that cannot be measured against."""
 
@@ -145,14 +166,16 @@ def load_suite(path: str | Path | None) -> tuple[str, list[Task]]:
     """A named question set: the built-in one, or a file."""
     if path in (None, "", BUILTIN):
         return BUILTIN, builtin_suite()
-    if isinstance(path, str) and (path == BANK or path.startswith(BANK + ":")):
-        from esp.eval.bank import BANK as QUESTIONS
+    named = path.partition(":")[0] if isinstance(path, str) else None
+    if named in NAMED:
+        questions = NAMED[named]()
         count = path.partition(":")[2]
         if not count:
-            return BANK, list(QUESTIONS)
-        if not count.isdigit() or not 0 < int(count) <= len(QUESTIONS):
-            raise SuiteError(f"{BANK}:N takes a count from 1 to {len(QUESTIONS)}, not {count!r}")
-        return path, list(QUESTIONS[:int(count)])
+            return named, list(questions)
+        if not count.isdigit() or not 0 < int(count) <= len(questions):
+            raise SuiteError(f"{named}:N takes a count from 1 to {len(questions)}, "
+                             f"not {count!r}")
+        return path, list(questions[:int(count)])
     path = Path(path)
     return path.name, parse_suite(path.read_text(encoding="utf-8"))
 
@@ -267,8 +290,9 @@ def main(argv: list[str] | None = None) -> int:
         description="Measure a neuro-san agent network on a set of questions.")
     parser.add_argument("network", help="a HOCON file, or a network name in the manifest")
     parser.add_argument("--tasks", default=BUILTIN,
-                        help="JSON Lines question file, meridian (the built-in 17, "
-                             "default), meridian-bank or meridian-bank:N")
+                        help="JSON Lines question file, or a named set: meridian (the "
+                             "built-in 17, default), meridian-bank, meridian-select, "
+                             "meridian-judge; NAME:N asks the first N")
     parser.add_argument("--tools", default=None,
                         help="directory holding the network's coded tools "
                              "(sets AGENT_TOOL_PATH)")

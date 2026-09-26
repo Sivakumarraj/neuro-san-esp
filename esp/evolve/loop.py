@@ -47,6 +47,7 @@ from pathlib import Path
 
 from esp.eval import failover
 from esp.eval.runner import Evaluation, QuotaExhausted, evaluate
+from esp.eval.tasks import Task
 from esp.genome.definition import Genome
 from esp.genome.mutations import InvalidMutant, mutate
 from esp.genome.seeds import SEEDS
@@ -172,7 +173,24 @@ class History:
 class Evolution:
     def __init__(self, seed: int = 20260821, elite: int = 3,
                  surrogate_pool: int = 400, real_per_generation: int = 4,
-                 out_dir: str = "results"):
+                 out_dir: str = "results", tasks: list[Task] | None = None,
+                 select: str = "predictor", budget: int | None = None):
+        """`tasks` is the exam every candidate sits (default: the built-in 17).
+
+        `select` decides which bred candidates are paid for. "predictor" ranks
+        them with the Predictor, which is ESP. "random" takes them in a shuffled
+        order and never consults it -- the control arm of the same-budget
+        experiment, and the only way to show the Predictor is worth having.
+
+        `budget` caps the candidates paid for after the seed population, so two
+        arms can be given exactly the same spend.
+        """
+        if select not in ("predictor", "random"):
+            raise ValueError(f"select must be 'predictor' or 'random', not {select!r}")
+        self.tasks = tasks
+        self.select = select
+        self.budget = budget
+        self.search_spent = 0
         self.rng = random.Random(seed)
         self.seed = seed
         self.elite = elite
@@ -196,8 +214,10 @@ class Evolution:
                        predicted: float | None = None) -> Record:
         digest = genome.genome_hash()
         started = time.monotonic()
-        evaluation = evaluate(genome)
+        evaluation = evaluate(genome, self.tasks)
         value = fitness(evaluation)
+        if generation > 0:
+            self.search_spent += 1
 
         self.pool[digest] = genome
         self.scored[digest] = value
@@ -288,7 +308,28 @@ class Evolution:
 
         # --- Phases B, C, D, repeated
         for generation in range(1, generations + 1):
+            if self.budget is not None and self.search_spent >= self.budget:
+                print(f"\nBudget of {self.budget} paid candidates spent", flush=True)
+                break
             genomes = [self.pool[h] for h in self.scored]
+            if self.select == "random":
+                # The control arm: breed from the same parents, pay for a
+                # shuffled slice, never train or consult the Predictor.
+                candidates = self._breed(self._parents(), self.surrogate_pool)
+                if not candidates:
+                    print("  no new candidates; search exhausted", flush=True)
+                    break
+                self.rng.shuffle(candidates)
+                take = self._take()
+                print(f"\nGeneration {generation} (random selection)", flush=True)
+                try:
+                    for genome, operator in candidates[:take]:
+                        self._evaluate_real(genome, generation, f"mut:{operator}")
+                except QuotaExhausted as exc:
+                    self._stop(f"provider budget exhausted in generation {generation}", exc)
+                    return self.history
+                self.save()
+                continue
             outcomes = [self.outcomes[h] for h in self.scored]
 
             print(f"\nGeneration {generation}", flush=True)
@@ -354,7 +395,7 @@ class Evolution:
             # Phase D: pay for the elite only.
             print("  Phase D -- real evaluation of the elite", flush=True)
             try:
-                for (genome, operator), predicted in ranked[:self.real_per_generation]:
+                for (genome, operator), predicted in ranked[:self._take()]:
                     self._evaluate_real(genome, generation, f"mut:{operator}",
                                         predicted=float(predicted))
             except QuotaExhausted as exc:
@@ -365,6 +406,12 @@ class Evolution:
 
         self.save()
         return self.history
+
+    def _take(self) -> int:
+        """How many candidates this generation may pay for."""
+        if self.budget is None:
+            return self.real_per_generation
+        return max(0, min(self.real_per_generation, self.budget - self.search_spent))
 
     # ------------------------------------------------------------------- output
 
@@ -386,6 +433,9 @@ class Evolution:
     def save(self) -> None:
         payload = {
             "seed": self.seed,
+            "select": self.select,
+            "budget": self.budget,
+            "search_spent": self.search_spent,
             "weights": WEIGHTS,
             "real_evaluations": self.history.real_evaluations,
             "surrogate_evaluations": self.history.surrogate_evaluations,

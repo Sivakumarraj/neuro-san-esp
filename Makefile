@@ -1,4 +1,4 @@
-.PHONY: install test lint lint-docs check validate hocon offline-check bank bank-report check-key smoke measure figures ablation probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
+.PHONY: install test lint lint-docs check validate hocon offline-check bank bank-report experiment check-key smoke measure figures ablation probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -65,6 +65,12 @@ bank:
 # what it scored on the seventeen it was selected on, by depth, and paired.
 bank-report:
 	PYTHONPATH=$$PWD python scripts/bank_report.py
+
+# The same-budget experiment: a Predictor-guided search against a random-choice
+# one, each selecting on meridian-select and judged on meridian-judge. Prints the
+# plan and its price and stops; GO=1 spends. Resumes from the cache if stopped.
+experiment:
+	PYTHONPATH=$$PWD AGENT_TOOL_PATH=$$PWD python scripts/experiment.py $(if $(GO),--go,)
 
 # Every published figure about the Predictor, regenerated from committed data.
 figures:

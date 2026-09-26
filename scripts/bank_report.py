@@ -13,13 +13,13 @@ from __future__ import annotations
 import json
 import sys
 from collections import defaultdict
-from math import comb
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from esp.eval import measurements  # noqa: E402
+from esp.eval.stats import mcnemar_exact  # noqa: E402
 
 RESULTS = ROOT / "results" / "heldout_bank"
 
@@ -27,16 +27,6 @@ RESULTS = ROOT / "results" / "heldout_bank"
 def load(results: Path = RESULTS) -> dict[str, dict]:
     return {path.stem: json.loads(path.read_text(encoding="utf-8"))
             for path in sorted(results.glob("*.json"))}
-
-
-def mcnemar_exact(only_a: int, only_b: int) -> float:
-    """Two-sided exact McNemar p: how surprising this split of the discordant
-    questions would be if neither network were better."""
-    n = only_a + only_b
-    if n == 0:
-        return 1.0
-    tail = sum(comb(n, k) for k in range(min(only_a, only_b) + 1)) / 2 ** n
-    return min(1.0, 2 * tail)
 
 
 def main() -> int:

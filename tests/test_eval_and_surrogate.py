@@ -140,7 +140,7 @@ def test_environment_failure_is_not_cached(tmp_path, monkeypatch):
 
     with pytest.raises(EnvironmentError, match="refusing to cache"):
         runner.evaluate(solo(), tasks=TASKS[:3])
-    assert not list((tmp_path / "cache").glob("*.json"))
+    assert not list((tmp_path / "cache").rglob("*.json"))
 
 
 def test_a_single_task_failure_is_still_cached(tmp_path, monkeypatch):
@@ -165,7 +165,7 @@ def test_a_single_task_failure_is_still_cached(tmp_path, monkeypatch):
 
     monkeypatch.setattr(runner, "_ask", flaky)
     evaluation = runner.evaluate(solo(), tasks=TASKS[:3])
-    assert len(list((tmp_path / "cache").glob("*.json"))) == 1
+    assert len(list((tmp_path / "cache").rglob("*.json"))) == 1
     assert evaluation.accuracy < 1.0
 
 
@@ -394,3 +394,20 @@ def test_the_published_verdicts_survive_the_correction():
         assert quality.spearman > 0.2, (
             f"seed {seed}: {quality.spearman:+.4f} no longer beats chance")
         assert quality.beats_random
+
+
+def test_the_cache_never_answers_one_exam_with_another(monkeypatch, tmp_path):
+    """Keyed by genome alone, a network measured on new questions was handed
+    its old seventeen-question result -- the wrong exam, reported as this one."""
+    from esp.eval import runner
+    from esp.eval.bank import BANK
+    from esp.genome.seeds import SEEDS
+
+    monkeypatch.setattr(runner, "CACHE_DIR", tmp_path / "cache")
+    genome = SEEDS["solo"]()
+    default = runner.cache_path_for(genome)
+    other = runner.cache_path_for(genome, BANK[:5])
+    assert default == tmp_path / "cache" / f"{genome.genome_hash()}.json"
+    assert other != default and other.parent.parent.name == "suites"
+    assert runner.cache_path_for(genome, BANK[:5]) == other
+    assert runner.cache_path_for(genome, BANK[:6]) != other
