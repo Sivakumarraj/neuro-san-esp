@@ -504,3 +504,14 @@ def test_a_refused_key_is_not_retried(client, monkeypatch):
 def test_an_answer_from_the_measured_network_claims_no_fallback(client, monkeypatch):
     monkeypatch.setattr(serve, "_ask", lambda *a: ("J. Vasquez", {}, 1.0))
     assert client.post("/ask", json={"question": "q"}).json()["fallback"] is None
+
+
+def test_idle_visitors_are_forgotten(client, monkeypatch):
+    """The per-visitor table must not grow by one entry per address for as
+    long as a public page runs."""
+    from collections import deque
+    monkeypatch.setattr(serve, "MAX_TRACKED_CLIENTS", 2)
+    old = serve.time.monotonic() - 7200
+    monkeypatch.setattr(serve, "_recent", {f"10.0.0.{i}": deque([old]) for i in range(5)})
+    serve._over_client_limit("10.9.9.9")
+    assert list(serve._recent) == ["10.9.9.9"]

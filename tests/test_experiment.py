@@ -53,6 +53,10 @@ def fake(monkeypatch, tmp_path):
     monkeypatch.setattr(runner, "run_suite", provider)
     monkeypatch.setattr(runner, "CACHE_DIR", tmp_path / "cache")
     monkeypatch.setattr(runner, "NETWORK_DIR", tmp_path / "networks")
+    # The permutation null is what the gate reads, and its size is not what
+    # these tests are about; two shuffles keep the logic and drop minutes.
+    from esp.evolve import loop
+    monkeypatch.setattr(loop, "NULL_TRIALS", 2)
     return provider
 
 

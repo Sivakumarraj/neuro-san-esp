@@ -66,6 +66,20 @@ services:
       - ./.esp-cache:/app/.esp-cache
     command: python scripts/run_esp.py --generations 3 --elite 3 --out results
 
+  # The same-budget experiment (make experiment). Real calls, tens of thousands
+  # of them: run it on a paid key. Stopped by a quota or a restart, running it
+  # again resumes from the cache. Same uid note as `search` for the mounts.
+  experiment:
+    build: .
+    profiles: ["tools"]
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./results:/app/results
+      - ./.esp-cache:/app/.esp-cache
+    command: python scripts/experiment.py --go
+
   # Google's free tier only: which Gemini models answer, and each daily cap.
   probe:
     build: .

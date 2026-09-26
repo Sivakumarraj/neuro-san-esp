@@ -90,6 +90,7 @@ _asked = {"count": 0}
 PER_CLIENT_HOURLY = int(os.environ.get("ESP_WEB_PER_CLIENT_HOURLY", "10"))
 TRUST_PROXY = os.environ.get("ESP_WEB_TRUST_PROXY", "").lower() in {"1", "true", "yes"}
 _recent: dict[str, deque] = {}
+MAX_TRACKED_CLIENTS = 10_000
 
 # Both caps are per UTC day, because provider quotas are. Held in memory, the
 # count went back to zero on every restart, so a crash loop had no cap at all.
@@ -183,6 +184,11 @@ def _over_client_limit(key: str) -> bool:
     """Record one question for this client unless it is over its hourly share.
     Call with _budget_lock held."""
     now = time.monotonic()
+    # Forget visitors idle for an hour. Without this the table grows by one
+    # entry per address that ever asked, for as long as the page runs.
+    if len(_recent) > MAX_TRACKED_CLIENTS:
+        for idle in [k for k, w in _recent.items() if not w or now - w[-1] > 3600]:
+            del _recent[idle]
     window = _recent.setdefault(key, deque())
     while window and now - window[0] > 3600:
         window.popleft()
