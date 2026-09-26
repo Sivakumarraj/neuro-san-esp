@@ -13,8 +13,8 @@ Phase B -- training the Predictor on 12 real evaluations from tests/fixtures/cac
 Phase C -- evolving 2000 candidates against it
   348 distinct viable, 7475 rejected as invalid, 62942 duplicates, 9235 already measured
   NOTE: asked for 2000 and the reachable space yielded 348. The numbers below describe what was actually generated.
-  bred in 4.70s, scored in 0.01s, zero provider calls
-  ~0.041 ms per candidate to rank
+  bred in 7.35s, scored in 0.02s, zero provider calls
+  ~0.064 ms per candidate to rank
 
   21 candidates tie at the top (+0.8962). The Predictor cannot separate them; among them the order below is generation order.
 

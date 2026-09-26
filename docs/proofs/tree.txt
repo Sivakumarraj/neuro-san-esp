@@ -27,7 +27,9 @@ compose.yaml
 constraints.txt
 deploy/huggingface/Dockerfile
 deploy/huggingface/README.md
+docs/DESIGN.md
 docs/FINDINGS.md
+docs/GUIDE.md
 docs/neuro-san-esp-Dossier.pdf
 docs/neuro-san-esp-Explainer.pdf
 docs/neuro-san-esp-Primer.pdf
@@ -59,9 +61,12 @@ esp/eval/measurements.py
 esp/eval/networks/smoke.hocon
 esp/eval/ratelimit.py
 esp/eval/runner.py
+esp/eval/stats.py
+esp/eval/suites.py
 esp/eval/tasks.py
 esp/eval/world.py
 esp/evolve/__init__.py
+esp/evolve/experiment.py
 esp/evolve/loop.py
 esp/genome/__init__.py
 esp/genome/definition.py
@@ -91,6 +96,7 @@ registries/evaluator.hocon
 registries/manifest.hocon
 registries/optimizer.hocon
 requirements.lock
+results/calibration/designer_select20.json
 results/figures/fitness.png
 results/figures/pareto.png
 results/figures/surrogate.png
@@ -102,6 +108,7 @@ scripts/bank_report.py
 scripts/baseline_report.py
 scripts/capture_proofs.py
 scripts/check_key.py
+scripts/experiment.py
 scripts/holdout_report.py
 scripts/null_sweep.py
 scripts/offline_search.py
@@ -135,6 +142,7 @@ tests/fixtures/cache/cd06778520823bc3.json
 tests/fixtures/cache/deca12e87a49c1c5.json
 tests/test_bank.py
 tests/test_bank_report.py
+tests/test_calibration.py
 tests/test_check_key.py
 tests/test_coded_tools.py
 tests/test_committed_measurements.py
@@ -142,6 +150,7 @@ tests/test_container.py
 tests/test_devcontainer.py
 tests/test_docs.py
 tests/test_eval_and_surrogate.py
+tests/test_experiment.py
 tests/test_failover.py
 tests/test_genome.py
 tests/test_ground_truth.py
@@ -172,6 +181,8 @@ tests/test_service_surrogate.py
 tests/test_serving.py
 tests/test_smoke_live.py
 tests/test_studio.py
+tests/test_suites.py
 tests/test_task_outcomes.py
+tests/test_training.py
 tests/test_web.py
 tests/test_zero_token_cache.py

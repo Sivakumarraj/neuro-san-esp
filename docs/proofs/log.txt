@@ -1,3 +1,8 @@
+84c86cc Calibrate the select set on a live run: 16 of 20 for the designer
+ec8a3de Test that training the Predictor works where the answer is known
+6d019b0 Restructure the README and move the detail into docs
+d7a96e8 Build the same-budget experiment: does the Predictor help at all?
+ac2e8ed Recapture the proofs and rebuild the PDFs on the corrected claims
 61734b6 Hold every claim to a held-out test, pin the build, harden the page
 1ced933 Say why the page cannot reach its server, and open it in a browser tab
 5144d05 Judge only the key in use, and show agent failures as errors
@@ -8,8 +13,3 @@ f67e78a Add issue templates, a support guide and line-ending rules
 d6f6efa docs: the Predictor picks better than chance, and its gate costs it
 874cc5d docs: re-derive every Predictor figure after the tier fix, and lead with measuring
 af51fb3 feat: an evaluator agent, so a measurement can be asked for inside neuro-san
-f5e94eb feat: a Measure tab on the website, and a header that names the real best
-127fd58 feat: measure any neuro-san network on any set of questions
-ea1eabe fix: encode a model's cost tier from the model, not its place on a ladder
-b856f2f feat: choose the provider by key and the model by family, as neuro-san-studio does
-ff8d1c9 fix: report an unreadable state file instead of crashing the preflight
