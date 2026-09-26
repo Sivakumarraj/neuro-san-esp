@@ -65,10 +65,22 @@ def _judge() -> list[Task]:
     return JUDGE
 
 
-# Every question set that has a name, each loaded only when asked for. The
-# scale-up experiment selects on meridian-select and judges on meridian-judge,
-# which share no entity (esp/eval/suites.py).
-NAMED = {BANK: _bank, "meridian-select": _select, "meridian-judge": _judge}
+def _judge_plus() -> list[Task]:
+    from esp.eval.judge_plus import JUDGE_PLUS
+    return JUDGE_PLUS
+
+
+def _judge_200() -> list[Task]:
+    from esp.eval.judge_plus import JUDGE_200
+    return JUDGE_200
+
+
+# Every question set that has a name, each loaded only when asked for. A search
+# selects on meridian-select and is judged on meridian-judge-200 (the hundred
+# judge questions plus a hundred of four newer kinds), which share no entity
+# (esp/eval/suites.py, esp/eval/judge_plus.py).
+NAMED = {BANK: _bank, "meridian-select": _select, "meridian-judge": _judge,
+         "meridian-judge-plus": _judge_plus, "meridian-judge-200": _judge_200}
 
 
 class SuiteError(ValueError):
