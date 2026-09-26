@@ -133,6 +133,8 @@ NOTES: dict[str, str] = {
     "esp/report/layout.py": "Shared page furniture for both PDFs.",
     "esp/report/build.py": "The run report.",
     "esp/report/dossier.py": "This document.",
+    "esp/report/guide.py":
+        "The beginner's guide: every word, the exam, every command, with real examples.",
     "esp/report/primer.py":
         "The same project with no jargon, for a reader who has never seen it.",
     "esp/report/plots.py": "Fitness curve, surrogate scatter, Pareto front.",

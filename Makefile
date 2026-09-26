@@ -1,4 +1,4 @@
-.PHONY: install test lint lint-docs check validate hocon offline-check bank bank-report experiment check-key smoke measure figures ablation probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
+.PHONY: install test lint lint-docs check validate hocon offline-check bank bank-report experiment guide check-key smoke measure figures ablation probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -143,6 +143,12 @@ explainer:
 # a simpler document, it is a less true one.
 primer:
 	PYTHONPATH=$$PWD python -m esp.report.primer
+
+# How the repository runs, for a beginner: every word, the exam, how a team
+# answers and is scored, every command with real output. Built from the code and
+# committed data, so its examples cannot drift from the project.
+guide:
+	PYTHONPATH=$$PWD python -m esp.report.guide
 
 # The whole project as one PDF: the gap it fills, every file, the service, the
 # captured proofs, and the run report carried in full.

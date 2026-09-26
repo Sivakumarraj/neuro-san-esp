@@ -31,7 +31,7 @@ sys.path.insert(0, str(ROOT))
 
 import json  # noqa: E402
 
-from pydantic import BaseModel  # noqa: E402
+from pydantic import BaseModel, Field  # noqa: E402
 
 from esp.config import bootstrap  # noqa: E402
 
@@ -45,6 +45,7 @@ bootstrap()
 import html  # noqa: E402
 import re  # noqa: E402
 import threading  # noqa: E402
+import traceback  # noqa: E402
 import uuid  # noqa: E402
 from collections import deque  # noqa: E402
 from datetime import UTC, datetime  # noqa: E402
@@ -131,6 +132,13 @@ _KEY_SHAPES = re.compile(
 
 def redact(text: str) -> str:
     return _KEY_SHAPES.sub("[redacted key]", text)
+
+
+def log_failure(where: str) -> None:
+    """The whole traceback, to the server's own log. The visitor sees one
+    redacted line; the operator needs the stack to fix anything, and an
+    unattended page that only ever shows the short form cannot be debugged."""
+    print(f"[{where}] " + redact(traceback.format_exc()), file=sys.stderr, flush=True)
 
 
 def _today() -> str:
@@ -238,6 +246,7 @@ def run_job(job: dict, chosen: list[Candidate], tasks: list, suite: str) -> None
         job["state"] = "done"
     except Exception as exc:                       # reported to the page, never raised
         job["state"], job["error"] = "error", redact(f"{type(exc).__name__}: {exc}")[:300]
+        log_failure("measurement job")
     finally:
         job["current"] = None
 
@@ -313,13 +322,15 @@ FALLBACK_HOCON = str(write_network(_FALLBACK)) if _FALLBACK else None
 # build_app() is invisible there, and FastAPI silently reclassifies the
 # parameter as a query field. The symptom is a 422 saying the body field is a
 # missing query parameter, which points nowhere near the cause.
+# Bounded at the schema, so an oversized body is refused (422) before anything
+# reads it, instead of being parsed whole and then cut down.
 class Question(BaseModel):
-    question: str
+    question: str = Field(max_length=4_000)
 
 
 class MeasureRequest(BaseModel):
-    networks: list[str]
-    suite: str | None = None          # JSON Lines; None is the built-in benchmark
+    networks: list[str] = Field(max_length=16)
+    suite: str | None = Field(default=None, max_length=MAX_SUITE_BYTES)   # JSON Lines
 
 
 # The page lives beside this file as plain HTML, so the markup can be read and
@@ -504,6 +515,7 @@ def build_app():
         try:
             answer, _, seconds = _ask(HOCON, question)
         except Exception as exc:      # a provider 429 must not 500 the page
+            log_failure("/ask")
             return JSONResponse(
                 {"error": redact(f"{type(exc).__name__}: {exc}")[:300]}, status_code=502)
         # A promoted router on a model that is busy or out of its daily quota

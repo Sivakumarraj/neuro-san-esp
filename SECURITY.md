@@ -77,7 +77,9 @@ UTC day, gives each visitor a share per hour, and keeps the day's counts in
 `ESP_WEB_SPEND_FILE` so a restart does not reset them. Any error shown to a visitor passes
 through a filter that replaces anything shaped like a provider key, because provider errors
 sometimes echo request details. A visitor can never upload a network: a network names Python
-classes to import, so accepting one would be accepting code.
+classes to import, so accepting one would be accepting code. Request bodies are bounded at the schema, so an oversized
+question is refused before it is read, and every failure is logged whole, keys masked, to
+the server's own log while the visitor sees one line.
 
 ## Dependencies and known advisories
 

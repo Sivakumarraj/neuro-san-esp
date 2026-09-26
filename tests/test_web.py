@@ -515,3 +515,24 @@ def test_idle_visitors_are_forgotten(client, monkeypatch):
     monkeypatch.setattr(serve, "_recent", {f"10.0.0.{i}": deque([old]) for i in range(5)})
     serve._over_client_limit("10.9.9.9")
     assert list(serve._recent) == ["10.9.9.9"]
+
+
+def test_a_failure_is_logged_whole_for_the_operator(client, monkeypatch, capsys):
+    """The visitor gets one redacted line; the server log gets the stack."""
+    secret = "AIzaSyD" + "q" * 32
+
+    def boom(*a):
+        raise OSError(f"deep failure {secret}")
+
+    monkeypatch.setattr(serve, "_ask", boom)
+    client.post("/ask", json={"question": "q"})
+    logged = capsys.readouterr().err
+    assert "Traceback" in logged and "deep failure" in logged
+    assert secret not in logged
+
+
+def test_an_oversized_body_is_refused_before_it_is_read(client, monkeypatch):
+    called = []
+    monkeypatch.setattr(serve, "_ask", lambda *a: called.append(1) or ("x", {}, 1.0))
+    response = client.post("/ask", json={"question": "q" * 10_000})
+    assert response.status_code == 422 and not called

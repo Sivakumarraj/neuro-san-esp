@@ -242,6 +242,7 @@ this README disagrees with the committed measurements. Transcripts of real runs 
 | [SERVING.md](SERVING.md) | Deployment, state, budget and the security model |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup and checks |
 | [SECURITY.md](SECURITY.md) | Keys, the public page, dependencies, reporting a vulnerability |
+| [Beginner's guide](docs/neuro-san-esp-Beginner-Guide.pdf) | How it runs, step by step, with real examples |
 | [Dossier](docs/neuro-san-esp-Dossier.pdf) | The technical report, with captured evidence |
 | [Primer](docs/neuro-san-esp-Primer.pdf) | The same result without the jargon |
 
