@@ -1,3 +1,5 @@
+e88a32f Harden what a production run meets, and add a beginner's guide
+d1e8d7d Recapture the proofs and rebuild the PDFs on the final state
 84c86cc Calibrate the select set on a live run: 16 of 20 for the designer
 ec8a3de Test that training the Predictor works where the answer is known
 6d019b0 Restructure the README and move the detail into docs
@@ -11,5 +13,3 @@ f67e78a Add issue templates, a support guide and line-ending rules
 292b2d8 Run any model of the key's provider, even one neuro-san does not list
 0116483 Put a chosen Gemini model on its own ladder rung
 d6f6efa docs: the Predictor picks better than chance, and its gate costs it
-874cc5d docs: re-derive every Predictor figure after the tier fix, and lead with measuring
-af51fb3 feat: an evaluator agent, so a measurement can be asked for inside neuro-san

@@ -30,6 +30,7 @@ deploy/huggingface/README.md
 docs/DESIGN.md
 docs/FINDINGS.md
 docs/GUIDE.md
+docs/neuro-san-esp-Beginner-Guide.pdf
 docs/neuro-san-esp-Dossier.pdf
 docs/neuro-san-esp-Explainer.pdf
 docs/neuro-san-esp-Primer.pdf
@@ -78,6 +79,7 @@ esp/report/build.py
 esp/report/dossier.py
 esp/report/explainer.py
 esp/report/facts.py
+esp/report/guide.py
 esp/report/layout.py
 esp/report/plots.py
 esp/report/primer.py
@@ -146,6 +148,7 @@ tests/test_calibration.py
 tests/test_check_key.py
 tests/test_coded_tools.py
 tests/test_committed_measurements.py
+tests/test_config_env.py
 tests/test_container.py
 tests/test_devcontainer.py
 tests/test_docs.py
@@ -154,6 +157,7 @@ tests/test_experiment.py
 tests/test_failover.py
 tests/test_genome.py
 tests/test_ground_truth.py
+tests/test_guide.py
 tests/test_hocon_contract.py
 tests/test_holdout.py
 tests/test_lease_and_clock.py
