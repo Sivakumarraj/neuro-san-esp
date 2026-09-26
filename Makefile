@@ -1,4 +1,4 @@
-.PHONY: install test lint lint-docs check validate hocon offline-check bank bank-report experiment guide check-key smoke measure figures ablation probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
+.PHONY: install test lint lint-docs check validate hocon offline-check bank bank-report cost-report experiment guide check-key smoke measure figures ablation probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -65,6 +65,11 @@ bank:
 # what it scored on the seventeen it was selected on, by depth, and paired.
 bank-report:
 	PYTHONPATH=$$PWD python scripts/bank_report.py
+
+# Every committed network in tokens and in dollars. Tokens are a fair price only
+# while every agent runs the same model; the search's best move breaks that.
+cost-report:
+	PYTHONPATH=$$PWD python scripts/cost_report.py
 
 # The same-budget experiment: a Predictor-guided search against a random-choice
 # one, each selecting on meridian-select and judged on meridian-judge. Prints the
