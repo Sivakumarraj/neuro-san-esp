@@ -25,16 +25,25 @@ from esp.config import bootstrap  # noqa: E402
 
 def show(summary: dict) -> str:
     lines = [f"{summary['replicates']} replicate searches over a pool of "
-             f"{summary['pool']} (pool best {summary['pool_best']:+.4f})"]
+             f"{summary['pool']} (pool best {summary['pool_best']:+.4f}), against "
+             f"{summary['permutations']} permuted pools of {summary['per_permutation']}",
+             "  each difference is tested against the same difference with outcomes "
+             "shuffled across networks; p is Holm-adjusted across every strategy and "
+             "budget; 'closes' is the share of random choice's regret removed"]
     for strategy, rows in summary["strategies"].items():
-        cells = []
+        lines.append(f"  {strategy}")
         for budget, row in rows.items():
-            cell = f"@{budget}: {row['mean_best']:+.4f}"
+            cell = f"    @{budget:<3} found {row['mean_best']:+.4f}"
             if "vs_random" in row:
                 low, high = row["vs_random_95"]
-                cell += f" ({row['vs_random']:+.4f} vs random, 95% [{low:+.4f}, {high:+.4f}])"
-            cells.append(cell)
-        lines.append(f"  {strategy:13} " + "; ".join(cells))
+                verdict = ("better than random" if row["better_than_random"] else
+                           "worse than random" if row["worse_than_random"] else
+                           "no difference established")
+                cell += (f"  {row['vs_random']:+.4f} vs random [{low:+.4f}, {high:+.4f}]"
+                         f" (null {row['null']:+.4f})"
+                         f"  closes {row['regret_closed']:+.0%}  p={row['p_holm']:.3f}"
+                         f"  {verdict}")
+            lines.append(cell)
     return "\n".join(lines)
 
 
@@ -44,6 +53,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--select", type=int, default=60, help="select questions used")
     parser.add_argument("--finalists", type=int, default=8)
     parser.add_argument("--replicates", type=int, default=200)
+    parser.add_argument("--permutations", type=int, default=19,
+                        help="permuted pools the comparison is tested against")
     parser.add_argument("--out", default=None)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--go", action="store_true", help="spend: measure and judge")
@@ -61,7 +72,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.compare:
         members = pool.load(Path(args.compare))
-        summary = pool.compare(members, plan.select, replicates=args.replicates)
+        summary = pool.compare(members, plan.select, replicates=args.replicates,
+                               permutations=args.permutations)
         print(show(summary))
         return 0
 
@@ -73,7 +85,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.rehearse:
         return rehearse(plan, pool, Path(args.out or ROOT / "results" / "rehearsal"),
-                        args.replicates)
+                        args.replicates, args.permutations)
 
     from esp.service.preflight import failures, report, run_checks
     checks = run_checks(live=True)
@@ -87,7 +99,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\nstopped: {measured['stopped']}\nrun again to resume; nothing is paid twice")
         return 1
     members = pool.load(out / "pool.json")
-    summary = pool.compare(members, plan.select, replicates=args.replicates)
+    summary = pool.compare(members, plan.select, replicates=args.replicates,
+                               permutations=args.permutations)
     (out / "compare.json").write_text(json.dumps(summary, indent=1))
     print("\n" + show(summary))
     judged = pool.judge(members, plan, out)
@@ -96,7 +109,7 @@ def main(argv: list[str] | None = None) -> int:
     return 1 if judged["stopped"] else 0
 
 
-def rehearse(plan, pool, out: Path, replicates: int) -> int:
+def rehearse(plan, pool, out: Path, replicates: int, permutations: int = 19) -> int:
     """The whole pipeline, with a simulated provider in place of the model."""
     from esp.eval import rehearsal, runner
     from esp.genome.seeds import SEEDS
@@ -111,7 +124,8 @@ def rehearse(plan, pool, out: Path, replicates: int) -> int:
         try:
             pool.measure(plan, out, genomes)
             members = pool.load(out / "pool.json")
-            summary = pool.compare(members, plan.select, replicates=replicates)
+            summary = pool.compare(members, plan.select, replicates=replicates,
+                                   permutations=permutations)
             judged = pool.judge(members, plan, out)
         finally:
             runner.run_suite, runner.CACHE_DIR, runner.NETWORK_DIR = saved
@@ -126,7 +140,7 @@ def rehearse(plan, pool, out: Path, replicates: int) -> int:
           f"simulated tokens, ${provider.dollars:,.2f} simulated; $0 spent")
     better = [f"{s} @{b}" for s, rows in summary["strategies"].items()
               for b, r in rows.items() if r.get("better_than_random")]
-    print("beats random choice (95% interval above zero): " + (", ".join(better) or "none"))
+    print("beats random choice (Holm-adjusted p below 0.05): " + (", ".join(better) or "none"))
     return 0
 
 
