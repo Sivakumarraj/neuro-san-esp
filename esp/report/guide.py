@@ -21,9 +21,11 @@ from pathlib import Path
 from reportlab.platypus import PageBreak, Spacer
 
 from esp.eval.bank import BANK
+from esp.eval.pricing import estimate
 from esp.eval.suites import JUDGE, SELECT
 from esp.eval.tasks import TASKS
 from esp.eval.world import build_world, documents
+from esp.evolve import pool
 from esp.evolve.loop import scalarise
 from esp.report.layout import ACCENT, SOFT, WARN_BG, Layout, _s
 
@@ -160,6 +162,10 @@ class Guide(Layout):
 
     def _scoring(self) -> None:
         self.h2("How a team is scored")
+        self.p("Each reply is marked right when it contains the known answer. For a "
+               "number it must be the one number the reply gives: a reply that lists "
+               "several numbers is marked wrong even if the right one is among them, "
+               "and repeating the question earns nothing.")
         self.p("After the exam each team gets one number:")
         self.terminal("fitness = accuracy - 0.06 x min(tokens / 600000, 1)"
                       " - 0.02 x (agents / 9)")
@@ -263,13 +269,21 @@ class Guide(Layout):
                          f"tell teams apart."])
         rows.append(["The predictor, offline",
                      "Picks the best of three unseen teams 62% of the time, against 33% "
-                     "by chance."])
+                     "by chance. Picking the team with the most agents does as well."])
         self.table(["Measurement", "Result"], rows, widths=[150, 318])
+        plan = pool.Plan()
+        low, high = pool.tokens_per_question()
+        runs = sum(plan.question_runs().values())
+        cheap, dear = (estimate(runs * low, "claude-haiku-4-5"),
+                       estimate(runs * high, "claude-haiku-4-5"))
         self.callout(
             "What is still open",
             "Whether the predictor makes the search better for the same money. The "
-            "experiment that answers it (make experiment GO=1) is built and tested, and "
-            "needs a paid key: about 56,000 model calls.",
+            f"pool benchmark that answers it (make pool GO=1) is built and rehearsed "
+            f"for $0, and needs a paid key: {runs:,} question-runs, about "
+            f"${cheap:,.0f} to ${dear:,.0f} on Claude Haiku. Even then one pool can "
+            "only show a large difference; a small one needs more questions or a "
+            "second pool.",
             bg=WARN_BG, bar=ACCENT)
         self.h2("Where things are")
         self.table(["Folder", "What is inside"], [

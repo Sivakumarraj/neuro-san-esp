@@ -117,17 +117,19 @@ the targets and re-running the identical cross-validation.
 
 Two things came out of measuring it. **Accuracy's margin survives it comfortably** — at worst
 +0.40 across the seeds tried — though its null is not the settled −0.03 an earlier draft
-claimed: it is −0.07 at 12 shuffles and −0.13 at 40, and single seeds reach +0.30, for the tie
-reason below. **Token cost's null is about −0.17, so the real effect is −0.35, not −0.53.**
+claimed: it is −0.07 at 12 shuffles and −0.13 at 40, and single seeds reach +0.30.
+**Token cost's null is about −0.17, so the real effect is −0.35, not −0.53.**
 The finding holds: the margin is negative in every seed tried, and the Predictor does order
 candidates by cost backwards. It is a third smaller than the raw correlation, and twelve
 samples cannot cleanly separate the real part from the artifact.
 
-**Two caveats the tests record.** The null is only trustworthy on an untied objective — a
-permutation destroys a relationship only if permuting moves the values, and accuracy takes
-just four distinct values across twelve networks, so its null is weak. Token cost is distinct
-in all twelve, so its null is sound, and token cost is what the finding is about. And the
-spread is wide: the token null itself ranges from −0.42 to +0.03 across seeds. The margin is
+**Two caveats the tests record.** Accuracy takes four distinct values across twelve
+networks, and this document once said that made its null weak because a shuffle leaves a
+tied ordering largely intact. It does not: a shuffled copy of accuracy correlates with the
+original no more than one of token cost does, and a test pins that. Accuracy's null does
+move more between seeds, for a reason twelve samples do not show; token cost is what the
+finding is about. And the spread is wide: the token null itself ranges from −0.42 to +0.03
+across seeds. The margin is
 the right statistic; it is not a precise one. Full account in
 [FINDINGS.md](FINDINGS.md#what-the-predictor-is-exactly).
 
@@ -140,8 +142,23 @@ was selected under the v1 fitness.
 | --- | --- | --- |
 | **Dollar fitness** | Accuracy, less dollars per question (from the provider's own accounting of each run), less size. Same shape as the v1 fitness with tokens replaced by money, so a pricier router is charged what it costs. A dated price table exists only for planning a run before it is paid for. | `esp/eval/pricing.py` |
 | **Per-question Predictor** | Predicts the chance a network answers a question right, from the network's structure beside the question's kind, so every question-run is a training row. An ensemble over bootstrap resamples of networks gives a spread, and an optional upper-confidence bonus spends it. Cost is predicted per network. Fitness is derived, never learned. | `esp/surrogate/per_question.py` |
-| **Pool benchmark** | A pool of bred networks measured once on the select questions, then hundreds of replicate searches over the measured table, each strategy starting from the same networks. A search sees half the select questions and its pick is scored on the other half. Finalists and the designer's shape are judged on 200 held-out questions. | `esp/evolve/pool.py` |
+| **Pool benchmark** | A pool of bred networks measured once on the select questions, then hundreds of replicate searches over the measured table, each strategy starting from the same networks. A search sees half the select questions and its pick is scored on the other half. Each strategy's difference from random choice is tested against the same difference on pools whose measured outcomes are shuffled across networks, so luck in which network got which outcomes cannot pass for a method; p-values are Holm-adjusted across every strategy and budget, and the effect size is the share of random choice's regret removed. Finalists and the designer's shape are judged on 200 held-out questions. | `esp/evolve/pool.py` |
 | **Rehearsal** | A simulated provider with `run_suite`'s signature, answers drawn at a planted chance and tokens and dollars at v1's scale, so every stage of the paid run is exercised for $0 and the question-runs counted exactly. Nothing it writes is a result. | `esp/eval/rehearsal.py` |
+
+## A seam for context
+
+ESP prescribes actions for a context, and there was no context here (above). The
+per-question Predictor predicts a network's chance on each kind of question, so a workload,
+the share of each kind, and a price cap per answer can be one. `esp/evolve/context.py` holds
+the seam: `Context` states a workload and a cap, `prescribe` ranks candidate networks for it
+by the Predictor's derived fitness, and `strategy` offers that to the pool benchmark as a
+chooser. On a planted world where larger teams are better at totals and worse at joins, a
+totals-heavy context is handed larger teams than a join-heavy one from the same trained
+model (`tests/test_context.py`).
+
+It is an argmax over networks someone else bred, and it learns nothing. A learned
+Prescriptor, a model from context to network evolved against the Predictor, is what would
+make this ESP in the paper's sense. That is future work, and nothing here claims it.
 
 ## It runs as a service, not a batch job
 

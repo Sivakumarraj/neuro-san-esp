@@ -124,7 +124,8 @@ make pool GO=1            # the real run: preflight, pool, replicates, judging
 ```
 
 Before `GO=1`, measure the designer's shape on 20 select questions with the new key
-(`python -m esp.measure registries/r11_seed_designer_shaped.hocon --tasks meridian-select:20`,
+(`python scripts/serve_studio.py` writes the network files, then
+`python -m esp.measure registries/r11_seed_designer_shaped.hocon --tasks meridian-select:20`,
 well under a dollar) to see what a
 question really costs on that provider, and set a spending limit on the key itself in the
 provider's console. A stop for quota or a restart resumes from the cache; nothing is paid

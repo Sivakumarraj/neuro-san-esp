@@ -1,7 +1,10 @@
 {
  "replicates": 100,
+ "permutations": 19,
+ "per_permutation": 10,
  "pool": 120,
  "pool_best": 0.848836954998171,
+ "uncertainty": "against a permutation null, outcomes shuffled across networks; Holm-adjusted across every strategy and budget",
  "strategies": {
   "random": {
    "10": {
@@ -22,31 +25,46 @@
     "mean_best": 0.6358992181768649,
     "mean_regret": 0.21293773682130612,
     "vs_random": 0.01253846524405676,
+    "null": -0.009020917088873854,
     "vs_random_95": [
-     -0.0036685706536018696,
-     0.028126173892769522
+     -0.007255293532001515,
+     0.032332224020115034
     ],
-    "better_than_random": false
+    "p": 0.03277457135987687,
+    "regret_closed": 0.055608818709931944,
+    "p_holm": 0.22942199951913805,
+    "better_than_random": false,
+    "worse_than_random": false
    },
    "20": {
     "mean_best": 0.6658443447025509,
     "mean_regret": 0.18299261029562008,
     "vs_random": 0.033275213423600666,
+    "null": -0.008753401298026084,
     "vs_random_95": [
-     0.018025571865967028,
-     0.04951580709412945
+     -0.009818913239205113,
+     0.07636934008640645
     ],
-    "better_than_random": true
+    "p": 0.05593540629803876,
+    "regret_closed": 0.15386113778442442,
+    "p_holm": 0.2320777416904229,
+    "better_than_random": false,
+    "worse_than_random": false
    },
    "40": {
     "mean_best": 0.7002945974457387,
     "mean_regret": 0.14854235755243228,
     "vs_random": 0.04236916290716014,
+    "null": 0.00038595227978066625,
     "vs_random_95": [
-     0.028561796558425598,
-     0.05661810872348974
+     0.0183684013949397,
+     0.06636992441938058
     ],
-    "better_than_random": true
+    "p": 0.0006068816348697707,
+    "regret_closed": 0.2219308861254803,
+    "p_holm": 0.005461934713827936,
+    "better_than_random": true,
+    "worse_than_random": false
    }
   },
   "question": {
@@ -54,31 +72,46 @@
     "mean_best": 0.6264810954466105,
     "mean_regret": 0.22235585955156056,
     "vs_random": 0.00312034251380241,
+    "null": -0.001863148748253609,
     "vs_random_95": [
-     -0.0146428181940187,
-     0.019747511071056822
+     -0.018198780159441205,
+     0.02443946518704602
     ],
-    "better_than_random": false
+    "p": 0.6468350140257492,
+    "regret_closed": 0.013838899561106925,
+    "p_holm": 1.0,
+    "better_than_random": false,
+    "worse_than_random": false
    },
    "20": {
     "mean_best": 0.6439953356574574,
     "mean_regret": 0.20484161934071365,
     "vs_random": 0.011426204378507365,
+    "null": 0.0006566691695936203,
     "vs_random_95": [
-     -0.004743926403533197,
-     0.028240161577899922
+     -0.025406662692586436,
+     0.04825907144960117
     ],
-    "better_than_random": false
+    "p": 0.5665885145800132,
+    "regret_closed": 0.05283358468221296,
+    "p_holm": 1.0,
+    "better_than_random": false,
+    "worse_than_random": false
    },
    "40": {
     "mean_best": 0.6762756303712274,
     "mean_regret": 0.17256132462694362,
     "vs_random": 0.01835019583264888,
+    "null": 0.005334025864220333,
     "vs_random_95": [
-     0.00547885016482697,
-     0.03235883018626562
+     1.0332692852436931e-05,
+     0.03669005897244532
     ],
-    "better_than_random": true
+    "p": 0.1642098268751111,
+    "regret_closed": 0.09611885017977631,
+    "p_holm": 0.4926294806253333,
+    "better_than_random": false,
+    "worse_than_random": false
    }
   },
   "question-ucb": {
@@ -86,31 +119,46 @@
     "mean_best": 0.6359721747116651,
     "mean_regret": 0.2128647802865059,
     "vs_random": 0.012611421778857096,
+    "null": -0.008786646132970666,
     "vs_random_95": [
-     -0.005224023424848057,
-     0.028545530248002184
+     -0.008447187021905013,
+     0.0336700305796192
     ],
-    "better_than_random": false
+    "p": 0.046415548338084575,
+    "regret_closed": 0.055932385162320505,
+    "p_holm": 0.2320777416904229,
+    "better_than_random": false,
+    "worse_than_random": false
    },
    "20": {
     "mean_best": 0.6527184384747104,
     "mean_regret": 0.19611851652346057,
     "vs_random": 0.020149307195760163,
+    "null": -0.009304312329108227,
     "vs_random_95": [
-     0.0029016477333097877,
-     0.0374639667246904
+     0.0005903880997609225,
+     0.03970822629175941
     ],
-    "better_than_random": true
+    "p": 0.00316185098450492,
+    "regret_closed": 0.09316830793063269,
+    "p_holm": 0.02529480787603936,
+    "better_than_random": true,
+    "worse_than_random": false
    },
    "40": {
     "mean_best": 0.6843547064993897,
     "mean_regret": 0.16448224849878135,
     "vs_random": 0.02642927196081092,
+    "null": -0.0031891028881649063,
     "vs_random_95": [
-     0.012707292663856125,
-     0.039905855896866675
+     -0.001205772158166231,
+     0.05406431607978807
     ],
-    "better_than_random": true
+    "p": 0.035670241527229786,
+    "regret_closed": 0.1384372818213703,
+    "p_holm": 0.22942199951913805,
+    "better_than_random": false,
+    "worse_than_random": false
    }
   }
  },

@@ -207,20 +207,33 @@ individual networks — which operator is best, whether +0.8941 genuinely beats
 and nothing cheaper works: a better estimator cannot recover a signal the
 sample size does not contain.
 
-**Yes, searching beat not searching, and that does hold out of sample.**
+**The bred population beats the designer's shape out of sample. That choosing within it
+worked is not shown.**
 
 | | |
 | --- | --- |
 | Searched winner beat the designer's shape on held-out tasks | 90% of splits |
+| A network drawn at random from the other eleven beat it | 85.5% (mean over splits) |
 | Mean held-out fitness margin over it | +0.0224 |
 | The designer's shape, mean held-out rank | 10.4 of 12 |
 | Mean held-out rank, the nine evolved networks | 5.8 of 12 |
 | Mean held-out rank, the three seeds | 8.5 of 12 |
 | Best evolved beat best seed, each chosen on the selection half | 66% of splits |
 
-The comparison is genuinely out of sample: the winner is chosen on the selection
-half and judged on tasks that took no part in choosing it. Evolved networks
-outrank hand-written ones by two and a half places on average.
+The winner is chosen on the selection half and judged on tasks that took no part in
+choosing it. Evolved networks outrank hand-written ones by two and a half places on
+average.
+
+**The 90% had no baseline, and it needs one.** The designer's shape is eleventh of twelve on
+all seventeen questions, so almost any network in this population beats it on almost any
+half: one drawn at random does so 85.5% of the time, against the chosen winner's 90%.
+The figure supports the population, not the choosing. Two further things keep it from
+being a clean held-out test: the token term is measured on all seventeen questions, so
+it is the same on both halves, and the parents that bred the population were chosen on all
+seventeen. On all seventeen, the best network and the designer's shape differ on two
+questions (T06 and T08, both whole-corpus aggregates), an exact McNemar p of 0.5. The 200
+splits share seventeen questions between them, so 90% is a description of these networks,
+not a probability. `make holdout` now prints the baseline beside the rate.
 
 **A correction.** This table used to end with "best evolved network beat the
 best seed on held-out tasks: 100% of splits". No command printed it, and it was
@@ -232,9 +245,10 @@ as every other row here does, gives 66%. `make holdout` now prints both, the
 in-sample one labelled as such, so the old figure cannot be quoted as a
 held-out result again.
 
-So the claim this evidence supports is the population-level one — **evolutionary
-search over neuro-san topologies produces better networks than the shape the
-designer produces, robustly** — and not the per-network one. The headline table
+So the claim this evidence supports is the population-level one, **on these seventeen
+questions the population the search bred beats the shape the designer produces**, and not
+the per-network one. The held-out bank below did not reproduce even that for the one
+evolved network it measured. The headline table
 is still the honest report of what was measured; what it cannot bear is being
 read as a ranking.
 
@@ -325,15 +339,19 @@ selects on `esp.eval.pricing.fitness_dollars` instead.
 
 ### Two hundred judge questions, four new kinds
 
-A paired test on seventeen questions needs a gap of more than 30 accuracy points to register;
-on a hundred, about a dozen. `meridian-judge-200` adds a hundred questions to the judge set,
+A paired test on seventeen questions needs a gap of more than 30 accuracy points to reach
+p < 0.05 at all. With a third of the questions discordant, a hundred questions need an
+observed gap of 12 points and two hundred need 9; to find a real gap four times in five,
+about 16 and 11 points. `meridian-judge-200` adds a hundred questions to the judge set,
 from the same half of the company, of four kinds none of the other sets asks: counts and sums
 over a time window, totals over only the records that pass a condition, differences between
 two records, and questions the documents cannot answer (a contract that does not exist, a
 field no document records). Every one of them carries the same instruction to answer "not
 stated" when the documents do not say, so the instruction gives nothing away, and a network
-that invents an answer is wrong. No answer covers more than a quarter of the set, so a
-network cannot score by always saying "2". The corpus is unchanged, so every v1 measurement
+that invents an answer is wrong. No answer covers more than a quarter of the set, but a constant reply is not worthless:
+always saying "not stated" scores 25 of the hundred and always saying "2" scores 24, about
+14% of the judge-200 at best. That is this set's chance level, and a comparison should be
+read against it rather than against zero. The corpus is unchanged, so every v1 measurement
 stands. `tests/test_judge_plus.py` re-derives every answer from the document text.
 
 ### The pool benchmark, and two things its rehearsal found
@@ -347,17 +365,25 @@ simulated provider found two things worth recording before anyone pays for it.
   per-question Predictor looked significantly better than random choice: its preference was
   consistent, the pool is fixed, and it happened to prefer the network that was lucky on
   those questions. A search now sees half the select questions and what it picks is scored on
-  the other half. On pure noise the advantage disappears, as it should, and a planted
-  relationship is still found (`tests/test_pool.py`).
+  the other half. On one pool of pure noise the Predictor's advantage then disappeared, and
+  a planted relationship was still found. That was not enough: the interval was still over
+  the replicates of one pool, and a strategy with a fixed preference fooled it on most noise
+  pools. Each comparison is now tested against a permutation null
+  (see [the audit](#an-audit-before-the-paid-run)).
 - **A tree-based Predictor cannot extrapolate.** Where larger teams do better and the
   measured start contained no team as large as the best in the pool, the Predictor could not
   guess it and did no better than chance. It ranks inside the range it has seen, which is
   why the paid run measures a broad pool rather than a handful.
 
 The full-size rehearsal (`make pool REHEARSE=1`) made exactly the 9,000 question-runs the plan
-prices, 7,200 for the pool and 1,800 for judging, in about seven minutes and for nothing. Its
-comparisons are of a simulated world with a planted relationship, so they say nothing about
-real networks; `results/rehearsal/` keeps them, labelled as simulated.
+prices, 7,200 for the pool and 1,800 for judging, for nothing. Its comparisons are of a
+simulated world with a planted relationship, so they say nothing about real networks;
+`results/rehearsal/` keeps them, labelled as simulated. Against the permutation null
+([the audit](#an-audit-before-the-paid-run)) it calls two of nine strategy-and-budget
+comparisons better than random, the network-level Predictor at 40 paid networks and the
+per-question one with an upper-confidence bonus at 20, where the interval it replaced called
+five. The relationship is planted, so all five were real; the three no longer called are the
+power the honest test gives up. With the null it takes about half an hour on four cores.
 
 ### A Predictor that learns per question
 
@@ -448,23 +474,25 @@ Measuring it corrected the record in both directions:
 - **Accuracy's margin clears the null under every seed** — +0.73 at 12 shuffles, +0.74 at
   40, never below +0.39. The accuracy finding is not at risk. Its *null*, however, is not the
   settled −0.03 this bullet first claimed: it is −0.07 at 12 shuffles and −0.13 at 40, and
-  individual seeds reach +0.30, for the tie reason below. The margin survives because it is
-  large, not because the baseline is known precisely.
+  individual seeds reach +0.30 (not because of ties; see the correction below). The margin
+  survives because it is large, not because the baseline is known precisely.
 - **Token cost's null is about −0.17, so the real effect is −0.35, not −0.53.** A third
   smaller than the raw correlation. The finding survives — the margin is negative in every one of 20
   seeds at both shuffle counts, and the Predictor genuinely orders candidates by cost
   backwards — but the dramatic version of the number does not.
 
-**A limit on the null itself, which decides which objective it can be trusted on.** A
-permutation destroys a relationship only if permuting moves the values. Accuracy takes
-**four distinct values across twelve networks**, so a shuffle frequently maps a value onto an
-identical one and leaves the ordering largely intact. Its null is therefore weak, and its
-+0.73 margin should be read as indicative rather than measured. The sweep shows it:
-accuracy's null drifts from −0.07 to −0.13 with the shuffle count, and single seeds reach
-+0.30. The margin survives because it is large, never below +0.39, not because the baseline
-is known. Token cost is distinct in all twelve, so its null
-is sound — and token cost is the objective the finding is about. `test_the_null_is_only_meaningful_on_an_untied_objective`
-pins this so nobody moves the check to the tied objective.
+**The null on a tied objective, corrected.** This paragraph used to say that accuracy's
+null is weak because accuracy takes **four distinct values across twelve networks**, so a
+shuffle "frequently maps a value onto an identical one and leaves the ordering largely
+intact". That reasoning is wrong. A shuffle does leave more values in place on a tied
+vector, but the shuffled copy correlates with the original no more than it does on an
+untied one: over 20,000 shuffles, Spearman between accuracy and its shuffle has mean +0.00
+and spread 0.30, exactly as for token cost
+(`test_a_shuffle_decorrelates_a_tied_objective_as_fully_as_an_untied_one`). What remains
+true is what was measured: accuracy's null drifts from −0.07 to −0.13 with the shuffle
+count and single seeds reach +0.30, for a reason twelve samples do not show, and the
+margin survives because it is large, never below +0.39. Token cost is the objective the
+finding is about.
 
 **And the spread is wide even where the null is sound.** The median is stable; a single draw
 is not. Individual shuffled token correlations spread widely at this sample size, and the
@@ -502,6 +530,7 @@ scored.
 | Picker | Picked the best of three | Mean regret (fitness) | Could rank |
 | --- | --- | --- | --- |
 | random (exact expectation) | 33.3% | 0.0387 | — |
+| most agents, no training | 62.6% | 0.0106 | — |
 | **Predictor, as a wake runs it** | **62.1%** | **0.0162** | 212 / 220 |
 | Predictor, gate switched off | 71.8% | 0.0066 | 220 / 220 |
 | Predictor, token cost always excluded | 62.3% | 0.0144 | 220 / 220 |
@@ -517,6 +546,17 @@ the simulation treats the 220 sets as independent, and they are not, since each 
 in 55 of them, so the effective sample is nearer twelve than 220. It says nothing about
 networks outside this population. It is still the first direct evidence in this repository
 that the surrogate helps the search choose.
+
+**Chance is not the only baseline, and a rule with no training does as well.** "Pick the
+network with the most agents", with ties shared, picks the best of three 62.6% of the time
+on the same 220 triples, against 62.1% for the Predictor as a wake runs it, and with less
+regret (0.0106 against 0.0162); picking the
+widest router or the strongest router model does about as well (64%). On these twelve the
+larger teams are also the better ones, and a thirteen-feature Predictor trained on nine of
+them can learn that much and not obviously more. Only the ungated Predictor, at 71.8%,
+clears the rule. The ablation prints the rule's row now, and
+`tests/test_ablation_baseline.py` pins it. The claim this supports is narrower than the one
+above: the Predictor picks better than chance, and not yet better than the simplest prior.
 
 **The gate makes the choice worse, and why is not understood.** The gate excluded token cost
 in 205 of the 220 training sets, as the per-objective figures predict, and accuracy in 11.
@@ -587,7 +627,10 @@ map from, a Prescriptor has no input, which is why seven mutation operators occu
 instead. Building a real Prescriptor here starts with deciding what the context *is* — a
 task distribution, a budget, a domain — and that decision is the research, not the network.
 Stated before a reader has to ask, because "ESP" without it invites exactly the confusion the
-review raised.
+review raised. The per-question Predictor makes a workload of question kinds and a price cap
+usable as a context, and `esp/evolve/context.py` is a tested seam for one; it ranks networks
+someone else bred and learns nothing, so it is not a Prescriptor
+([DESIGN.md](DESIGN.md#a-seam-for-context)).
 
 **Where this is not canonical ESP.** In ESP as Cognizant AI Lab published it, the
 Prescriptor is *also* a learned model — a network mapping context to actions, evolved
@@ -641,6 +684,79 @@ topped up with the best scalarised fitness when the front is smaller than the el
 one-point front cannot collapse the search onto a single parent. The batch loop and the
 service wake share one `non_dominated()` so the front the reports draw and the front the
 search breeds from cannot drift apart.
+
+## An audit before the paid run
+
+Before any money goes through the pool benchmark, the whole repository was read again as a
+reviewer would, and every command re-run from a clean install. Every committed number
+reproduced. What the reading found is below, each with the test that now holds it; none of
+it changes a committed measurement.
+
+**The quota guard refused real answers.** It read "429" anywhere in a network's reply.
+Incident INC-4429 is a document in the corpus, and three questions ask about it (T13, J004
+and J017), so a network that named the incident while answering had its whole evaluation
+refused as a quota failure, and nothing was cached. A resume would then pay for that network
+again and stop at the same place: the paid run could not have finished judging. The loose
+markers are now read only in errors and in replies that are agent failures. Every committed
+T13 reply was the bare number 4, which is why no committed run met it.
+
+**The scorer gave marks for listing numbers.** It checked that the reply contained the
+answer. The judge set's answers are mostly small counts, and a reply of the numbers 0 to 20
+contained the answer to 90 of its 200 questions, 115 with "not stated" added. Every
+judge-plus question carries the words "not stated", so a reply that repeated the question
+scored right on all 25 unanswerable ones. A measurement now uses `esp.eval.tasks.grade`: a
+numeric answer is right only if it is the one number the reply states, apart from numbers
+the question gives; sentences of the question are removed first; an abstention that states
+a number has not abstained. All 272 committed replies are re-graded by a test, and every
+verdict is unchanged (`tests/test_grade.py`).
+
+**The pool benchmark's interval measured the luck of one pool.** It was a bootstrap over the
+replicates of a single pool. The replicates vary, but which networks the pool holds, and
+which of those were lucky on the scored questions, does not, so the interval tightened
+around that luck as replicates were added. Tested with a strategy that ranks networks by a
+hash of their own hash, which has a firm preference and no information: on 12 pools of pure
+noise it came out better than random in 33% of strategy-and-budget comparisons and worse in
+50%; on 12 pools where each network has its own ability, unrelated to its structure, 45%
+and 44%.
+
+Each difference is now tested against a permutation null: the same comparison on pools
+whose measured outcomes are shuffled across networks, each network keeping its genome and
+size, 19 permutations by default. The spread of the null is split into the part the
+permutation contributes and the part the replicates do, and the p-values are Holm-adjusted
+across every strategy and budget. On the same kinds of pool, the unadjusted 95% interval
+excluded zero in 7.4% and 4.6% of comparisons against a nominal 5%, and the adjusted test
+called 2 and 1 of 108 different; on small pools (40 networks, 20 questions), 5% and none.
+Resampling the networks instead, a design tried first, stayed calibrated on large pools
+and not on small ones (19% flagged), because a strategy with a fixed preference depends on
+a handful of networks, which is the case the bootstrap is known to handle badly.
+
+The test also shows how little one pool can establish. On pools where larger teams really
+do answer more, a strategy that picked the largest team was ahead of random choice by
+anywhere from −0.07 to +0.14 in fitness depending on the pool that was bred, and was called
+better in 1 of 18 comparisons. An advantage has to be large, or the design has to change
+(more scored questions, or more than one pool), before the benchmark can say it is real.
+`tests/test_pool.py` holds the calibration and a planted advantage large enough to find.
+
+**A network that could not be measured stopped the pool run for good.** The runner refuses
+a network whose every question failed, as it should. The pool let that refusal escape, so a
+run stopped at the network and every resume paid for it again. Such a network is now recorded
+as unmeasurable and skipped on resume; three in a row stop the run as a fault of the
+environment, with nothing recorded against them.
+
+**The price did not come from a measurement.** The plan priced 9,000 question-runs at a flat
+12,000 tokens a question: $151 on Claude Haiku 4.5. Nothing committed measured that figure,
+and the rehearsal, which draws tokens at v1's scale, spent 16,088 a question. The plan now
+prices the range committed runs have cost, 9,741 tokens a question (the designer's shape on
+20 select questions, only three of them aggregates) to 19,892 (twelve networks on the
+seventeen): $123 to $251 on Haiku, $245 to $501 on Sonnet 5, $39 to $81 on Gemini
+Flash-Lite.
+
+**Four statements in these documents were stronger than their evidence**, and are corrected
+where they stand: the holdout's 90% had no baseline, and a random network scores 85.5%; the
+ablation's 62% matches a rule with no training; the permutation null on a tied objective is
+not weak for the reason given; and a constant reply is not worthless on the judge-plus set.
+The power statement for the judge set now says which gap reaches significance and which is
+found four times in five.
 
 ## What measurement changed
 

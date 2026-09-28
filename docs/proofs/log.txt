@@ -1,15 +1,15 @@
-e88a32f Harden what a production run meets, and add a beginner's guide
-d1e8d7d Recapture the proofs and rebuild the PDFs on the final state
-84c86cc Calibrate the select set on a live run: 16 of 20 for the designer
-ec8a3de Test that training the Predictor works where the answer is known
-6d019b0 Restructure the README and move the detail into docs
-d7a96e8 Build the same-budget experiment: does the Predictor help at all?
-ac2e8ed Recapture the proofs and rebuild the PDFs on the corrected claims
-61734b6 Hold every claim to a held-out test, pin the build, harden the page
-1ced933 Say why the page cannot reach its server, and open it in a browser tab
-5144d05 Judge only the key in use, and show agent failures as errors
-ca3e719 Add a citation file
-f67e78a Add issue templates, a support guide and line-ending rules
-292b2d8 Run any model of the key's provider, even one neuro-san does not list
-0116483 Put a chosen Gemini model on its own ladder rung
-d6f6efa docs: the Predictor picks better than chance, and its gate costs it
+8f7b829 Bring the PDFs' claims in line with the audit
+23da1d6 Say which command writes the network file the guide measures
+252c35d Record the audit, and bring every claim down to its evidence
+70b7d99 Add a seam for context, so a Prescriptor has something to map from
+788d6d3 Price the paid run from what committed runs cost
+e519d2e Record a pool network that cannot be measured, and never pay for it twice
+d5761e8 Test the pool benchmark against a permutation null, Holm-adjusted
+811f2cb Say which question features read the recorded answer
+89221d0 Correct why the accuracy null was called weak
+b54bb97 Put a rule with no training beside the ablation's Predictor
+0126e54 Put a baseline beside the holdout's 90%, and say what it supports
+3a23fb9 Say how esp.measure grades a numeric answer
+ead64be Grade a measured answer by the one number it commits to
+2958325 Stop refusing answers that mention incident INC-4429 as quota failures
+0f6cb8e Document dollars, the 200-question judge set, and the pool benchmark

@@ -159,9 +159,11 @@ the web page, the accelerator UI, and running the optimiser as a service.
   its router runs a pricier model. The fitness above counts tokens, so it cannot see that;
   the pool benchmark selects on dollars (`make cost-report`).
 - **Seventeen questions cannot rank individual networks.** Selecting on half and judging on
-  the other half, the winner averages rank 7.2 of 12. What survives the split is the
-  population claim: the searched winner beats the designer's shape in **90% of 200 splits**
-  (`make holdout`).
+  the other half, the winner averages rank 7.2 of 12. The searched winner beats the
+  designer's shape in **90% of 200 splits**, but a network drawn at random from the other
+  eleven does so 85.5% of the time: the designer's shape is eleventh of twelve, so what
+  survives is that the bred population beats it on these questions, not that choosing
+  within the population worked (`make holdout`).
 - **On genuinely new questions it has not reproduced yet.** On 24 held-out bank questions,
   the evolved network measured answered 21 against the designer's 23 (`make bank-report`).
   Two discordant questions establish nothing either way.
@@ -171,8 +173,10 @@ the web page, the accelerator UI, and running the optimiser as a service.
 - **The Predictor beats chance offline.** When the first search used it, with nine
   measurements, its rank correlation was **−0.333**, worse than chance. Trained on nine of
   the twelve, it picks the best of three unseen networks **62%** of the time against 33% by
-  chance (`make ablation`). Its token-cost model ranks backwards and is excluded from the
-  fitness it ranks with.
+  chance (`make ablation`). A rule with no training, "pick the network with the most
+  agents", also picks the best 62.6% of the time, so this is not yet evidence that the
+  Predictor learned more than that. Its token-cost model ranks backwards and is excluded
+  from the fitness it ranks with.
 
 Every number above is recomputed from committed data by a test.
 [docs/FINDINGS.md](docs/FINDINGS.md) has the full measurements, the failure analysis and the
@@ -182,6 +186,11 @@ prior art.
 
 - **Twelve networks and seventeen questions are too few** to say whether the Predictor helps
   the search. The pool benchmark is built to answer that, and needs a paid key to run.
+- **The pool benchmark can only see a large difference.** Its test now counts the luck of
+  which outcomes landed on which networks. That keeps a strategy with no information from
+  being called better than random, and it shows how little one pool can establish: under
+  one planted rule, a strategy that knew the rule did anywhere from 0.07 worse to 0.14
+  better than random depending on the pool that was bred.
 - **A tree-based Predictor cannot extrapolate.** It ranks networks inside the range it has
   seen; it cannot guess that a team larger than any it measured would do better. A pool
   spread over many shapes is the remedy, not a cleverer model.
@@ -208,8 +217,11 @@ for free, the way NAS-Bench-101 and 201 made architecture-search methods compara
    networks to "pay" for by random choice, a network-level Predictor, or the per-question
    Predictor with and without an upper-confidence bonus. A search sees half the select
    questions; what it picks is scored on the other half. Scoring on the answers it chose by
-   would reward luck: on a pool of pure noise, a strategy with any consistent preference
-   looked significantly better than random until that split was added.
+   would reward luck. And each strategy's advantage is tested against the same comparison
+   on pools whose measured outcomes are shuffled across networks, Holm-adjusted across every
+   strategy and budget: with an interval over the replicates of one pool, a strategy with a
+   fixed preference and no information came out "better than random" in a third of
+   comparisons on pools of pure noise.
 3. **Judge.** The best networks by select fitness, and the designer's shape, on the 200
    judge questions none of them was chosen on, compared question by question.
 
@@ -219,11 +231,14 @@ make pool REHEARSE=1     # the whole run against a simulated provider, for $0
 make pool GO=1           # measures and judges, and resumes from the cache if stopped
 ```
 
-The plan is 9,000 question-runs: about $151 with every agent on Claude Haiku 4.5, $302 on
-Claude Sonnet 5, or $49 on Gemini Flash-Lite at the rate this project's runs have cost, at
-12,000 tokens a question. The rehearsal counts the question-runs exactly and exercises every
-stage, including a stop for quota and a resume. The earlier two-arm design, `make
-experiment`, is still available.
+The plan is 9,000 question-runs: about $123 to $251 with every agent on Claude Haiku 4.5,
+$245 to $501 on Claude Sonnet 5, or $39 to $81 on Gemini Flash-Lite at the rate this
+project's runs have cost. The range is 9,741 to 19,892 tokens a question, what committed
+runs spent: the designer's shape on 20 select questions, and twelve networks on the
+seventeen. An earlier version priced it at a flat 12,000, below its own rehearsal's
+simulated 16,088. The rehearsal counts the question-runs exactly and exercises every stage,
+including a stop for quota and a resume. The earlier two-arm design, `make experiment`, is
+still available.
 
 ## Repository layout
 

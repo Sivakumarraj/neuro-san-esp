@@ -141,7 +141,8 @@ def test_choosing_adds_little_over_a_random_member_of_the_population():
     supports the population, not the choosing; if the gap ever widens, that
     sentence has to be revisited. At the 200 splits the documents quote."""
     outcome = holdout.analyse()
-    assert outcome.any_beat_designer_rate > 0.8
+    assert round(outcome.any_beat_designer_rate, 3) == 0.855     # the README's figure
+    assert outcome.beat_designer_rate == 0.9
     assert outcome.beat_designer_rate - outcome.any_beat_designer_rate < 0.1
 
 

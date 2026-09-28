@@ -246,3 +246,15 @@ def test_the_price_comes_from_what_committed_runs_cost():
     assert low == round(calibration["tokens"] / len(calibration["results"]))
     rehearsed = json.loads((ROOT / "results" / "rehearsal" / "totals.json").read_text())
     assert low < rehearsed["tokens"] / rehearsed["question_runs"] < high
+
+
+def test_the_readme_quotes_the_price_the_plan_prints():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    plan = pool.Plan().describe()
+    for model, phrase in (("claude-haiku-4-5", "$123 to $251"),
+                          ("claude-sonnet-5", "$245 to $501"),
+                          ("gemini-3.1-flash-lite", "$39 to $81")):
+        assert f"{model}: about {phrase}" in plan
+        assert phrase in readme
+    low, high = pool.tokens_per_question()
+    assert f"{low:,} to {high:,} tokens a question" in readme
