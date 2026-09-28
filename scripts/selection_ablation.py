@@ -80,6 +80,20 @@ def ordered(held, predicted, objective: str) -> list[bool]:
             if truth[a] != truth[b]]
 
 
+def most_agents(held) -> tuple[float, float]:
+    """The pick a rule with no training makes: the network with the most
+    agents, ties shared evenly. (picked the best, regret) in expectation.
+
+    The Predictor's figure means little without it. On the committed twelve
+    this rule picks the best of three as often as the gated Predictor does,
+    because the larger teams here are also the better ones."""
+    fitness = np.array([r.fitness for r in held])
+    agents = np.array([r.agents for r in held])
+    top = np.flatnonzero(agents == agents.max())
+    return (float(np.mean(fitness[top] == fitness.max())),
+            float(fitness.max() - fitness[top].mean()))
+
+
 def _load() -> None:
     _records[:] = measurements.load()
 
@@ -92,7 +106,7 @@ def one_split(work) -> dict:
     fitness = np.array([r.fitness for r in held])
     best = fitness.max()
     chance = (float(np.mean(fitness == best)), float(best - fitness.mean()))
-    out = {"random": chance}
+    out = {"random": chance, "most_agents": most_agents(held)}
     for name, gate in (("gated", "measured"), ("ungated", ()),
                        ("no_tokens", ("tokens",))):
         chosen, gated, surrogate = pick(train, held, gate, seed)
@@ -138,6 +152,9 @@ def main() -> int:
     print(f"  {"picker":30} {'picked the best':>16} {'mean regret':>12} {'ranked':>8}")
     print(f"  {'random (exact expectation)':28} {np.mean(random_hit):>16.1%} "
           f"{np.mean(random_regret):>12.4f} {'-':>8}")
+    rule_hit, rule_regret = zip(*[r["most_agents"] for r in results], strict=True)
+    print(f"  {'most agents (no training)':28} {np.mean(rule_hit):>16.1%} "
+          f"{np.mean(rule_regret):>12.4f} {'-':>8}")
     for name, label in (("gated", "Predictor, as a wake runs it"),
                         ("ungated", "Predictor, gate switched off"),
                         ("no_tokens", "Predictor, tokens excluded")):

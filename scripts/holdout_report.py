@@ -64,11 +64,17 @@ def main() -> int:
           f"{outcome.mean_margin:>+6.4f}")
     print(f"  designer's shape mean held-out rank       : "
           f"{outcome.mean_designer_rank:>6.2f} of {outcome.population}")
+    print(f"  a network drawn at random beat it         : "
+          f"{outcome.any_beat_designer_rate:>6.1%} (mean over splits)")
     if outcome.beat_designer_rate > 0.8:
-        print("\n  YES. The population evolution produced is better than the "
-              "shape the\n  designer produces, and that holds on tasks which "
-              "took no part in\n  choosing the winner. That is the claim this "
-              "task set supports.")
+        print("\n  The designer's shape sits near the bottom of this population on\n"
+              "  held-out tasks, so almost any network in it beats the shape: the\n"
+              "  winner chosen on half the tasks does so little more often than a\n"
+              "  network drawn at random. What this supports is that the\n"
+              "  population the search bred is better than the designer's shape on\n"
+              "  these questions, not that choosing within it worked. The token\n"
+              "  term is measured on all seventeen, so it is not held out, and\n"
+              "  the parents were chosen on all seventeen.")
 
     if outcome.evolved_count and outcome.seed_count:
         print(f"\nEvolved networks against hand-written ones "

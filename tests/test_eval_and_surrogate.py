@@ -278,6 +278,31 @@ def test_quota_failures_are_never_cached_as_a_score():
     assert not _is_quota_failure(genuine)
 
 
+def test_an_answer_that_mentions_incident_4429_is_not_a_quota_failure():
+    """The quota check read "429" anywhere in the reply. Incident INC-4429 is
+    in the corpus and three questions ask about it (T13, J004, J017), so a
+    network that named it while answering had its whole evaluation refused as
+    a quota failure, never cached, and paid for again on every resume. Only
+    the error, or a reply that is neuro-san reporting an agent failure, can
+    say the provider refused."""
+    from esp.eval.runner import QuotaExhausted, TaskResult, _is_quota_failure, refuse_unmeasured
+
+    for reply, correct in (("The depot servicing incident INC-4429's contract has 4 bays.", True),
+                           ("INC-4429 was 14 hours late", False),
+                           ("The total is 14290", False),
+                           ("Quota rules are not stated in the documents", False)):
+        result = TaskResult("T13", 4, correct, 3.0, reply)
+        assert not _is_quota_failure(result), reply
+        refuse_unmeasured([result], tokens=9_000)       # must not raise
+
+    refused = TaskResult("T13", 4, False, 3.0,
+                         "Agent stopped due to exception 429 RESOURCE_EXHAUSTED: quota")
+    assert _is_quota_failure(refused)
+    with pytest.raises(QuotaExhausted):
+        refuse_unmeasured([refused], tokens=9_000)
+    assert _is_quota_failure(TaskResult("T1", 1, False, 0.0, "You exceeded your current quota"))
+
+
 # ------------------------------------------- a placeholder is not a measurement
 
 def test_rank_quality_below_the_minimum_is_none_not_zero():

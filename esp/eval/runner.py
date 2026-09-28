@@ -19,7 +19,7 @@ from pathlib import Path
 
 from esp.eval.ratelimit import install as install_rate_limit
 from esp.eval.ratelimit import install_others as install_other_rate_limits
-from esp.eval.tasks import TASKS, Task, score
+from esp.eval.tasks import TASKS, Task, grade
 from esp.genome.definition import Genome
 
 CACHE_DIR = Path(os.environ.get("ESP_CACHE", ".esp-cache"))
@@ -196,14 +196,26 @@ class QuotaExhausted(OSError):
 
 
 _QUOTA_MARKERS = ("RESOURCE_EXHAUSTED", "429", "quota", "exceeded your current quota")
+# Markers no answer about the Meridian corpus can contain by accident.
+_UNAMBIGUOUS_QUOTA_MARKERS = ("RESOURCE_EXHAUSTED", "exceeded your current quota")
 
 
 def _is_quota_failure(result: TaskResult) -> bool:
     """Whether a task failed because the provider refused, not because the
     network was wrong. Timeouts count: when a daily cap is hit, calls queue
-    behind a retry that never succeeds and the agent is cancelled."""
-    blob = f"{result.error} {result.answer}"
-    return any(marker in blob for marker in _QUOTA_MARKERS)
+    behind a retry that never succeeds and the agent is cancelled.
+
+    The loose markers are read only where the harness or neuro-san speaks: the
+    error, and a reply that is an agent failure. Read in any reply they matched
+    a network's own words -- incident INC-4429 is in the corpus, and three
+    questions ask about it -- and refused a real measurement as a quota
+    failure, which a resume then paid for again, every time."""
+    if result.correct:
+        return False
+    if any(marker in result.error for marker in _QUOTA_MARKERS):
+        return True
+    markers = _QUOTA_MARKERS if never_answered(result.answer) else _UNAMBIGUOUS_QUOTA_MARKERS
+    return any(marker in result.answer for marker in markers)
 
 
 # Failures that are the harness giving up, not the network answering wrongly.
@@ -274,8 +286,7 @@ def run_suite(hocon_path: str, tasks: list[Task], workers: int = MAX_WORKERS,
         try:
             answer, accounting, seconds = _ask(hocon_path, task.question)
             kept = answer if answer_limit is None else answer[:answer_limit]
-            return TaskResult(task.task_id, task.hops,
-                              score(task.accepted or (task.answer,), answer),
+            return TaskResult(task.task_id, task.hops, grade(task, answer),
                               round(seconds, 2), kept), accounting
         except Exception as exc:
             return TaskResult(task.task_id, task.hops, False, 0.0, "",

@@ -367,18 +367,37 @@ def test_a_shuffled_target_does_not_beat_its_own_null():
 def test_the_null_is_only_meaningful_on_an_untied_objective():
     """Why the test above uses tokens, pinned so nobody moves it to accuracy.
 
-    A permutation null on a heavily tied target measures less than it looks
-    like it does. This records which of the two objectives is safe.
+    Token cost is distinct per network and accuracy takes four values across
+    twelve. The documents once said the ties make accuracy's null weak because
+    a shuffle "leaves the ordering largely intact"; that was wrong (the test
+    below), but token cost is still the objective the finding is about, and
+    the tie count is recorded here.
     """
     accuracies = {o.accuracy for o in OUTCOMES}
     tokens = {o.tokens for o in OUTCOMES}
 
-    assert len(tokens) == len(OUTCOMES), (
-        "token cost is distinct per network, which is what makes its "
-        "permutation null trustworthy")
+    assert len(tokens) == len(OUTCOMES), "token cost is distinct per network"
     assert len(accuracies) < len(OUTCOMES) / 2, (
         "accuracy is heavily tied -- if that stops being true, the caveat in "
         "docs/FINDINGS.md about its null should be revisited")
+
+
+def test_a_shuffle_decorrelates_a_tied_objective_as_fully_as_an_untied_one():
+    """The claim this corrects: that a permutation of a tied target often maps
+    a value onto an identical one and so leaves the ordering largely intact.
+    It does not. A shuffled copy of accuracy correlates with the original no
+    more than a shuffled copy of token cost does, in mean and in spread."""
+    from scipy.stats import spearmanr
+
+    rng = np.random.default_rng(0)
+    spread = {}
+    for name in ("accuracy", "tokens"):
+        values = np.array([getattr(o, name) for o in OUTCOMES], dtype=float)
+        rhos = np.array([spearmanr(values, values[rng.permutation(len(values))]).statistic
+                         for _ in range(4000)])
+        assert abs(rhos.mean()) < 0.03, (name, rhos.mean())
+        spread[name] = rhos.std()
+    assert abs(spread["accuracy"] - spread["tokens"]) < 0.03, spread
 
 
 def test_the_null_is_absent_rather_than_assumed_when_not_measured():

@@ -243,14 +243,16 @@ def permutation_null(matrix: np.ndarray, values: np.ndarray, folds: list,
     in the wrong direction. Reporting a real -0.61 against an assumed null of
     0 turns a modest effect into a dramatic one.
 
-    **One limit, and it decides which objective this can be trusted on.** A
-    permutation only destroys a relationship if permuting moves the values.
-    Accuracy takes four distinct values across the twelve committed
-    measurements, so a shuffle often maps a value onto an identical one and
-    leaves the ordering largely intact -- one shuffled draw scored +0.88. Its
-    null is therefore weak. Token cost is distinct in all twelve, so its null
-    is sound, and token cost is the objective the published finding is about.
-    A caller reporting this on a tied objective should say so.
+    **On ties.** Accuracy takes four distinct values across the twelve
+    committed measurements. An earlier version of this docstring said that a
+    shuffle therefore often maps a value onto an identical one and leaves the
+    ordering largely intact, so accuracy's null was weak. That is not so: a
+    shuffled copy of accuracy correlates with the original no more than a
+    shuffled copy of token cost does, in mean and in spread
+    (`test_a_shuffle_decorrelates_a_tied_objective_as_fully_as_an_untied_one`).
+    Accuracy's null moves more between fold seeds than token cost's for a
+    reason twelve samples do not show. Token cost is the objective the
+    published finding is about.
     """
     rng = np.random.default_rng(seed)
     found = []

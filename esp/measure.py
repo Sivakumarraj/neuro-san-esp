@@ -16,7 +16,10 @@ A question file is JSON Lines, one question per line:
 
 `answer` or `answers` lists what counts as correct; a reply is correct if it
 *contains* one of them (numbers match on whole-number boundaries, so "4" does
-not match "INC-4429"). `id` and `hops` are optional. With no `--tasks`, the
+not match "INC-4429"). A numeric answer must also be the one number the reply
+states, apart from numbers the question gives, so a reply that lists numbers
+does not score by containing the right one (`esp.eval.tasks.grade`). `id` and
+`hops` are optional. With no `--tasks`, the
 built-in seventeen-question Meridian Logistics benchmark is used, which needs a
 network whose tools can search the Meridian corpus. `--tasks meridian-bank` is the
 250-question held-out bank over the same corpus, and `meridian-bank:40` its first

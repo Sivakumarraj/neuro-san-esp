@@ -51,7 +51,10 @@ MIN_NETWORKS = 6
 
 
 def question_features(task: Task) -> np.ndarray:
-    """What a question asks, read from the question itself."""
+    """What a question asks. Five features are read from the question text;
+    `unanswerable` and `numeric` also read the recorded answer, which the
+    question set knows and a network does not, so they describe the question,
+    not anything a network said."""
     text = task.question
     unanswerable = (task.answer == "not stated")
     return np.array([

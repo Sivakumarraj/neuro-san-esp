@@ -89,6 +89,65 @@ def score(expected: str | Sequence[str], produced: str) -> bool:
     return any(_matches(one, produced) for one in options)
 
 
+_NUMBER = re.compile(r"(?<![\w.-])\d+(?:\.\d+)?(?![\w-])(?!\.\d)")
+_NUMERIC = re.compile(r"\d+(?:\.\d+)?")
+
+
+def _numbers(text: str) -> set[str]:
+    """The standalone numbers in a text, as `_matches` reads them: not the
+    digits inside D05, C-2118 or INC-4429."""
+    return set(_NUMBER.findall(normalise(text)))
+
+
+def _without_question(reply: str, question: str) -> str:
+    """The reply with any sentence of the question it repeats taken out.
+
+    Every judge-plus question ends "... or 'not stated' if the documents do
+    not say", so a reply that echoed the question contained an accepted
+    abstention and scored right on every unanswerable one."""
+    left = normalise(reply)
+    for sentence in re.split(r"(?<=[.?!])\s+", question):
+        piece = normalise(sentence)
+        if len(piece) >= 20:
+            left = left.replace(piece, " ")
+    return left
+
+
+def grade(task: Task, reply: str) -> bool:
+    """Whether a measurement counts `reply` as the right answer to `task`.
+
+    `score` is containment, which is right for names and for a page that asks
+    a network to explain. As a measurement it has two holes, both closed here:
+
+    * **A reply that lists numbers.** Every numeric question asks for "the
+      number only", and a number is right only if it is the one number the
+      reply commits to. Containment scored "0 1 2 ... 20" right on 90 of the
+      200 judge questions, whose answers are mostly small counts, and a
+      network that lists the records it found says small numbers by accident.
+      Numbers the question itself states (a year, a threshold) are ignored.
+    * **A reply that repeats the question**, which scored right on every
+      unanswerable question, because the question carries the words "not
+      stated". Sentences of the question are removed before matching. And an
+      abstention that also states a number ("not stated ... 12 hours") has
+      not abstained: the question asked for the number only, or "not stated".
+
+    Every committed measurement's verdict is unchanged by this: no committed
+    reply held more than one number or repeated its question, and a test
+    re-grades all of them."""
+    if not reply:
+        return False
+    options = tuple(task.accepted or (task.answer,))
+    left = _without_question(reply, task.question)
+    if not score(options, left):
+        return False
+    wanted = {normalise(o) for o in options if _NUMERIC.fullmatch(normalise(o))}
+    if not wanted and "number only" not in task.question.lower():
+        return True
+    # A question that asks for the number only, answered with an abstention,
+    # is answered only if the reply states no number of its own.
+    return not (_numbers(left) - wanted - _numbers(task.question))
+
+
 def build_tasks(world: World | None = None) -> list[Task]:
     world = world or build_world()
     tasks: list[Task] = []

@@ -133,6 +133,18 @@ def test_searching_still_beat_not_searching(outcome):
         "the designer's shape now ranks better than the searched winner")
 
 
+def test_choosing_adds_little_over_a_random_member_of_the_population():
+    """What the 90% is worth. A network drawn at random from the other eleven
+    beats the designer's shape on held-out tasks almost as often as the
+    winner chosen on the selection half does, because the designer's shape
+    sits near the bottom of this population. The documents say the 90%
+    supports the population, not the choosing; if the gap ever widens, that
+    sentence has to be revisited. At the 200 splits the documents quote."""
+    outcome = holdout.analyse()
+    assert outcome.any_beat_designer_rate > 0.8
+    assert outcome.beat_designer_rate - outcome.any_beat_designer_rate < 0.1
+
+
 def test_the_evolved_population_outranks_the_seeds(outcome):
     """The population-level claim, which is the robust one: whatever the search
     cannot do about picking a single winner, what it produced is better than

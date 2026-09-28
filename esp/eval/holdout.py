@@ -86,6 +86,11 @@ class Outcome:
     # Held-out fitness of the selection winner minus that of the designer's
     # shape, per split. Positive means searching beat not searching.
     margins: list[float] = field(default_factory=list)
+    # The baseline the margins need: per split, the share of the other
+    # networks that beat the designer's shape on the held-out half with no
+    # choosing at all. The searched winner's rate means something only
+    # against this.
+    any_beat_designer: list[float] = field(default_factory=list)
     winners: dict[str, int] = field(default_factory=dict)
     # How well the whole population's ordering carries across the split, by
     # fitness and by accuracy alone. The pair is the diagnostic: a low fitness
@@ -140,6 +145,14 @@ class Outcome:
         if not self.margins:
             return 0.0
         return sum(1 for margin in self.margins if margin > 0) / len(self.margins)
+
+    @property
+    def any_beat_designer_rate(self) -> float:
+        """How often a network drawn at random from the rest of the population,
+        with no selection, beat the designer's shape on held-out tasks."""
+        if not self.any_beat_designer:
+            return 0.0
+        return sum(self.any_beat_designer) / len(self.any_beat_designer)
 
     @property
     def mean_margin(self) -> float:
@@ -265,6 +278,10 @@ def analyse(cache_dir=None, splits: int = SPLITS, seed: int = 20260821,
             outcome.designer_ranks.append(designer_rank)
             outcome.margins.append(chosen.fitness_on(held_out)
                                    - designer.fitness_on(held_out))
+            others = [n for n in population if n.genome_hash != designer.genome_hash]
+            outcome.any_beat_designer.append(
+                sum(n.fitness_on(held_out) > designer.fitness_on(held_out)
+                    for n in others) / len(others))
 
         if evolved and seeds:
             if (_best_on(evolved, selection).fitness_on(held_out)
