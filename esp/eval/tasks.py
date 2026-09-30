@@ -73,7 +73,9 @@ def _matches(expected: str, produced: str) -> bool:
         # with the bare value, and wrong on every explained answer.
         pattern = rf"(?<![\w.-]){re.escape(want)}(?![\w-])(?!\.\d)"
         return re.search(pattern, got) is not None
-    return want in got
+    # An article is phrasing, not the answer: "bridge closure" names the same
+    # cause as the key's "a bridge closure", and was scored wrong on a live run.
+    return want in got or re.sub(r"^(?:a|an|the) ", "", want) in got
 
 
 def score(expected: str | Sequence[str], produced: str) -> bool:

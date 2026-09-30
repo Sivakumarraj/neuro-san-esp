@@ -25,6 +25,11 @@ results/*
 !results/experiment/summary.json
 !results/experiment/*/
 !results/experiment/*/history.json
+# Live reruns and the head-to-head: every reply, kept as measured.
+!results/live/
+!results/live/**
+!results/headtohead/
+!results/headtohead/**
 
 # The live cache is machine-local and quota-dependent. The committed
 # measurements live in tests/fixtures/cache instead, so CI can reproduce them.

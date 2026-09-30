@@ -280,10 +280,22 @@ def prime(models: list[str]) -> None:
         _retired.update(models)
 
 
+# ESP_PIN_MODELS=1 turns failover off: an exhausted model stops the run instead
+# of being replaced. A comparison needs it. On a live run the ladder moved every
+# agent of two networks onto one model mid-comparison, which erased the one
+# difference between them -- which model the router ran -- and the comparison
+# measured the designer against the designer plus a copy.
+PINNED = os.environ.get("ESP_PIN_MODELS", "").strip().lower() in ("1", "true", "yes")
+
+
 def retire(model: str, reason: str = "daily quota exhausted") -> str | None:
-    """Retire a model and return the next usable one, or None if none remain."""
+    """Retire a model and return the next usable one, or None if none remain
+    or models are pinned."""
     with _lock:
         _retired.add(model)
+        if PINNED:
+            _swaps.append({"from": model, "to": None, "reason": reason + ", pinned"})
+            return None
         for candidate in LADDER:
             if candidate not in _retired:
                 _swaps.append({"from": model, "to": candidate, "reason": reason})
@@ -295,7 +307,7 @@ def retire(model: str, reason: str = "daily quota exhausted") -> str | None:
 def substitute(model: str) -> str:
     """The model to actually call, given one may have been retired."""
     with _lock:
-        if model not in _retired:
+        if model not in _retired or PINNED:
             return model
         for candidate in LADDER:
             if candidate not in _retired:

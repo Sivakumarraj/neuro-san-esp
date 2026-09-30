@@ -758,6 +758,54 @@ not weak for the reason given; and a constant reply is not worthless on the judg
 The power statement for the judge set now says which gap reaches significance and which is
 found four times in five.
 
+## Two live reruns, and the head-to-head they led to
+
+On 2026-09-29 the designer's shape and `mut:reassign_model` 6859dd, the evolved network
+with 32% fewer tokens on the seventeen, were asked judge questions on a free Gemini key.
+The raw logs are in `results/live/2026-09-29/`. They are not in the fitness cache and
+change no committed measurement.
+
+| Run | Questions | Designer's shape | 6859dd |
+| :-- | :-- | :-- | :-- |
+| 1 | J001 to J020 | 17 / 20, one unfinished (a 503), 137,124 tokens, $0.046 | 18 / 20, 329,320 tokens, $0.111 |
+| 2 | J021 to J036 | 15 / 16, 199,492 tokens, $0.080 | 15 / 16, 323,544 tokens, $0.123 |
+
+On questions neither network was chosen on, the accuracy was level and the evolved network
+spent about twice the tokens and dollars. Three things in the data explain more than the
+headline does.
+
+**The second run was not a comparison.** The free quota of `gemini-3.1-flash-lite`, the
+model every worker and the designer's router run, was spent before it started, and failover
+moved every agent of both networks onto `gemini-3.5-flash-lite`, the model 6859dd's router
+already ran. The one difference between the two networks was erased: the run measured the
+designer's shape against itself plus a copy. Whether the first run swapped part-way is not
+recorded. A comparison now pins its models (`ESP_PIN_MODELS=1`): an exhausted model stops
+the run instead of being replaced. Both networks also replied "bridge closure" to J036,
+whose key is "a bridge closure", and were scored wrong; an answer named without the key's
+leading article is now accepted.
+
+**The copy is dead weight, and it sets the noise floor.** `split_agent` gives a specialist
+a twin with identical instructions, description, tools and model, and no operator ever
+makes them diverge. Five of the twelve committed networks carry one. Removing it from two
+of them, `deca12e` and `bb3340f`, gives back the designer's genome exactly, and both scored
+15 / 17 to the designer's 14 / 17: the same capability, one question apart. A one-question
+lead on the seventeen is inside what one draw of a network varies by.
+
+**What is left is the router's model.** The two networks ahead of the designer that a copy
+does not explain both promoted the Coordinator and left every worker on the cheap model.
+Pruning the committed best, `3bf9c00`, gives the designer's network with a stronger router
+and nothing else (`esp/genome/prune.py`). That is the claim the search's data can still
+support, and it has not yet been tested on questions it was not chosen on.
+
+`make headtohead` tests it: the designer's shape against the pruned champion, both moved
+rung for rung onto the configured provider, on the first 100 judge questions, twice each,
+interleaved four questions at a time with the order alternating, models pinned, under a
+hard dollar cap enforced on the larger of the provider's reported cost and the list price
+of the tokens it reported. Every chunk is logged as it lands and a stopped run resumes. On
+OpenAI, with the workers on `gpt-5.4-nano` and a promoted router on `gpt-5.4-mini`, the plan
+is 400 question-runs estimated at $3.75 against a $4.50 cap. `make headtohead REHEARSE=1`
+runs it end to end against a simulated provider for $0.
+
 ## What measurement changed
 
 Every item here was found by running the system, not by reasoning about it. Most of

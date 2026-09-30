@@ -231,6 +231,14 @@ make pool REHEARSE=1     # the whole run against a simulated provider, for $0
 make pool GO=1           # measures and judges, and resumes from the cache if stopped
 ```
 
+A smaller paid test comes first. Two live reruns on judge questions found the evolved
+network level on accuracy at about twice the tokens, and that two committed "evolved"
+networks are the designer's own network plus an exact copy of one specialist, one question
+ahead on the seventeen (docs/FINDINGS.md, "Two live reruns"). What survives is a stronger
+model on the router. `make headtohead` puts the designer against the champion with its copy
+removed, on 100 judge questions, twice, models pinned, under a hard dollar cap; `REHEARSE=1`
+runs it for $0.
+
 The plan is 9,000 question-runs: about $123 to $251 with every agent on Claude Haiku 4.5,
 $245 to $501 on Claude Sonnet 5, or $39 to $81 on Gemini Flash-Lite at the rate this
 project's runs have cost. The range is 9,741 to 19,892 tokens a question, what committed

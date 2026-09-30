@@ -1,0 +1,233 @@
+{
+  "network": ".esp-networks/6859dda0dfabcf2d.hocon",
+  "suite": "meridian-judge-200:20",
+  "questions_asked": 20,
+  "accuracy": 0.9,
+  "answered_accuracy": 0.9,
+  "unfinished": 0,
+  "tokens": 329320,
+  "cost": 0.110887,
+  "seconds": 1060.4,
+  "results": [
+    {
+      "task_id": "J001",
+      "hops": 1,
+      "correct": true,
+      "seconds": 65.86,
+      "answer": "16",
+      "error": "",
+      "infrastructure": false,
+      "question": "How many loading bays does Meridian Logistics depot D19 have? Answer with the number only.",
+      "expected": "16"
+    },
+    {
+      "task_id": "J002",
+      "hops": 2,
+      "correct": true,
+      "seconds": 70.27,
+      "answer": "1998",
+      "error": "",
+      "infrastructure": false,
+      "question": "In what year did the depot that services the contract with client Verity Health open? Answer with the number only.",
+      "expected": "1998"
+    },
+    {
+      "task_id": "J003",
+      "hops": 3,
+      "correct": true,
+      "seconds": 186.64,
+      "answer": "2015",
+      "error": "",
+      "infrastructure": false,
+      "question": "Incident INC-4451 affected a contract. In what year did the depot servicing that contract open? Answer with the number only.",
+      "expected": "2015"
+    },
+    {
+      "task_id": "J004",
+      "hops": 4,
+      "correct": false,
+      "seconds": 133.7,
+      "answer": "1015625",
+      "error": "",
+      "infrastructure": false,
+      "question": "Incidents INC-4433 and INC-4429 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.",
+      "expected": "90875"
+    },
+    {
+      "task_id": "J005",
+      "hops": 6,
+      "correct": true,
+      "seconds": 309.56,
+      "answer": "5",
+      "error": "",
+      "infrastructure": false,
+      "question": "Incidents INC-4440 and INC-4453 each affected a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.",
+      "expected": "5"
+    },
+    {
+      "task_id": "J006",
+      "hops": 9,
+      "correct": true,
+      "seconds": 233.4,
+      "answer": "24",
+      "error": "",
+      "infrastructure": false,
+      "question": "Incidents INC-4420, INC-4445 and INC-4426 each affected a contract serviced by a different depot. How many loading bays do those three depots have in total? Answer with the number only.",
+      "expected": "24"
+    },
+    {
+      "task_id": "J007",
+      "hops": 2,
+      "correct": true,
+      "seconds": 109.99,
+      "answer": "31",
+      "error": "",
+      "infrastructure": false,
+      "question": "Across every incident in 2025 caused by a mis-picked pallet, how many hours late is that in total? Answer with the number only.",
+      "expected": "31"
+    },
+    {
+      "task_id": "J008",
+      "hops": 1,
+      "correct": true,
+      "seconds": 120.36,
+      "answer": "16",
+      "error": "",
+      "infrastructure": false,
+      "question": "How many loading bays does Meridian Logistics depot D02 have? Answer with the number only.",
+      "expected": "16"
+    },
+    {
+      "task_id": "J009",
+      "hops": 2,
+      "correct": true,
+      "seconds": 64.07,
+      "answer": "165000",
+      "error": "",
+      "infrastructure": false,
+      "question": "Incident INC-4438 ran late. At the late-delivery penalty rate of its contract, what penalty is owed? Answer with the number only.",
+      "expected": "165000"
+    },
+    {
+      "task_id": "J010",
+      "hops": 3,
+      "correct": true,
+      "seconds": 245.58,
+      "answer": "R. Delacroix",
+      "error": "",
+      "infrastructure": false,
+      "question": "Incident INC-4453 affected a contract serviced by a depot. Who is that depot's manager?",
+      "expected": "R. Delacroix"
+    },
+    {
+      "task_id": "J011",
+      "hops": 4,
+      "correct": false,
+      "seconds": 62.22,
+      "answer": "48625",
+      "error": "",
+      "infrastructure": false,
+      "question": "Incidents INC-4455 and INC-4421 both ran late. Charging each at its own contract's late-delivery penalty rate, by how much does the larger penalty exceed the smaller? Answer with the number only.",
+      "expected": "31625"
+    },
+    {
+      "task_id": "J012",
+      "hops": 6,
+      "correct": true,
+      "seconds": 174.31,
+      "answer": "28",
+      "error": "",
+      "infrastructure": false,
+      "question": "Incidents INC-4423 and INC-4450 each affected a contract serviced by a depot. How many loading bays do those two depots have between them? Answer with the number only.",
+      "expected": "28"
+    },
+    {
+      "task_id": "J013",
+      "hops": 9,
+      "correct": true,
+      "seconds": 118.35,
+      "answer": "32",
+      "error": "",
+      "infrastructure": false,
+      "question": "Incidents INC-4451, INC-4430 and INC-4412 each affected a contract serviced by a different depot. How many loading bays do those three depots have in total? Answer with the number only.",
+      "expected": "32"
+    },
+    {
+      "task_id": "J014",
+      "hops": 3,
+      "correct": true,
+      "seconds": 53.61,
+      "answer": "3",
+      "error": "",
+      "infrastructure": false,
+      "question": "How many incidents in 2025 were caused by a bridge closure? Answer with the number only.",
+      "expected": "3"
+    },
+    {
+      "task_id": "J015",
+      "hops": 1,
+      "correct": true,
+      "seconds": 53.39,
+      "answer": "refrigerated pharmaceuticals",
+      "error": "",
+      "infrastructure": false,
+      "question": "What goods are carried under contract C-2120?",
+      "expected": "refrigerated pharmaceuticals"
+    },
+    {
+      "task_id": "J016",
+      "hops": 2,
+      "correct": true,
+      "seconds": 66.98,
+      "answer": "Consumer electronics",
+      "error": "",
+      "infrastructure": false,
+      "question": "What goods were carried under the contract affected by incident INC-4456?",
+      "expected": "consumer electronics"
+    },
+    {
+      "task_id": "J017",
+      "hops": 3,
+      "correct": true,
+      "seconds": 302.05,
+      "answer": "4",
+      "error": "",
+      "infrastructure": false,
+      "question": "How many loading bays does the depot have that services the contract affected by incident INC-4429? Answer with the number only.",
+      "expected": "4"
+    },
+    {
+      "task_id": "J018",
+      "hops": 4,
+      "correct": true,
+      "seconds": 184.51,
+      "answer": "3",
+      "error": "",
+      "infrastructure": false,
+      "question": "Clients Ellesmere Pumps and Brackenhill Seeds each hold a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.",
+      "expected": "3"
+    },
+    {
+      "task_id": "J019",
+      "hops": 6,
+      "correct": true,
+      "seconds": 495.88,
+      "answer": "7",
+      "error": "",
+      "infrastructure": false,
+      "question": "Incidents INC-4456 and INC-4415 each affected a contract serviced by a depot. How many years apart did those two depots open? Answer with the number only.",
+      "expected": "7"
+    },
+    {
+      "task_id": "J020",
+      "hops": 9,
+      "correct": true,
+      "seconds": 120.98,
+      "answer": "34",
+      "error": "",
+      "infrastructure": false,
+      "question": "Incidents INC-4423, INC-4421 and INC-4433 each affected a contract serviced by a different depot. How many loading bays do those three depots have in total? Answer with the number only.",
+      "expected": "34"
+    }
+  ]
+}

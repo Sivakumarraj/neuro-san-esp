@@ -78,6 +78,9 @@ def test_multi_hop_tasks_really_need_more_than_one_document():
     ("4500", "The total penalty owed is 4500. INC-4401 affected it.", True),
     ("4500", "4500.5", False),
     ("4500", "a ratio of 1.4500", False),
+    # A cause named without the key's article is the same cause.
+    ("a bridge closure", "bridge closure", True),
+    ("a bridge closure", "storm damage", False),
 ])
 def test_score(expected, produced, want):
     assert score(expected, produced) is want

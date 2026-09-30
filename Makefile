@@ -1,4 +1,4 @@
-.PHONY: install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool experiment guide check-key smoke measure figures ablation probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
+.PHONY: install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool headtohead experiment guide check-key smoke measure figures ablation probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -77,6 +77,12 @@ cost-report:
 # $0; GO=1 spends. Resumes from the cache if stopped.
 pool:
 	PYTHONPATH=$$PWD AGENT_TOOL_PATH=$$PWD python scripts/pool_benchmark.py $(if $(GO),--go,) $(if $(REHEARSE),--rehearse --replicates 100,)
+
+# The designer against the champion with its copy removed, on unseen judge
+# questions, repeated, under a hard dollar cap. Plan only unless GO=1 (paid) or
+# REHEARSE=1 (simulated, $0). Resumes from its log if stopped.
+headtohead:
+	PYTHONPATH=$$PWD AGENT_TOOL_PATH=$$PWD python scripts/headtohead.py $(if $(GO),--go,) $(if $(REHEARSE),--rehearse,) $(if $(BUDGET),--budget $(BUDGET),)
 
 # The same-budget experiment: a Predictor-guided search against a random-choice
 # one, each selecting on meridian-select and judged on meridian-judge. Prints the

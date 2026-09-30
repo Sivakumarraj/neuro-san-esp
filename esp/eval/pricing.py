@@ -32,6 +32,10 @@ PRICES: dict[str, tuple[float, float]] = {
     "claude-haiku-4-5": (1.00, 5.00),
     "claude-sonnet-5": (2.00, 10.00),
     "claude-opus-5-5": (4.00, 20.00),
+    # OpenAI list prices, read 2026-09-30.
+    "gpt-5.4-nano": (0.20, 1.25),
+    "gpt-5.4-mini": (0.75, 4.50),
+    "gpt-5.5": (5.00, 30.00),
 }
 # Blended $/M tokens measured on committed Gemini runs (0.29 to 0.50 across
 # networks, depending on which model the router runs).
