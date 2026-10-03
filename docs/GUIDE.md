@@ -131,6 +131,11 @@ question really costs on that provider, and set a spending limit on the key itse
 provider's console. A stop for quota or a restart resumes from the cache; nothing is paid
 for twice.
 
+`ESP_SEARCH_RESULTS` sets how many documents `CorpusSearch` returns. Every committed
+measurement used the default, 3; the README's headline used 10, because at 3 a question
+about every incident of some kind cannot be answered. Never compare runs made at
+different values.
+
 ### On Google's free tier
 
 Gemini's free tier caps requests per model per day, and some models cannot fund a single
@@ -221,6 +226,11 @@ deployment already knows. It is told to state no number its tools did not return
 poking it starts a paid evaluation.
 
 ## Serve the champion as an ordinary agent
+
+"Champion" here, on the web page and in the accelerator UI means rank 1 of the twelve
+networks measured on the 17 built-in questions. On held-out judge questions that network
+tied the designer at 2.2× the cost; the held-out result is in the README's headline and in
+[FINDINGS](FINDINGS.md#the-paid-runs).
 
 ```bash
 python scripts/serve_champion.py   # writes registries/champion.hocon

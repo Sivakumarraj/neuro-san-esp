@@ -3,7 +3,11 @@
     python scripts/select_and_judge.py networks                      # list them; nothing spent
     python scripts/select_and_judge.py mutants                       # the search's children of flat
     python scripts/select_and_judge.py measure 2cc4 --suite judge --out DIR --budget 0.40 --go
+    python scripts/select_and_judge.py measure 2cc4 --promote Researcher --suite judge ...
     python scripts/select_and_judge.py summary results/headtohead/paid-2026-10
+
+Stages 7 and 8 of the committed runs set ESP_SEARCH_RESULTS=10 (esp/eval/corpus_tool.py);
+everything before them used the default of 3. Never compare across the two.
 
 Every network here runs on the configured provider rung for rung (esp/serving.py).
 A network is chosen on `meridian-select` (60 questions, one half of the company)
@@ -41,7 +45,9 @@ SEARCH_CHILDREN = 8
 SEARCH_OPERATORS = ["add_agent", "remove_agent", "rewire", "split_agent",
                     "merge_agents", "toggle_search"]
 
-# Networks the committed Gemini search measured, named by what they are.
+# Networks the committed Gemini search measured, named by what they are. Two of
+# them, flat and solo, are hand-written seeds the search started from, not
+# networks it found; `origin_of` says which.
 COMMITTED = {
     "flat": "c3ee2e0c4a6156c5",
     "mergeA": "39fd57c6e575c298",
@@ -83,6 +89,21 @@ def mutants() -> dict[str, tuple[str, object]]:
     return out
 
 
+# The committed measurements of the three hand-written seeds, by the hash they
+# were measured under (tests/fixtures/cache/). Fixed, because a hash recomputed
+# here carries whatever provider is configured and would match nothing.
+SEED_HASHES = {"459ac1a66d925b0c": "designer_shaped",
+               "c3ee2e0c4a6156c5": "flat_pair",
+               "cbe128a617466fe9": "solo"}
+
+
+def origin_of(genome_hash: str) -> str:
+    """Where a committed network came from: a hand-written seed, or the search."""
+    if genome_hash in SEED_HASHES:
+        return f"{genome_hash} (hand-written seed:{SEED_HASHES[genome_hash]}), copies removed"
+    return f"{genome_hash} (found by the Gemini search), copies removed"
+
+
 def network(name: str):
     """A named network, a committed hash, or a child of flat by hash prefix."""
     from esp.genome.seeds import designer_shaped
@@ -90,11 +111,41 @@ def network(name: str):
     if name == "designer":
         return designer_shaped(), "seed:designer_shaped"
     if name in COMMITTED:
-        return _committed(COMMITTED[name]), f"{COMMITTED[name]} (Gemini search), copies removed"
+        return _committed(COMMITTED[name]), origin_of(COMMITTED[name])
     for genome_hash, (op, genome) in mutants().items():
         if genome_hash.startswith(name):
             return genome, f"{genome_hash}: {op} on flat (paid search)"
-    return _committed(name), f"{name} (Gemini search), copies removed"
+    return _committed(name), origin_of(name)
+
+
+SUITES = ("select", "judge", "judge-plus")
+
+
+def suite_tasks(name: str) -> list:
+    """select: S01-S60. judge: J001-J100. judge-plus: P001-P100, the temporal,
+    filtered, compare and unanswerable kinds no other set asks."""
+    from esp.eval.judge_plus import JUDGE_PLUS
+    from esp.eval.suites import JUDGE, SELECT
+
+    return {"select": SELECT, "judge": JUDGE, "judge-plus": JUDGE_PLUS}[name]
+
+
+def contender_for(name: str, label: str | None = None, promote: list[str] | None = None):
+    """A named network on the configured provider, with any `promote`d agent
+    moved to the top model rung after the move, so it lands on the provider's
+    stronger model whatever rung the committed genome had it on."""
+    from esp.evolve import headtohead as h2h
+    from esp.genome.definition import MODEL_TIERS
+    from esp.serving import measurable
+
+    genome, origin = network(name)
+    served = measurable(genome).genome
+    for agent in promote or []:
+        if agent not in served.agents:
+            raise SystemExit(f"{name} has no agent {agent!r}: {sorted(served.agents)}")
+        served.agents[agent].model = MODEL_TIERS[-1]
+        origin += f", {agent} on {MODEL_TIERS[-1]}"
+    return h2h.Contender(label or name, served, origin)
 
 
 def summarise(rows: list[dict]) -> dict:
@@ -159,7 +210,9 @@ def main(argv: list[str] | None = None) -> int:
     m = sub.add_parser("measure")
     m.add_argument("network", help="designer, a committed name, a hash, or a child's hash prefix")
     m.add_argument("--label", default=None)
-    m.add_argument("--suite", choices=("select", "judge"), default="select")
+    m.add_argument("--suite", choices=SUITES, default="select")
+    m.add_argument("--promote", action="append", default=[], metavar="AGENT",
+                   help="run this agent on the top model rung; repeat for more")
     m.add_argument("--repeats", type=int, default=1)
     m.add_argument("--budget", type=float, default=0.40, help="hard cap in dollars")
     m.add_argument("--out", required=True)
@@ -197,13 +250,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{genome_hash}  {op:14} {shape}")
         return 0
 
-    from esp.eval.suites import JUDGE, SELECT
     from esp.evolve import headtohead as h2h
 
-    genome, origin = network(args.network)
-    contender = h2h.Contender(args.label or args.network, measurable(genome).genome, origin)
-    tasks = SELECT if args.suite == "select" else JUDGE
-    plan = h2h.Plan(tasks, args.repeats, args.budget, [contender])
+    contender = contender_for(args.network, args.label, args.promote)
+    origin = contender.origin
+    plan = h2h.Plan(suite_tasks(args.suite), args.repeats, args.budget, [contender])
     print(f"{contender.label}: {contender.genome_hash}  {origin}")
     print(plan.describe())
     if not args.go:

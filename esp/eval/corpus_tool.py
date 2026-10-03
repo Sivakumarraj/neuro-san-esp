@@ -8,6 +8,7 @@ that returns the same documents for the same query forever.
 
 from __future__ import annotations
 
+import os
 import re
 from typing import Any
 
@@ -20,7 +21,12 @@ _STOP = {"the", "a", "an", "of", "for", "is", "are", "was", "were", "which",
          "what", "who", "and", "or", "to", "in", "on", "at", "by", "with",
          "that", "this", "it", "its", "answer", "number", "only"}
 
-MAX_RESULTS = 3
+# Every committed measurement used 3. At 3 a "find every incident that..."
+# question cannot be answered from one search: "mis-picked" appears in 8
+# documents and depot D05 in 4, so the rest are cut off and the network counts
+# short. ESP_SEARCH_RESULTS raises it for a run; results measured at one value
+# are never compared with results measured at another.
+MAX_RESULTS = int(os.environ.get("ESP_SEARCH_RESULTS", "3"))
 
 
 def _terms(text: str) -> list[str]:

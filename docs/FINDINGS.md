@@ -795,7 +795,7 @@ lead on the seventeen is inside what one draw of a network varies by.
 does not explain both promoted the Coordinator and left every worker on the cheap model.
 Pruning the committed best, `3bf9c00`, gives the designer's network with a stronger router
 and nothing else (`esp/genome/prune.py`). That is the claim the search's data can still
-support, and it has not yet been tested on questions it was not chosen on.
+support. Tested on questions it was not chosen on, it did not hold (stage 1 below).
 
 `make headtohead` tests it: the designer's shape against the pruned champion, both moved
 rung for rung onto the configured provider, on the first 100 judge questions, twice each,
@@ -805,6 +805,66 @@ of the tokens it reported. Every chunk is logged as it lands and a stopped run r
 OpenAI, with the workers on `gpt-5.4-nano` and a promoted router on `gpt-5.4-mini`, the plan
 is 400 question-runs estimated at $3.75 against a $4.50 cap. `make headtohead REHEARSE=1`
 runs it end to end against a simulated provider for $0.
+
+## The paid runs
+
+Every network was moved onto OpenAI rung for rung, workers on `gpt-5.4-nano` and a
+promoted agent on `gpt-5.4-mini`, models pinned. Networks were chosen on the 60
+`meridian-select` questions and judged on judge questions from the other half of the
+company, both contenders at the same time, every chunk logged in
+`results/headtohead/paid-2026-10/`. `tests/test_select_and_judge.py` recomputes the
+committed summary and every figure below from those logs.
+
+| Stage | What | Result |
+| :-- | :-- | :-- |
+| 1 | Designer against the pruned Gemini champion (router on `gpt-5.4-mini`), J001 to J100 | 68 / 100 each; champion 2.2× the cost per question |
+| 2 | Six committed networks and the designer on select | `flat` 51 / 60, designer 47 / 60 |
+| 3 | `flat` against the designer, judge × 2 | 155 / 200 against 135 / 200, p = 0.011, equal tokens |
+| 4 | Eight children of `flat` on select (seed 20261002, `reassign_model` left out) | `2cc4` 54 / 60 at 7,300 tokens a question |
+| 5 | `2cc4` against the designer, judge × 2 | 153 / 200 against 138 / 200, p = 0.052, 17% fewer tokens |
+| 6 | The same pair on P001 to P100, once | 77 / 100 against 68 / 100, p = 0.108, 7% more tokens |
+| 7 | Search raised to 10 documents; four networks on select | `2cc4` with its Researcher on `gpt-5.4-mini` 57, `flat` 53, `2cc4` 52, designer 48, of 60 |
+| 8 | That network against the designer, judge × 2, 10 documents | 189 / 200 against 168 / 200, p = 0.0007, 37% fewer tokens, 52% more per correct answer |
+
+**The stronger router bought nothing.** Stage 1 is the claim the Gemini search left
+standing, and it tied. On the questions both networks missed, the facts are fetched by the
+same cheap workers; a better router reads the same wrong reports.
+
+**`flat` is a seed.** It is `seed:flat_pair`, one of the three hand-written networks the
+Gemini search started from, and `solo` is another. Stage 2 screened four networks that
+search found and two of its seeds, and a seed won. `2cc4` is that seed with its Arithmetic
+agent removed by `remove_agent`: one mutation away from a hand-written network. The
+Predictor was not used in any paid stage; every child was measured.
+
+**Same shape, different score.** Two children in stage 4 are both a Coordinator over one
+searching Researcher, `2cc4` from `remove_agent` and `f8134` from `merge_agents`. They
+scored 54 and 48 of 60: their instructions differ. A Predictor built on structural features
+cannot see that difference.
+
+**The search tool was capping accuracy.** Read on the select questions only, the misses of
+stages 2 and 4 were nearly all "every incident that..." questions. `CorpusSearch` returned
+the top 3 documents, "mis-picked" appears in 8 and depot D05 in 4, so the network counted
+what it was shown: 3 incidents where the answer was 5. `ESP_SEARCH_RESULTS=10` lifts the
+cap. On judge it raised the designer's shape from 69% to 84%. Every result at 3 and every
+result at 10 stays in its own stage and is never compared across the two.
+
+**Where the model goes matters more than which model.** With the cap lifted, the misses on
+select were arithmetic and counting errors: 84 for 24, 875 for 6,625. Promoting the
+Researcher, the agent that reads the documents and adds them up, took `2cc4` from 52 to 57
+of 60 on select and to 94.5% on judge, where promoting the router in stage 1 had bought
+nothing.
+
+What stage 8 does not show:
+
+- **How much is structure.** The designer's shape was not measured with its specialists on
+  `gpt-5.4-mini`, so the gap mixes a structural change with a model change.
+- **A cheaper network.** Fewer tokens, but on a model 3.7× dearer per token: 52% more per
+  correct answer.
+- **Fresh questions.** J001 to J100 had been asked in stages 1, 3 and 5. They were never
+  used to choose, but the judge half has no unused aggregate questions left, and a fresh
+  set without them would be easier than this one.
+- **A fully simultaneous run.** The designer's second repeat partly ran after the evolved
+  network had finished.
 
 ## What measurement changed
 

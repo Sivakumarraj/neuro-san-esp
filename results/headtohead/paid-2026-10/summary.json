@@ -371,5 +371,167 @@
       },
       "sign_test_p": 0.0525
     }
+  },
+  "6-judge-plus-P001-P100": {
+    "networks": {
+      "designer": {
+        "question_runs": 100,
+        "correct": 68,
+        "unfinished": 0,
+        "accuracy": 0.68,
+        "tokens_per_question": 7644,
+        "cost_per_question": 0.002331,
+        "tokens_per_correct": 11242,
+        "cost_per_correct": 0.003429,
+        "cost": 0.2331
+      },
+      "evolved": {
+        "question_runs": 100,
+        "correct": 77,
+        "unfinished": 0,
+        "accuracy": 0.77,
+        "tokens_per_question": 8171,
+        "cost_per_question": 0.002492,
+        "tokens_per_correct": 10611,
+        "cost_per_correct": 0.003236,
+        "cost": 0.2492
+      }
+    },
+    "paired": {
+      "better_on": {
+        "designer": [
+          "P005",
+          "P018",
+          "P037",
+          "P041",
+          "P057",
+          "P065",
+          "P070",
+          "P089"
+        ],
+        "evolved": [
+          "P006",
+          "P010",
+          "P014",
+          "P022",
+          "P025",
+          "P027",
+          "P043",
+          "P051",
+          "P054",
+          "P061",
+          "P066",
+          "P069",
+          "P074",
+          "P078",
+          "P081",
+          "P083",
+          "P086"
+        ]
+      },
+      "sign_test_p": 0.1078
+    }
+  },
+  "7-select-search10": {
+    "networks": {
+      "2cc4": {
+        "question_runs": 60,
+        "correct": 52,
+        "unfinished": 0,
+        "accuracy": 0.8667,
+        "tokens_per_question": 10013,
+        "cost_per_question": 0.003054,
+        "tokens_per_correct": 11554,
+        "cost_per_correct": 0.003524,
+        "cost": 0.1832
+      },
+      "2cc4-mini": {
+        "question_runs": 60,
+        "correct": 57,
+        "unfinished": 0,
+        "accuracy": 0.95,
+        "tokens_per_question": 6750,
+        "cost_per_question": 0.005613,
+        "tokens_per_correct": 7105,
+        "cost_per_correct": 0.005908,
+        "cost": 0.3368
+      },
+      "designer": {
+        "question_runs": 60,
+        "correct": 48,
+        "unfinished": 0,
+        "accuracy": 0.8,
+        "tokens_per_question": 10364,
+        "cost_per_question": 0.003161,
+        "tokens_per_correct": 12955,
+        "cost_per_correct": 0.003951,
+        "cost": 0.1897
+      },
+      "flat": {
+        "question_runs": 60,
+        "correct": 53,
+        "unfinished": 0,
+        "accuracy": 0.8833,
+        "tokens_per_question": 11703,
+        "cost_per_question": 0.003569,
+        "tokens_per_correct": 13249,
+        "cost_per_correct": 0.004041,
+        "cost": 0.2142
+      }
+    }
+  },
+  "8-judge-search10": {
+    "networks": {
+      "designer": {
+        "question_runs": 200,
+        "correct": 168,
+        "unfinished": 0,
+        "accuracy": 0.84,
+        "tokens_per_question": 10306,
+        "cost_per_question": 0.003143,
+        "tokens_per_correct": 12269,
+        "cost_per_correct": 0.003742,
+        "cost": 0.6287
+      },
+      "evolved": {
+        "question_runs": 200,
+        "correct": 189,
+        "unfinished": 0,
+        "accuracy": 0.945,
+        "tokens_per_question": 6500,
+        "cost_per_question": 0.005368,
+        "tokens_per_correct": 6879,
+        "cost_per_correct": 0.005681,
+        "cost": 1.0737
+      }
+    },
+    "paired": {
+      "better_on": {
+        "designer": [
+          "J073",
+          "J098"
+        ],
+        "evolved": [
+          "J004",
+          "J011",
+          "J035",
+          "J039",
+          "J042",
+          "J048",
+          "J055",
+          "J056",
+          "J072",
+          "J075",
+          "J076",
+          "J079",
+          "J087",
+          "J090",
+          "J091",
+          "J094",
+          "J097"
+        ]
+      },
+      "sign_test_p": 0.0007
+    }
   }
 }

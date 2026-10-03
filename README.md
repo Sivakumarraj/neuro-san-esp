@@ -26,29 +26,46 @@ Learning*, GECCO 2019), which evolves architectures, with agents where LEAF had 
 
 ## Headline result
 
-On questions it was never chosen on, an **evolved two-agent network beat the network
-neuro-san's designer would build**: more accurate, fewer tokens, lower cost, on both repeats.
+On questions it was never chosen on, a **two-agent network, with the stronger model on
+the one agent that reads the documents, scored 94.5% against 84.0%** for the four-agent
+network neuro-san's designer would build, using 37% fewer tokens but costing more.
 
-| 100 held-out judge questions × 2 repeats, `gpt-5.4-nano` | Evolved `2cc4` | Designer's shape |
+| 100 judge questions × 2 repeats, search returns 10 documents | `2cc4`, Researcher on `gpt-5.4-mini` | Designer's shape, all `gpt-5.4-nano` |
 | --- | --- | --- |
-| Accuracy | **76.5%** (153/200) | 69.0% (138/200) |
-| Tokens per question | **7,493** (−17%) | 9,018 |
-| Cost per question | **$0.00229** (−17%) | $0.00275 |
-| Cost per correct answer | **$0.00299** (−25%) | $0.00399 |
+| Accuracy | **94.5%** (189/200; 91, then 98) | 84.0% (168/200; 82, then 86) |
+| Tokens per question | **6,500** (−37%) | 10,306 |
+| Cost per question | $0.00537 (+71%) | **$0.00314** |
+| Cost per correct answer | $0.00568 (+52%) | **$0.00374** |
 | Agents | **2** | 4 |
 
-- **Chosen and judged on different questions.** The network was selected on the 60
-  `meridian-select` questions and judged once on 100 judge questions built from the other
-  half of the company. The two sets share no depot, contract or incident.
-- **Found by the search, not by hand.** `2cc4` is a Coordinator over one searching
-  Researcher, produced by the `remove_agent` operator; most of its gain is on 4-hop
-  questions (18 against 10 of 28).
-- **Stated at its real strength.** Right more often on 16 questions against 6: sign test
-  p = 0.052, a strong lead on accuracy; the token and cost saving held on both repeats.
+- **Significant.** Right more often on 17 questions against 2: sign test p = 0.0007.
+- **Chosen on select, judged on judge.** Every change was decided on the 60
+  `meridian-select` questions (`2cc4` with the stronger Researcher scored 57/60 there).
+  The judge questions come from the other half of the company and were never used to
+  choose. They are not fresh: J001 to J100 were also asked in the earlier runs below,
+  because the judge half has no unused aggregate questions left to draw.
+- **Not a pure structure result.** The winner promotes one agent to a model 3.7× dearer
+  per token; the designer's shape was not measured with its specialists promoted, so how
+  much of the gap is structure and how much is model is not separated.
+- **The benchmark changed.** The search tool returned 3 documents in every earlier run.
+  At 3, a question such as "how many incidents were caused by a mis-picked pallet" cannot
+  be answered: the word is in 8 documents. With 10 (`ESP_SEARCH_RESULTS=10`), the
+  designer's shape rose from 69% to 84% on the same questions. Numbers at 3 and at 10
+  are never compared with each other.
+- **Where `2cc4` came from.** It is the hand-written `flat_pair` seed with its Arithmetic
+  agent removed by the `remove_agent` operator: one mutation, chosen by measurement on
+  select. The Predictor was not used in any paid run.
+
+Before the search fix, on all-`gpt-5.4-nano` networks and the same 100 judge questions,
+`2cc4` scored 153/200 (76.5%) against the designer's 138/200 (69.0%) with 17% fewer
+tokens (p = 0.052). On 100 questions of four kinds no network had been asked before
+(P001 to P100: temporal, filtered, compare, unanswerable) it scored 77/100 against
+68/100 (p = 0.108), but used 7% more tokens there.
 
 Every measured chunk is committed in `results/headtohead/paid-2026-10/`, and
 `scripts/select_and_judge.py` reproduces the networks, the search and the summary
-([details](#reproducing-the-head-to-head)).
+([details](#reproducing-the-head-to-head)). `tests/test_select_and_judge.py` recomputes
+every figure in this section from those logs.
 
 ## What is included
 
@@ -188,10 +205,18 @@ Every number above is recomputed from committed data by a test.
 - **One task domain.** Held-out questions come from the same generated world, so what is
   measured is stability across questions, not transfer to a new domain.
 - **One generation of search on the held-out run.** `2cc4` is the best of eight children of
-  one parent, judged on 100 questions twice; a longer search and more repeats would tighten
-  the accuracy gap's error.
-- **Two models measured.** The search on `gemini-3.1-flash-lite`, the head-to-head on
-  `gpt-5.4-nano`. Nothing here says how the ranking holds on stronger models.
+  a hand-written seed, judged on 100 questions twice; a longer search and more repeats
+  would tighten the accuracy gap's error.
+- **The paid result does not test the Predictor.** Every child in the paid search was
+  measured; none was ranked by the Predictor first. Offline it picks the best of three
+  unseen networks 62% of the time, level with picking the one with the most agents.
+- **Shape is not the whole network.** Two children of `flat` with the same shape, a
+  Coordinator over one searching Researcher, scored 54 and 48 of 60 on select: the
+  instructions differ. The Predictor sees only shape.
+- **Three models measured.** The search on `gemini-3.1-flash-lite`, the head-to-heads on
+  `gpt-5.4-nano`, with `gpt-5.4-mini` on one agent in the headline.
+- **The web page and `make smoke` serve the 17-question champion** (`3bf9c00`), the
+  network that tied the designer at 2.2× the cost on judge, not `2cc4`.
 - **A tree-based Predictor cannot extrapolate** beyond the shapes it has seen, and twelve
   measured networks are too few to show that it helps the search. The pool benchmark is
   built to answer that.
@@ -219,17 +244,24 @@ python scripts/select_and_judge.py measure designer --suite judge --out runs/r1 
 python scripts/select_and_judge.py summary results/headtohead/paid-2026-10
 ```
 
-Both networks run at the same time under a dollar cap, and a stopped run resumes from its log.
+For the headline run add `ESP_SEARCH_RESULTS=10` to `.env`, and run the evolved network as
+`measure 2cc4 --promote Researcher --suite judge --repeats 2`. `--suite judge-plus` asks
+P001 to P100. Both networks run at the same time under a dollar cap, and a stopped run
+resumes from its log.
 
 | Stage | Measured | Outcome |
 | --- | --- | --- |
 | 1 | `make headtohead GO=1`: the designer against the Gemini champion | 68 / 100 each; the champion cost 2.2× per question |
-| 2 | Six searched networks and the designer on select; the best on judge × 2 | `flat`: 77.5% against 67.5% (p = 0.011), equal tokens |
-| 3 | One search generation from `flat` (8 children) on select; the best on judge × 2 | `2cc4`: the headline result |
+| 2 | Six committed networks and the designer on select (four found by the Gemini search, two hand-written seeds); the best on judge × 2 | `flat` (the `flat_pair` seed): 77.5% against 67.5% (p = 0.011), equal tokens |
+| 3 | One search generation from `flat` (8 children) on select; the best on judge × 2 | `2cc4`: 76.5% against 69.0% (p = 0.052), 17% fewer tokens |
+| 6 | `2cc4` and the designer on P001 to P100, once | 77 against 68 (p = 0.108), 7% more tokens |
+| 7 | Search fixed to 10 documents; three networks and `2cc4` with its Researcher promoted, on select | 57, 53, 52 and 48 of 60 |
+| 8 | The best of stage 7 and the designer on judge × 2 | the headline: 94.5% against 84.0% (p = 0.0007) |
 
-Selection rules were fixed before each stage. The designer scored 67 to 70 of 100 in every
-run, so about ±2 questions is run-to-run noise. Total: $5.18 for 1,888 question-runs.
-[The paid runs explained](docs/neuro-san-esp-Paid-Runs.pdf) walks through it step by step.
+The designer scored 67 to 70 of 100 in every run at 3 documents, so about ±2 questions is
+run-to-run noise. Stages 0 to 3 cost $5.18 for 1,888 question-runs; stages 6 to 8 cost
+$3.11 more. [The paid runs explained](docs/neuro-san-esp-Paid-Runs.pdf) walks through
+stages 0 to 3; it was written before stages 6 to 8 and before the logs were committed.
 
 ## Pool benchmark
 
@@ -237,6 +269,11 @@ One search per method is one sample of that method. The pool benchmark measures 
 once on the select questions, compares search strategies over that pool in hundreds of free
 replicate searches, tests each against a permutation null (Holm-adjusted), and judges the
 winners on the judge questions.
+
+The full run is 9,000 question-runs: about $123 to $251 if every agent ran
+`claude-haiku-4-5`, $245 to $501 on `claude-sonnet-5`, and $39 to $81 on
+`gemini-3.1-flash-lite`, at 9,741 to 19,892 tokens a question, the range committed runs
+have cost. The rehearsal takes about 30 minutes on four cores.
 
 ```bash
 make pool                # prints the plan and its price; spends nothing
@@ -290,8 +327,13 @@ this README disagrees with the committed measurements. Transcripts of real runs 
 | [SECURITY.md](SECURITY.md) | Keys, the public page, dependencies, reporting a vulnerability |
 | [Beginner's guide](docs/neuro-san-esp-Beginner-Guide.pdf) | How it runs, step by step, with real examples |
 | [Dossier](docs/neuro-san-esp-Dossier.pdf) | The technical report, with captured evidence |
-| [Primer](docs/neuro-san-esp-Primer.pdf) | The same result without the jargon |
-| [Paid runs](docs/neuro-san-esp-Paid-Runs.pdf) | The paid head-to-head runs, explained for a beginner |
+| [Primer](docs/neuro-san-esp-Primer.pdf) | The same project without the jargon |
+| [Paid runs](docs/neuro-san-esp-Paid-Runs.pdf) | Paid stages 0 to 3, explained for a beginner |
+
+The three PDFs above the last were written in September from the 17-question Gemini search.
+Their "0.94 against 0.82" is a score on the questions the network was chosen on; on held-out
+questions that network tied the designer. The headline above and
+[docs/FINDINGS.md](docs/FINDINGS.md) supersede them.
 
 Built on [neuro-san](https://github.com/cognizant-ai-lab/neuro-san) by Cognizant AI Lab.
 Licensed under Apache 2.0.
