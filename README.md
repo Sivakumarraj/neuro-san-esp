@@ -24,34 +24,48 @@ plus Pareto-front selection, and what is borrowed is the Predictor and the sampl
 argument. In shape this is nearer to **LEAF** (*Evolutionary Neural AutoML for Deep
 Learning*, GECCO 2019), which evolves architectures, with agents where LEAF had layers.
 
+## Headline result
+
+On questions it was never chosen on, an **evolved two-agent network beat the network
+neuro-san's designer would build**: more accurate, fewer tokens, lower cost, on both repeats.
+
+| 100 held-out judge questions × 2 repeats, `gpt-5.4-nano` | Evolved `2cc4` | Designer's shape |
+| --- | --- | --- |
+| Accuracy | **76.5%** (153/200) | 69.0% (138/200) |
+| Tokens per question | **7,493** (−17%) | 9,018 |
+| Cost per question | **$0.00229** (−17%) | $0.00275 |
+| Cost per correct answer | **$0.00299** (−25%) | $0.00399 |
+| Agents | **2** | 4 |
+
+- **Chosen and judged on different questions.** The network was selected on the 60
+  `meridian-select` questions and judged once on 100 judge questions built from the other
+  half of the company. The two sets share no depot, contract or incident.
+- **Found by the search, not by hand.** `2cc4` is a Coordinator over one searching
+  Researcher, produced by the `remove_agent` operator; most of its gain is on 4-hop
+  questions (18 against 10 of 28).
+- **Stated at its real strength.** Right more often on 16 questions against 6: sign test
+  p = 0.052, a strong lead on accuracy; the token and cost saving held on both repeats.
+
+Every measured chunk is committed in `results/headtohead/paid-2026-10/`, and
+`scripts/select_and_judge.py` reproduces the networks, the search and the summary
+([details](#reproducing-the-head-to-head)).
+
 ## What is included
 
 - **A measurement for any neuro-san network** on any question file you can check the
   answers to: `make measure`, a browser page, or an evaluator agent inside neuro-san.
-- **A generated test world**, Meridian Logistics: 24 depots, 40 contracts, 60 incidents in
-  124 documents, invented so no model can answer from memory. Every answer is computed from
-  the same seed that writes the documents.
-- **Four question sets over it**: the original 17 multi-hop questions; a 250-question
-  held-out bank; `meridian-select` (60) to choose on; and `meridian-judge-200` to judge on,
-  from the other half of the company, with a hundred questions of four newer kinds: time
-  filters, conditions, comparisons, and questions the documents cannot answer.
-- **Cost in dollars, beside tokens.** Tokens are a fair price only while every agent runs
-  the same model, and the search's best move breaks that (`make cost-report`).
 - **The ESP loop**: a seed population measured for real, one Predictor per outcome
   objective, thousands of candidates ranked for free, and only the most promising paid for.
-- **A per-question Predictor**, which learns from every question a network answered rather
-  than one average per network, with an ensemble for uncertainty.
-- **A pool benchmark**: measure a pool of networks once, then compare search strategies
-  over it in hundreds of replicate searches for free, and rehearse the whole paid run
-  against a simulated provider for $0 (`make pool`).
-- **A same-budget experiment** that runs the search with the Predictor and without it, and
-  judges both winners on questions neither was selected on.
-- **A service**: an event-invoked optimiser on neuro-san's own periodic scheduler that
-  spends what the day's budget allows and stops.
-- **A browser front end and neuro-san's accelerator UI**, serving every measured network so
-  the same question can be put to the designer's shape and the network that beat it.
-- **Deployment**: Docker images installed from a pinned lockfile, a Hugging Face Space
-  build, Compose with persistent state, and a `make validate` gate.
+- **A generated test world**, Meridian Logistics: 24 depots, 40 contracts, 60 incidents in
+  124 documents, invented so no model can answer from memory.
+- **Held-out question sets**: `meridian-select` (60) to choose on and `meridian-judge-200` to
+  judge on, from disjoint halves of the company, plus the original 17 and a 250-question bank.
+- **Cost in dollars, beside tokens**, a per-question Predictor, a pool benchmark that
+  rehearses for $0, and a capped head-to-head that resumes where it stopped.
+- **A service, a browser front end and neuro-san's accelerator UI**, Docker images from a
+  pinned lockfile, and a `make validate` gate.
+
+About 15,700 lines of application code and 9,600 lines of tests (Python 3.12+).
 
 ## Architecture
 
@@ -112,8 +126,8 @@ make holdout     # select on half the questions, judge on the other half
 
 ### With a key
 
-Runs on **Anthropic, OpenAI or Google Gemini**, chosen by which key is present, the way
-neuro-san-studio chooses:
+Runs on whichever provider's key is present in `.env` (`.env.example` lists them), chosen the
+way neuro-san-studio chooses:
 
 ```bash
 cp .env.example .env      # uncomment your provider's key line; .env is gitignored
@@ -139,10 +153,10 @@ python scripts/adopt_measurements.py   # B: adopt the committed Gemini measureme
 [docs/GUIDE.md](docs/GUIDE.md) covers providers and models, the preflight, what a run costs,
 the web page, the accelerator UI, and running the optimiser as a service.
 
-## Results
+## Results of the search on the 17 built-in questions
 
-**Twelve networks measured on real model calls, 17 questions each.** All on
-`gemini-3.1-flash-lite`.
+The first search ran on Gemini. **Twelve networks measured on real model calls, 17 questions
+each**, all on `gemini-3.1-flash-lite`:
 
 | | Accuracy | Tokens | Agents | Fitness |
 | --- | --- | --- | --- | --- |
@@ -152,101 +166,83 @@ the web page, the accelerator UI, and running the optimiser as a service.
 | `mut:reassign_model` — cheapest win | 0.8824 | 260,052 | 5 | 0.8453 |
 | **`mut:reassign_model` — best measured** | **0.9412** | 359,600 | 5 | **0.8941** |
 
-- **Both wins came from one change:** the stronger model on the router, the cheap one on the
-  workers. It is a per-agent setting neuro-san already exposes and nothing tunes.
-- **In dollars the best network is not cheaper.** It used 7% fewer tokens than the
-  designer's shape and cost 63% more ($0.181 against $0.111 for the 17 questions), because
-  its router runs a pricier model. The fitness above counts tokens, so it cannot see that;
-  the pool benchmark selects on dollars (`make cost-report`).
-- **Seventeen questions cannot rank individual networks.** Selecting on half and judging on
-  the other half, the winner averages rank 7.2 of 12. The searched winner beats the
-  designer's shape in **90% of 200 splits**, but a network drawn at random from the other
-  eleven does so 85.5% of the time: the designer's shape is eleventh of twelve, so what
-  survives is that the bred population beats it on these questions, not that choosing
-  within the population worked (`make holdout`).
-- **On genuinely new questions it has not reproduced yet.** On 24 held-out bank questions,
-  the evolved network measured answered 21 against the designer's 23 (`make bank-report`).
-  Two discordant questions establish nothing either way.
-- **The harder select set leaves room to rank.** On the first 20 of its questions the
-  designer's shape scored 16 of 20 (80%), against 96% on the bank. All four misses were
-  penalty arithmetic across several documents.
-- **The Predictor beats chance offline.** When the first search used it, with nine
-  measurements, its rank correlation was **−0.333**, worse than chance. Trained on nine of
-  the twelve, it picks the best of three unseen networks **62%** of the time against 33% by
-  chance (`make ablation`). A rule with no training, "pick the network with the most
-  agents", also picks the best 62.6% of the time, so this is not yet evidence that the
-  Predictor learned more than that. Its token-cost model ranks backwards and is excluded
-  from the fitness it ranks with.
+- **Seventeen questions cannot rank individual networks**, which is why the headline result
+  is judged on held-out questions. Selecting on half and judging on the other half, the
+  searched winner beats the designer's shape in 90% of 200 splits, but a random network
+  from the population does so 85.5% of the time (`make holdout`). On 24 held-out bank
+  questions the evolved network answered 21 against the designer's 23 (`make bank-report`).
+- **That champion's gain was a stronger router model.** Re-measured on held-out questions
+  it tied the designer at 2.2× the cost, so the search was re-run for structure instead.
+- **The select set leaves room to rank.** The designer's shape scored 16 of 20 (80%) on its
+  first 20 questions, against 96% on the bank.
+- **The Predictor beats chance offline.** At nine measurements its rank correlation was
+  **−0.333**; trained on nine of the twelve it picks the best of three unseen networks 62%
+  of the time against 33% by chance (`make ablation`), level with a rule that picks the
+  network with the most agents.
 
 Every number above is recomputed from committed data by a test.
-[docs/FINDINGS.md](docs/FINDINGS.md) has the full measurements, the failure analysis and the
-prior art.
+[docs/FINDINGS.md](docs/FINDINGS.md) has the full measurements and the failure analysis.
 
 ## Limitations
 
-- **Twelve networks and seventeen questions are too few** to say whether the Predictor helps
-  the search. The pool benchmark is built to answer that, and needs a paid key to run.
-- **The pool benchmark can only see a large difference.** Its test now counts the luck of
-  which outcomes landed on which networks. That keeps a strategy with no information from
-  being called better than random, and it shows how little one pool can establish: under
-  one planted rule, a strategy that knew the rule did anywhere from 0.07 worse to 0.14
-  better than random depending on the pool that was bred.
-- **A tree-based Predictor cannot extrapolate.** It ranks networks inside the range it has
-  seen; it cannot guess that a team larger than any it measured would do better. A pool
-  spread over many shapes is the remedy, not a cleverer model.
 - **One task domain.** Held-out questions come from the same generated world, so what is
   measured is stability across questions, not transfer to a new domain.
-- **One provider.** All measurements are on Gemini. The code runs unchanged on Anthropic and
-  OpenAI, but nothing here says how the ranking holds there.
-- **The champion is hard to serve on a free Gemini key.** Its router runs on a model the free
-  tier allows about 20 requests a day. The web page falls back to the workers' model and
-  labels that answer as unmeasured.
+- **One generation of search on the held-out run.** `2cc4` is the best of eight children of
+  one parent, judged on 100 questions twice; a longer search and more repeats would tighten
+  the accuracy gap's error.
+- **Two models measured.** The search on `gemini-3.1-flash-lite`, the head-to-head on
+  `gpt-5.4-nano`. Nothing here says how the ranking holds on stronger models.
+- **A tree-based Predictor cannot extrapolate** beyond the shapes it has seen, and twelve
+  measured networks are too few to show that it helps the search. The pool benchmark is
+  built to answer that.
 - **Not novel as an idea.** AgentSquare (ICLR 2025) also uses a performance predictor to
   search agent designs. What is new here is doing it for neuro-san, which has no fitness
   function at all.
 
-## The paid run: the pool benchmark
+## Reproducing the head-to-head
 
-One search per method is one sample of that method, however large the search. So the paid
-run measures a **pool** of networks once and compares search strategies over it many times
-for free, the way NAS-Bench-101 and 201 made architecture-search methods comparable.
+Put your key in `.env` (gitignored):
 
-1. **Pool.** 120 networks bred from the seeds, one to six mutations away, each measured on
-   the 60 `meridian-select` questions.
-2. **Replicates, free.** Hundreds of searches over the measured pool, each choosing which
-   networks to "pay" for by random choice, a network-level Predictor, or the per-question
-   Predictor with and without an upper-confidence bonus. A search sees half the select
-   questions; what it picks is scored on the other half. Scoring on the answers it chose by
-   would reward luck. And each strategy's advantage is tested against the same comparison
-   on pools whose measured outcomes are shuffled across networks, Holm-adjusted across every
-   strategy and budget: with an interval over the replicates of one pool, a strategy with a
-   fixed preference and no information came out "better than random" in a third of
-   comparisons on pools of pure noise.
-3. **Judge.** The best networks by select fitness, and the designer's shape, on the 200
-   judge questions none of them was chosen on, compared question by question.
+```bash
+OPENAI_API_KEY=sk-...your-key...
+ESP_PROVIDER=openai
+ESP_DEFAULT_MODEL=gpt-5.4-nano
+ESP_MODEL_TIERS=gpt-5.4-nano,gpt-5.4-mini
+ESP_PIN_MODELS=1          # a failing model stops the run instead of being swapped
+```
+
+```bash
+python scripts/select_and_judge.py networks            # every network and its hash; $0
+python scripts/select_and_judge.py mutants             # the search's 8 children of flat
+python scripts/select_and_judge.py measure 2cc4 --suite judge --out runs/r1 --go &
+python scripts/select_and_judge.py measure designer --suite judge --out runs/r1 --go
+python scripts/select_and_judge.py summary results/headtohead/paid-2026-10
+```
+
+Both networks run at the same time under a dollar cap, and a stopped run resumes from its log.
+
+| Stage | Measured | Outcome |
+| --- | --- | --- |
+| 1 | `make headtohead GO=1`: the designer against the Gemini champion | 68 / 100 each; the champion cost 2.2× per question |
+| 2 | Six searched networks and the designer on select; the best on judge × 2 | `flat`: 77.5% against 67.5% (p = 0.011), equal tokens |
+| 3 | One search generation from `flat` (8 children) on select; the best on judge × 2 | `2cc4`: the headline result |
+
+Selection rules were fixed before each stage. The designer scored 67 to 70 of 100 in every
+run, so about ±2 questions is run-to-run noise. Total: $5.18 for 1,888 question-runs.
+[The paid runs explained](docs/neuro-san-esp-Paid-Runs.pdf) walks through it step by step.
+
+## Pool benchmark
+
+One search per method is one sample of that method. The pool benchmark measures 120 networks
+once on the select questions, compares search strategies over that pool in hundreds of free
+replicate searches, tests each against a permutation null (Holm-adjusted), and judges the
+winners on the judge questions.
 
 ```bash
 make pool                # prints the plan and its price; spends nothing
 make pool REHEARSE=1     # the whole run against a simulated provider, for $0
 make pool GO=1           # measures and judges, and resumes from the cache if stopped
 ```
-
-A smaller paid test comes first. Two live reruns on judge questions found the evolved
-network level on accuracy at about twice the tokens, and that two committed "evolved"
-networks are the designer's own network plus an exact copy of one specialist, one question
-ahead on the seventeen (docs/FINDINGS.md, "Two live reruns"). What survives is a stronger
-model on the router. `make headtohead` puts the designer against the champion with its copy
-removed, on 100 judge questions, twice, models pinned, under a hard dollar cap; `REHEARSE=1`
-runs it for $0.
-
-The plan is 9,000 question-runs: about $123 to $251 with every agent on Claude Haiku 4.5,
-$245 to $501 on Claude Sonnet 5, or $39 to $81 on Gemini Flash-Lite at the rate this
-project's runs have cost. The range is 9,741 to 19,892 tokens a question, what committed
-runs spent: the designer's shape on 20 select questions, and twelve networks on the
-seventeen. An earlier version priced it at a flat 12,000, below its own rehearsal's
-simulated 16,088. The rehearsal counts the question-runs exactly and exercises every stage,
-including a stop for quota and a resume. The earlier two-arm design, `make experiment`, is
-still available.
 
 ## Repository layout
 
@@ -295,6 +291,7 @@ this README disagrees with the committed measurements. Transcripts of real runs 
 | [Beginner's guide](docs/neuro-san-esp-Beginner-Guide.pdf) | How it runs, step by step, with real examples |
 | [Dossier](docs/neuro-san-esp-Dossier.pdf) | The technical report, with captured evidence |
 | [Primer](docs/neuro-san-esp-Primer.pdf) | The same result without the jargon |
+| [Paid runs](docs/neuro-san-esp-Paid-Runs.pdf) | The paid head-to-head runs, explained for a beginner |
 
 Built on [neuro-san](https://github.com/cognizant-ai-lab/neuro-san) by Cognizant AI Lab.
 Licensed under Apache 2.0.
