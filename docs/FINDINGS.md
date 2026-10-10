@@ -866,6 +866,74 @@ What stage 8 does not show:
 - **A fully simultaneous run.** The designer's second repeat partly ran after the evolved
   network had finished.
 
+## Routing each question to a network
+
+Stage 8 ends in a trade. The evolved network is right more often, 94.5% against 84.0%, and
+costs 71% more per question. The designer's shape already answers 84% of the questions
+alone, so most of that money buys nothing. Every result above prescribes one network for
+every question. ESP as published prescribes per context, and here the context is the
+question as it arrives:
+
+| ESP | Here |
+| :-- | :-- |
+| Context | The question's text, read by `esp/route.py::request_features`: entities named, an aggregate, arithmetic, a chain of references, a number asked for. Never `Task.hops` and never the answer, which a router does not have. |
+| Actions | The designer's shape on `gpt-5.4-nano`, or `2cc4` with its Researcher on `gpt-5.4-mini` |
+| Outcomes | Right or wrong, and dollars |
+| Predictor | Per network, a logistic regression from the context to the chance of a right answer |
+| Prescription | Send a question to the strong network when the predicted gain is at least a threshold |
+
+The prescription is a threshold, not a learned Prescriptor: with two actions, the
+threshold is the whole decision.
+
+**Fitted and tuned on select, judged once on judge.** Both networks ran the 60 select
+questions in stage 7 and the 100 judge questions twice in stage 8, all with the search at 10
+documents, and both logs of each carry the same genome. The Predictor is fitted on select.
+The threshold is the cheapest whose leave-one-out routing on select stays within one
+question of the strong network: 93.3% there, sending 48% of questions up. Only then is it
+applied to judge. `make route` reproduces all of it from the committed logs for $0.
+
+| Judge, 100 questions × 2 | Accuracy | $ per question | $, cost split by seconds | Sent up |
+| :-- | :-- | :-- | :-- | :-- |
+| Designer's shape alone | 84.0% | $0.00314 | $0.00314 | 0% |
+| **Router** | **93.0%** | **$0.00403** | **$0.00409** | 40% |
+| One-line rule | 94.5% | $0.00472 | $0.00490 | 71% |
+| Strong network alone | 94.5% | $0.00537 | $0.00537 | 100% |
+| The same 40%, sent at random | 88.2% | $0.00403 | | 40% |
+| Oracle: whichever network was right | 95.5% | | | |
+
+- **The router picks the right questions.** Sending the same 40% up at random scores 88.2%;
+  the router's choice scores 93.0%, and p = 0.0005 over 10,000 random routings.
+- **It costs 25% less than the strong network for 3 fewer right answers in 200** (186
+  against 189). Priced with each chunk's cost split by the seconds each question took, which
+  charges hard questions more, it is $0.00409, still 24% less.
+- **It does not beat a one-line rule.** "Send it up if it names two or more entities or asks
+  across every record" matches the strong network's 94.5% at $0.00472, 12% less (9% with the
+  cost split by seconds). The router saves more and gives up three answers; the rule saves
+  less and gives up none. Neither beats the other on 100 questions. It is the same pattern
+  as the network Predictor, which is level with picking the network with the most agents.
+- **What the Predictor learned is readable.** A chain of references raises the cheap
+  network's chance most (coefficient +1.81 against +0.75 for the strong one); each named
+  entity lowers it (−0.98 against −0.20). On these questions the designer's shape does well
+  on a chain of references and worst when a question names several things at once.
+
+What this does not show:
+
+- **Blind features.** The five features were written by hand after reading the select
+  questions each network missed. Judge outcomes were never used to fit or tune, but which
+  judge questions each network won had already been published in
+  `results/headtohead/paid-2026-10/summary.json`.
+- **Transfer.** The features are regular expressions over Meridian's phrasing. A router in
+  front of real traffic would read an embedding of the question and need its own labelled
+  runs.
+- **Cost per question as paid.** The provider reports cost per chunk of four questions. The
+  average and the split by seconds are two estimates, and both are shown because they
+  disagree by up to 4%.
+- **A choice between models for one agent.** The two actions are different networks. The
+  cleaner test keeps `2cc4` and chooses only the Researcher's model per question. It needs
+  `2cc4` on `gpt-5.4-nano` measured on judge at 10 documents, 200 question-runs at about
+  $0.61 (its select cost was $0.00305 a question). Nothing serves the router yet; it decides
+  from logs.
+
 ## What measurement changed
 
 Every item here was found by running the system, not by reasoning about it. Most of

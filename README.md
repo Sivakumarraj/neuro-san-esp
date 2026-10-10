@@ -67,6 +67,27 @@ Every measured chunk is committed in `results/headtohead/paid-2026-10/`, and
 ([details](#reproducing-the-head-to-head)). `tests/test_select_and_judge.py` recomputes
 every figure in this section from those logs.
 
+## Routing each question
+
+The stronger network costs 71% more per question, and the designer's shape already
+answers 84% of the questions alone. `make route` trains a router on the select runs that
+sends a question up only when its text predicts a gain, fixes its threshold on select, and
+judges it once on judge. It runs on the committed logs, for $0.
+
+| Judge, 100 questions × 2 | Accuracy | Cost per question |
+| --- | --- | --- |
+| Designer's shape alone | 84.0% | $0.00314 |
+| **Router**, 40% of questions sent up | **93.0%** | **$0.00403** (25% less than the strong network) |
+| The strong network alone | 94.5% | $0.00537 |
+
+- **The choice of questions is real.** Sending the same 40% up at random scores 88.2%
+  (p = 0.0005).
+- **It does not beat a one-line rule.** "Two or more named entities, or an aggregate" keeps
+  all 94.5% at $0.00472. The router saves more and gives up 3 answers in 200.
+- **This is ESP with a context:** the question is the context, the network is the action,
+  right-and-dollars are the outcomes. The prescription is a threshold, not a learned
+  Prescriptor. [What it does not show](docs/FINDINGS.md#routing-each-question-to-a-network).
+
 ## What is included
 
 - **A measurement for any neuro-san network** on any question file you can check the
@@ -79,6 +100,8 @@ every figure in this section from those logs.
   judge on, from disjoint halves of the company, plus the original 17 and a 250-question bank.
 - **Cost in dollars, beside tokens**, a per-question Predictor, a pool benchmark that
   rehearses for $0, and a capped head-to-head that resumes where it stopped.
+- **A per-question router** between a cheap and a strong network, fitted on select and
+  judged on judge from the committed runs (`make route`).
 - **A service, a browser front end and neuro-san's accelerator UI**, Docker images from a
   pinned lockfile, and a `make validate` gate.
 
@@ -291,6 +314,7 @@ make pool GO=1           # measures and judges, and resumes from the cache if st
 | `esp/evolve/` | The ESP loop and the same-budget experiment |
 | `esp/service/` | The loop as an interruptible service, and the evaluator's tools |
 | `esp/measure.py` | Measure any neuro-san network on any question file |
+| `esp/route.py` | Route each question to the cheap or the strong network |
 | `esp/report/` | The PDFs and the figures |
 | `apps/web/` | The browser front end: ask a network, measure networks |
 | `apps/optimizer/` | One optimiser wake, runnable by hand or from any scheduler |
@@ -306,6 +330,7 @@ make validate      # lint, docs, HOCON validator, the full suite, an offline sea
 make verify        # a real neuro-san server firing the optimiser on its schedule
 make figures       # every Predictor figure, regenerated from committed data
 make bank-report   # the held-out bank comparison, from committed reports
+make route         # the per-question router, fitted on select, judged on judge
 make cost-report   # every network in tokens and in dollars
 make pool REHEARSE=1   # the paid run end to end against a simulated provider, $0
 ```
