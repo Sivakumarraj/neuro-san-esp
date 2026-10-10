@@ -161,6 +161,29 @@ class Log:
         return any(r["repeat"] == repeat and r["chunk"] == index
                    and r["genome_hash"] == contender.genome_hash for r in self.rows)
 
+    def clash(self, plan: Plan) -> str | None:
+        """Why this plan cannot resume this log, or None if it can.
+
+        Resume matched a chunk on (repeat, index, network) alone, so a log
+        measured on one question set was resumed on another and reported
+        complete, and a run at one search width resumed one made at another.
+        Rows written before the settings were recorded carry none and are taken
+        on their questions alone.
+        """
+        from esp.eval.runner import run_settings
+
+        chunks, settings = plan.chunks(), run_settings()
+        for r in self.rows:
+            asked = [x["task_id"] for x in r["results"]]
+            index = r["chunk"]
+            if index >= len(chunks) or asked != [t.task_id for t in chunks[index]]:
+                return (f"{self.path} holds chunk {index} with questions "
+                        f"{', '.join(asked[:2])}..., not this plan's: measure into a new --out")
+            if r.get("settings") not in (None, settings):
+                return (f"{self.path} was measured with {r['settings']}, this run uses "
+                        f"{settings}: measure into a new --out")
+        return None
+
     def spent(self) -> float:
         return sum(r["cost"] for r in self.rows)
 
@@ -176,13 +199,19 @@ def run(plan: Plan, measure: Measure, log: Log, say=print) -> str:
 
     Returns why it stopped: "done", "budget" or the error that stopped it.
     """
+    clash = log.clash(plan)
+    if clash:
+        say(f"stopping: {clash}")
+        return f"ValueError: {clash}"
     chunks = plan.chunks()
     for repeat, index, contender in plan.order():
         if log.done(repeat, index, contender):
             continue
         chunk = chunks[index]
         mine = [r for r in log.rows if r["genome_hash"] == contender.genome_hash]
-        per_question = (sum(r["cost"] for r in mine) / sum(len(r["results"]) for r in mine)
+        # Priced at the dearest chunk so far, not the mean: after cheap chunks a
+        # dear one passed the cap by the difference.
+        per_question = (max(r["cost"] / len(r["results"]) for r in mine)
                         if mine else estimate_cost(contender, 1))
         if log.spent() + per_question * len(chunk) > plan.budget:
             say(f"stopping: the next chunk would pass the ${plan.budget:.2f} cap "
@@ -299,4 +328,4 @@ def live_measure(contender: Contender, chunk: list[Task]) -> dict:
     return {"results": [asdict(r) for r in report.results], "tokens": report.tokens,
             "cost": max(report.cost, listed), "reported_cost": report.cost,
             "listed_cost": round(listed, 6), "seconds": report.seconds,
-            "models": contender.models()}
+            "models": contender.models(), "settings": report.settings}

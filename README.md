@@ -254,8 +254,9 @@ python scripts/select_and_judge.py summary results/headtohead/paid-2026-10
 
 For the headline run add `ESP_SEARCH_RESULTS=10` to `.env`, and run the evolved network as
 `measure 2cc4 --promote Researcher --suite judge --repeats 2`. `--suite judge-plus` asks
-P001 to P100. Both networks run at the same time under a dollar cap, and a stopped run
-resumes from its log.
+P001 to P100. Both networks run at the same time, each under its own dollar cap, so the
+pair can spend up to twice the cap. A stopped run resumes from its log, and refuses a log
+measured on other questions or at another search width.
 
 | Stage | Measured | Outcome |
 | --- | --- | --- |

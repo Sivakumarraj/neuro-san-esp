@@ -101,3 +101,69 @@ def test_the_summary_counts_every_question_run(tmp_path):
 def test_the_cheap_openai_rungs_have_a_price(model):
     from esp.eval.pricing import blended
     assert blended(model) > 0
+
+
+@pytest.mark.parametrize("provider", ["anthropic", "gemini", "openai", "openrouter"])
+def test_every_default_ladder_can_be_priced(provider):
+    """The Anthropic and OpenRouter ladders name models with no price entry, and
+    `make headtohead` stopped with a KeyError before it printed its plan."""
+    from esp.config import DEFAULT_LADDERS
+    from esp.eval.pricing import blended
+
+    for model in DEFAULT_LADDERS[provider]:
+        assert blended(model) >= 0
+
+
+def test_a_log_of_other_questions_is_not_resumed_as_this_plan(tmp_path):
+    """Resume matched chunks on (repeat, index, network) alone, so a log measured
+    on one question set was resumed on another and reported complete."""
+    log = h2h.Log(tmp_path / "runs.jsonl")
+    assert h2h.run(_plan(10.0), h2h.rehearsal_measure, log, say=lambda *_: None) == "done"
+    other = h2h.Plan(JUDGE_200[100:108], 2, 10.0, h2h.contenders())
+    stopped = h2h.run(other, h2h.rehearsal_measure, h2h.Log(tmp_path / "runs.jsonl"),
+                      say=lambda *_: None)
+    assert stopped.startswith("ValueError") and "new --out" in stopped
+
+
+def test_a_log_at_another_search_width_is_not_resumed(tmp_path, monkeypatch):
+    from esp.eval import corpus_tool, runner
+
+    def measured(contender, chunk):
+        return {**h2h.rehearsal_measure(contender, chunk), "settings": runner.run_settings()}
+
+    plan = _plan(10.0)
+    assert h2h.run(plan, measured, h2h.Log(tmp_path / "runs.jsonl"), say=lambda *_: None) == "done"
+    monkeypatch.setattr(corpus_tool, "MAX_RESULTS", 10)
+    stopped = h2h.run(plan, measured, h2h.Log(tmp_path / "runs.jsonl"), say=lambda *_: None)
+    assert stopped.startswith("ValueError") and "search_results" in stopped
+
+
+def test_the_cap_prices_the_next_chunk_at_the_dearest_so_far(tmp_path):
+    """Priced at the mean, cheap chunks after a dear one let the next dear one
+    through: 0.048 spent, the mean said 0.016 more against a 0.081 cap, and the
+    chunk cost 0.04, ending at 0.088."""
+    costs = iter([0.04, 0.004, 0.004, 0.04])
+
+    def priced(contender, chunk):
+        return {**h2h.rehearsal_measure(contender, chunk), "cost": next(costs)}
+
+    plan = h2h.Plan(JUDGE_200[:16], 1, 0.081, h2h.contenders()[:1])
+    log = h2h.Log(tmp_path / "runs.jsonl")
+    assert h2h.run(plan, priced, log, say=lambda *_: None) == "budget"
+    assert log.spent() <= plan.budget
+
+
+def test_a_run_the_cap_stopped_does_not_exit_zero(tmp_path, monkeypatch):
+    """`make headtohead` exited 0 when the cap or the provider stopped the run,
+    so anything reading the exit code took an unfinished run for a done one."""
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    import headtohead as script
+
+    monkeypatch.setenv("ESP_PIN_MODELS", "1")
+    common = ["--rehearse", "--questions", "8", "--repeats", "1"]
+    assert script.main([*common, "--budget", "0.00001", "--out", str(tmp_path / "cap")]) == 1
+    assert script.main([*common, "--budget", "10", "--out", str(tmp_path / "full")]) == 0
+

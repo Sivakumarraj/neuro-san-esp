@@ -75,7 +75,9 @@ def main(argv: list[str] | None = None) -> int:
     print(h2h.render(summary))
     if args.rehearse:
         print("\nrehearsal: simulated answers, not a measurement.")
-    return 0
+    # Unfinished is not success: a script or `make` reading the exit code must
+    # not take a run the cap or the provider stopped for a complete one.
+    return 0 if stopped == "done" else 1
 
 
 if __name__ == "__main__":

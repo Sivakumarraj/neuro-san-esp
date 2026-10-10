@@ -816,8 +816,11 @@ support. Tested on questions it was not chosen on, it did not hold (stage 1 belo
 `make headtohead` tests it: the designer's shape against the pruned champion, both moved
 rung for rung onto the configured provider, on the first 100 judge questions, twice each,
 interleaved four questions at a time with the order alternating, models pinned, under a
-hard dollar cap enforced on the larger of the provider's reported cost and the list price
-of the tokens it reported. Every chunk is logged as it lands and a stopped run resumes. On
+dollar cap enforced on the larger of the provider's reported cost and the list price of the
+tokens it reported. The cap is checked before each chunk, pricing it at the dearest chunk so
+far (it used the mean, which let a dear chunk through after cheap ones), so a chunk dearer
+than any before it can still pass the cap by its own cost. Every chunk is logged as it lands
+and a stopped run resumes. On
 OpenAI, with the workers on `gpt-5.4-nano` and a promoted router on `gpt-5.4-mini`, the plan
 is 400 question-runs estimated at $3.75 against a $4.50 cap. `make headtohead REHEARSE=1`
 runs it end to end against a simulated provider for $0.

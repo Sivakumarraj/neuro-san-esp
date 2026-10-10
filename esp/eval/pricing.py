@@ -20,6 +20,7 @@ result was selected under it, and changing it would silently re-rank history.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -56,10 +57,21 @@ DOLLAR_SCALE = 0.0325
 AGENT_WEIGHT = 0.02
 
 
+# Names neuro-san resolves to a dated model (its default_llm_info.hocon). The
+# Anthropic default ladder uses the version-free ones, and `make headtohead`
+# stopped with a KeyError on them before printing a plan.
+_ALIASES = {"claude-haiku": "claude-haiku-4-5", "claude-sonnet": "claude-sonnet-5"}
+# OpenRouter's free router picks among free models: there is nothing to pay.
+_FREE = ("openrouter/free",)
+
+
 def blended(model: str, output_share: float = OUTPUT_SHARE) -> float:
     """Dollars per million tokens for one model, input and output mixed."""
     if model.startswith("gemini"):
         return GEMINI_MEASURED_BLENDED
+    if model in _FREE or model.endswith(":free"):
+        return 0.0
+    model = re.sub(r"-\d{8}$", "", _ALIASES.get(model, model))
     try:
         price_in, price_out = PRICES[model]
     except KeyError:

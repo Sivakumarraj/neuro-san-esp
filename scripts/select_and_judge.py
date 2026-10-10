@@ -149,8 +149,24 @@ def contender_for(name: str, label: str | None = None, promote: list[str] | None
     return h2h.Contender(label or name, served, origin)
 
 
+def one_network_per_label(rows: list[dict]) -> None:
+    """Raise if a label covers two networks.
+
+    The summary groups by label. Measuring 2cc4 and then 2cc4 with a promoted
+    Researcher under one label into one --out reported 120 question-runs for a
+    60-question set, both networks pooled as one.
+    """
+    hashes = defaultdict(set)
+    for r in rows:
+        hashes[r["label"]].add(r["genome_hash"])
+    mixed = {label: sorted(found) for label, found in hashes.items() if len(found) > 1}
+    if mixed:
+        raise ValueError(f"one label, several networks: {mixed}; give each its own --label")
+
+
 def summarise(rows: list[dict]) -> dict:
     """Per label: accuracy, tokens and dollars per question and per right answer."""
+    one_network_per_label(rows)
     by = defaultdict(lambda: {"asked": 0, "right": 0, "tokens": 0, "cost": 0.0,
                               "listed": 0.0, "reported": 0.0, "priced": True,
                               "unfinished": 0, "repeats": set()})
@@ -193,6 +209,7 @@ def summarise(rows: list[dict]) -> dict:
 
 def paired(rows: list[dict], a: str, b: str) -> dict:
     """Questions each was right on more often, and a two-sided sign test."""
+    one_network_per_label(rows)
     seen = defaultdict(lambda: defaultdict(list))
     for r in rows:
         for x in r["results"]:

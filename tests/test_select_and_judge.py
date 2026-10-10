@@ -100,3 +100,19 @@ def test_search_returns_three_documents_unless_told_otherwise(monkeypatch):
     finally:
         monkeypatch.delenv("ESP_SEARCH_RESULTS", raising=False)
         importlib.reload(corpus_tool)
+
+
+def test_one_label_never_pools_two_networks():
+    """Measuring 2cc4, then 2cc4 with a promoted Researcher, under one label into
+    one --out reported 120 question-runs for a 60-question set."""
+    import pytest
+
+    rows = [{"label": "evolved", "genome_hash": "2cc4231b7d3fb81d", "results": [],
+             "tokens": 0, "cost": 0.0},
+            {"label": "evolved", "genome_hash": "47322479eb9cba1e", "results": [],
+             "tokens": 0, "cost": 0.0}]
+    with pytest.raises(ValueError, match="several networks"):
+        sj.summarise(rows)
+    with pytest.raises(ValueError, match="several networks"):
+        sj.paired(rows, "evolved", "designer")
+
