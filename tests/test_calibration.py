@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from esp.eval import accounting as usage
 from esp.eval.suites import SELECT
 from esp.evolve.experiment import CEILING
 
@@ -22,9 +23,9 @@ def test_it_measured_the_questions_the_select_set_now_holds():
 
 def test_the_docs_quote_it_and_it_clears_the_ceiling():
     right = sum(1 for r in REPORT["results"] if r["correct"])
-    assert (right, REPORT["tokens"]) == (16, 194_828)
+    assert (right, usage.tokens_in(REPORT)) == (16, 97_414)
     assert REPORT["accuracy"] < CEILING
     findings = (ROOT / "docs" / "FINDINGS.md").read_text(encoding="utf-8")
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "**16 of 20 (80%)**, using 194,828 tokens" in findings
+    assert "**16 of 20 (80%)**, using 97,414 tokens" in findings
     assert "scored 16 of 20 (80%)" in readme

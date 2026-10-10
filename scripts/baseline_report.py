@@ -18,6 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from esp.eval import accounting as usage
 from esp.eval.runner import CACHE_DIR
 from esp.evolve.loop import WEIGHTS, Record, fitness
 from esp.genome.seeds import SEEDS
@@ -38,7 +39,7 @@ def main() -> int:
 
         class _E:                      # duck-types Evaluation for fitness()
             accuracy = raw["accuracy"]
-            tokens = raw["tokens"]
+            tokens = usage.tokens_in(raw)
             agents = raw["agents"]
 
         digest = raw["genome_hash"]
@@ -46,7 +47,7 @@ def main() -> int:
             genome_hash=digest, generation=0,
             origin=origin_of.get(digest, "mutant"),
             fitness=round(fitness(_E()), 4), accuracy=raw["accuracy"],
-            tokens=raw["tokens"], agents=raw["agents"], depth=raw["depth"],
+            tokens=usage.tokens_in(raw), agents=raw["agents"], depth=raw["depth"],
             seconds=raw["seconds"], predicted=None,
         ))
 

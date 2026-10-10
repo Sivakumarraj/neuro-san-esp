@@ -4,6 +4,14 @@ The long-form record: what the measurements said, what running the
 system changed about them, and the prior art this sits next to. The README
 keeps the summary; this keeps the argument.
 
+**Correction, 10 October 2026: every token and dollar figure was twice the real one.**
+neuro-san's front man reports a run's usage as the network's total and again per model, and
+the runner added both. The figures below are counted once, from the same committed logs:
+`esp/eval/accounting.py` halves a record written before the fix as it is read, and no stored
+measurement was rewritten. Accuracy, every ratio between networks, every p-value and every
+fitness value are unchanged, because the token scale of the fitness was halved with them.
+Plans and estimates made at the time are quoted as they were made.
+
 ## What was measured
 
 **Twelve networks, 17 tasks each, 204 real task runs on real model calls.** Three seeds
@@ -12,18 +20,18 @@ and nine mutants, every one of them cached with its per-task outcomes and its ge
 
 | Origin | Accuracy | Of what it answered | Never finished | Tokens | Agents | Fitness |
 | --- | --- | --- | --- | --- | --- | --- |
-| **`mut:reassign_model`** | **0.9412** | **0.94 (16/17)** | **0** | 359,600 | 5 | **0.8941** |
-| `mut:reassign_model` | 0.8824 | 1.00 (15/15) | 2 | **260,052** | 5 | 0.8453 |
-| `mut:split_agent` | 0.8824 | 0.94 (15/16) | 1 | 272,068 | 5 | 0.8441 |
-| `mut:merge_agents` | 0.8824 | 0.94 (15/16) | 1 | 381,778 | 3 | 0.8376 |
-| `mut:toggle_search` | 0.8824 | 0.94 (15/16) | 1 | 345,226 | 5 | 0.8368 |
-| `mut:split_agent` | 0.8824 | 0.94 (15/16) | 1 | 394,388 | 5 | 0.8319 |
-| `mut:add_agent` | 0.8235 | 0.93 (14/15) | 2 | 249,662 | 2 | 0.7941 |
-| `mut:merge_agents` | 0.8235 | 0.93 (14/15) | 2 | **242,670** | 3 | 0.7926 |
-| `seed:flat_pair` | 0.8235 | 0.88 (14/16) | 1 | 316,074 | 3 | 0.7852 |
-| `seed:solo` (one agent, one tool) | 0.8235 | 1.00 (14/14) | 3 | 377,716 | 1 | 0.7835 |
-| `seed:designer_shaped` (the designer's shape) | 0.8235 | 0.88 (14/16) | 1 | 385,280 | 4 | 0.7761 |
-| `mut:rewire` | 0.7647 | 0.87 (13/15) | 2 | 473,450 | 3 | 0.7107 |
+| **`mut:reassign_model`** | **0.9412** | **0.94 (16/17)** | **0** | 179,800 | 5 | **0.8941** |
+| `mut:reassign_model` | 0.8824 | 1.00 (15/15) | 2 | **130,026** | 5 | 0.8453 |
+| `mut:split_agent` | 0.8824 | 0.94 (15/16) | 1 | 136,034 | 5 | 0.8441 |
+| `mut:merge_agents` | 0.8824 | 0.94 (15/16) | 1 | 190,889 | 3 | 0.8376 |
+| `mut:toggle_search` | 0.8824 | 0.94 (15/16) | 1 | 172,613 | 5 | 0.8368 |
+| `mut:split_agent` | 0.8824 | 0.94 (15/16) | 1 | 197,194 | 5 | 0.8319 |
+| `mut:add_agent` | 0.8235 | 0.93 (14/15) | 2 | 124,831 | 2 | 0.7941 |
+| `mut:merge_agents` | 0.8235 | 0.93 (14/15) | 2 | **121,335** | 3 | 0.7926 |
+| `seed:flat_pair` | 0.8235 | 0.88 (14/16) | 1 | 158,037 | 3 | 0.7852 |
+| `seed:solo` (one agent, one tool) | 0.8235 | 1.00 (14/14) | 3 | 188,858 | 1 | 0.7835 |
+| `seed:designer_shaped` (the designer's shape) | 0.8235 | 0.88 (14/16) | 1 | 192,640 | 4 | 0.7761 |
+| `mut:rewire` | 0.7647 | 0.87 (13/15) | 2 | 236,725 | 3 | 0.7107 |
 
 **The search beat all three seeds twice, and both wins came from the same knob.** The best
 network answers 16 of 17 against `designer_shaped`'s 14, on 7% fewer tokens. A second one
@@ -44,7 +52,7 @@ wrong answer to T07 — it said `Bright Circuit` — which is a different and mo
 failure than not finishing. A better router does not merely choose better; it stops the
 network wandering until the clock runs out.
 
-**The cost spread across the population is 95%**, from 242,670 tokens to 473,450, for
+**The cost spread across the population is 95%**, from 121,335 tokens to 236,725, for
 accuracies inside 18 points of each other. Topology and per-agent model assignment changed
 what answering cost by a factor of two, and that is precisely the measurement neuro-san
 cannot make today. It is only visible because of the `TOKEN_SCALE` fix below —
@@ -269,8 +277,8 @@ table from `results/heldout_bank/`, with no key.
 
 | | Held out (24) | Tokens | On the 17 | Tokens |
 | --- | --- | --- | --- | --- |
-| `seed:designer_shaped` | **23 / 24** | 159,086 | 14 / 17 | 385,280 |
-| `mut:reassign_model` 6859dd | 21 / 24 | 176,740 | 15 / 17 | 260,052 |
+| `seed:designer_shaped` | **23 / 24** | 79,543 | 14 / 17 | 192,640 |
+| `mut:reassign_model` 6859dd | 21 / 24 | 88,370 | 15 / 17 | 130,026 |
 
 **The evolved network did not beat the designer's shape on questions it was not selected
 on.** It answered two fewer and spent 11% more tokens, reversing the 32% saving it showed
@@ -299,7 +307,7 @@ only on the 500-a-day models.
 The bank could not rank networks because the designer's shape scored 96% on it. The select
 set was built harder on purpose, and its first live measurement, on 26 September 2026 with a
 free Gemini key, confirms it: on its first 20 questions, which cover every kind it asks, the
-designer's shape answered **16 of 20 (80%)**, using 194,828 tokens. That is under the 90%
+designer's shape answered **16 of 20 (80%)**, using 97,414 tokens. That is under the 90%
 ceiling the experiment checks before it spends anything, so the set leaves room to tell
 networks apart. All four misses are the same kind of question: late-delivery penalties
 combined across incidents, hours times rate, summed or differenced. That is the shape the
@@ -419,7 +427,7 @@ around it would have made them distinct.
 | | What it is | Learned? | Where |
 | --- | --- | --- | --- |
 | **Predictor** | One `GradientBoostingRegressor` per outcome objective — 200 trees, depth 3, learning rate 0.05, subsample 0.9 — fitted on `(genome → outcome)`. Predicts **accuracy** and **token cost**. | Yes, from real evaluations | `esp/surrogate/outcomes.py` |
-| **Fitness** | `accuracy − 0.06·min(tokens/600000, 1) − 0.02·(agents/9)`. A fixed weighting. Applied to *measured* outcomes it scores Phases A and D; applied to *predicted* outcomes it ranks Phase C. | No — arithmetic | `esp/evolve/loop.py::scalarise` |
+| **Fitness** | `accuracy − 0.06·min(tokens/300000, 1) − 0.02·(agents/9)`. A fixed weighting. Applied to *measured* outcomes it scores Phases A and D; applied to *predicted* outcomes it ranks Phase C. | No — arithmetic | `esp/evolve/loop.py::scalarise` |
 | **Prescription** | Seven mutation operators plus elite selection, run against the Predictor. | No | `esp/genome/mutations.py` |
 
 **Agent count is an objective with no model.** It is an exact property of a genome, so
@@ -745,10 +753,10 @@ environment, with nothing recorded against them.
 
 **The price did not come from a measurement.** The plan priced 9,000 question-runs at a flat
 12,000 tokens a question: $151 on Claude Haiku 4.5. Nothing committed measured that figure,
-and the rehearsal, which draws tokens at v1's scale, spent 16,088 a question. The plan now
-prices the range committed runs have cost, 9,741 tokens a question (the designer's shape on
-20 select questions, only three of them aggregates) to 19,892 (twelve networks on the
-seventeen): $123 to $251 on Haiku, $245 to $501 on Sonnet 5, $39 to $81 on Gemini
+and the rehearsal, which draws tokens at v1's scale, spent 8,044 a question. The plan now
+prices the range committed runs have cost, 4,871 tokens a question (the designer's shape on
+20 select questions, only three of them aggregates) to 9,946 (twelve networks on the
+seventeen): $61 to $125 on Haiku, $123 to $251 on Sonnet 5, $20 to $40 on Gemini
 Flash-Lite.
 
 **Four statements in these documents were stronger than their evidence**, and are corrected
@@ -767,8 +775,8 @@ change no committed measurement.
 
 | Run | Questions | Designer's shape | 6859dd |
 | :-- | :-- | :-- | :-- |
-| 1 | J001 to J020 | 17 / 20, one unfinished (a 503), 137,124 tokens, $0.046 | 18 / 20, 329,320 tokens, $0.111 |
-| 2 | J021 to J036 | 15 / 16, 199,492 tokens, $0.080 | 15 / 16, 323,544 tokens, $0.123 |
+| 1 | J001 to J020 | 17 / 20, one unfinished (a 503), 68,562 tokens, $0.023 | 18 / 20, 164,660 tokens, $0.055 |
+| 2 | J021 to J036 | 15 / 16, 99,746 tokens, $0.040 | 15 / 16, 161,772 tokens, $0.062 |
 
 On questions neither network was chosen on, the accuracy was level and the evolved network
 spent about twice the tokens and dollars. Three things in the data explain more than the
@@ -820,7 +828,7 @@ committed summary and every figure below from those logs.
 | 1 | Designer against the pruned Gemini champion (router on `gpt-5.4-mini`), J001 to J100 | 68 / 100 each; champion 2.2× the cost per question |
 | 2 | Six committed networks and the designer on select | `flat` 51 / 60, designer 47 / 60 |
 | 3 | `flat` against the designer, judge × 2 | 155 / 200 against 135 / 200, p = 0.011, equal tokens |
-| 4 | Eight children of `flat` on select (seed 20261002, `reassign_model` left out) | `2cc4` 54 / 60 at 7,300 tokens a question |
+| 4 | Eight children of `flat` on select (seed 20261002, `reassign_model` left out) | `2cc4` 54 / 60 at 3,650 tokens a question |
 | 5 | `2cc4` against the designer, judge × 2 | 153 / 200 against 138 / 200, p = 0.052, 17% fewer tokens |
 | 6 | The same pair on P001 to P100, once | 77 / 100 against 68 / 100, p = 0.108, 7% more tokens |
 | 7 | Search raised to 10 documents; four networks on select | `2cc4` with its Researcher on `gpt-5.4-mini` 57, `flat` 53, `2cc4` 52, designer 48, of 60 |
@@ -883,7 +891,8 @@ did not provide any numbers or an operation"* to all seventeen questions and sco
 it was never a bad topology.
 
 **The cost objective had no gradient.** `TOKEN_SCALE` was 60,000 while the cheapest
-possible topology — one agent, one tool — spends over 250,000 tokens on the task set.
+possible topology — one agent, one tool — spent over 250,000 tokens on the task set, both as
+the runner then counted them.
 Every candidate sat past the cap, so `min()` clipped them all to the same penalty: a
 network costing 300k and one costing 900k scored *identically* on cost. The run would
 have printed a Pareto front and called itself multi-objective while optimising accuracy

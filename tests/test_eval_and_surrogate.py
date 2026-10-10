@@ -177,6 +177,17 @@ def test_token_accounting_sums_nested_totals():
     assert runner._total_tokens(accounting) == 15
 
 
+def test_token_accounting_counts_neuro_sans_structure_once():
+    """neuro-san's front man reports the run's total and the same usage again
+    per model. Summing both doubled every token and dollar figure."""
+    accounting = {"total_tokens": 1100, "prompt_tokens": 1000, "completion_tokens": 100,
+                  "total_cost": 0.000325,
+                  "models": {"openai": {"gpt-5.4-nano": {"total_tokens": 1100,
+                                                         "total_cost": 0.000325}}}}
+    assert runner._total_tokens(accounting) == 1100
+    assert runner._cost(accounting) == 0.000325
+
+
 # ------------------------------------------------------------------ surrogate
 
 def test_feature_vector_matches_its_names():

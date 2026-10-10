@@ -59,7 +59,7 @@ agent:
 ```
 
 **What a run costs.** One candidate is seventeen questions and about 165 model calls. The twelve
-committed measurements used between 242,670 and 473,450 tokens each; those were taken on
+committed measurements used between 121,335 and 236,725 tokens each; those were taken on
 Gemini, and another provider's tokenizer and verbosity will land in the same range rather than
 on the same number. `ESP_RPM` sets the pace. The default of 14 requests a minute is safe on any
 account and slow on a paid one, at about twelve minutes of queueing per candidate. Set it to one
@@ -209,7 +209,7 @@ same as watching two topologies answer.
 ```text
 r01_evolved_reassign_model_3bf9c008
   "Rank 1 of 12 by measured fitness (+0.8941): evolved by the reassign_model
-   operator. Scored 94.12% on 17 multi-hop questions using 359,600 tokens
+   operator. Scored 94.12% on 17 multi-hop questions using 179,800 tokens
    across 5 agent(s), measured on gemini-3.1-flash-lite. Genome 3bf9c008d880c3fc."
 ```
 

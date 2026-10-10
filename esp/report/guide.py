@@ -20,13 +20,14 @@ from pathlib import Path
 
 from reportlab.platypus import PageBreak, Spacer
 
+from esp.eval import accounting as usage
 from esp.eval.bank import BANK
 from esp.eval.pricing import estimate
 from esp.eval.suites import JUDGE, SELECT
 from esp.eval.tasks import TASKS
 from esp.eval.world import build_world, documents
 from esp.evolve import pool
-from esp.evolve.loop import scalarise
+from esp.evolve.loop import TOKEN_SCALE, scalarise
 from esp.report.layout import ACCENT, SOFT, WARN_BG, Layout, _s
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -36,7 +37,8 @@ STEP = _s("gstep", fontSize=9.8, leading=14, leftIndent=12, spaceAfter=5)
 
 
 def _history() -> dict:
-    return json.loads((ROOT / "results" / "history.json").read_text(encoding="utf-8"))
+    raw = json.loads((ROOT / "results" / "history.json").read_text(encoding="utf-8"))
+    return usage.history_in(raw)
 
 
 def _proof(name: str, lines: int = 40) -> str:
@@ -167,7 +169,7 @@ class Guide(Layout):
                "several numbers is marked wrong even if the right one is among them, "
                "and repeating the question earns nothing.")
         self.p("After the exam each team gets one number:")
-        self.terminal("fitness = accuracy - 0.06 x min(tokens / 600000, 1)"
+        self.terminal(f"fitness = accuracy - 0.06 x min(tokens / {TOKEN_SCALE:.0f}, 1)"
                       " - 0.02 x (agents / 9)")
         records = {r["origin"]: r for r in _history()["records"]}
         designer = records["seed:designer_shaped"]
@@ -180,7 +182,7 @@ class Guide(Layout):
         self.table(["Team", "Accuracy", "Tokens", "Agents", "Fitness"], rows,
                    widths=[150, 70, 90, 60, 70])
         self.p(f"Worked through for the designer's team: {designer['accuracy']:.4f} "
-               f"&minus; 0.06 &times; {designer['tokens'] / 600000:.3f} &minus; 0.02 "
+               f"&minus; 0.06 &times; {designer['tokens'] / TOKEN_SCALE:.3f} &minus; 0.02 "
                f"&times; {designer['agents']}/9 = <b>{designer['fitness']:.4f}</b>. "
                "Correct answers matter most; among equally correct teams, the cheaper "
                "and smaller one wins.")

@@ -33,12 +33,20 @@ network neuro-san's designer would build, using 37% fewer tokens but costing mor
 | 100 judge questions × 2 repeats, search returns 10 documents | `2cc4`, Researcher on `gpt-5.4-mini` | Designer's shape, all `gpt-5.4-nano` |
 | --- | --- | --- |
 | Accuracy | **94.5%** (189/200; 91, then 98) | 84.0% (168/200; 82, then 86) |
-| Tokens per question | **6,500** (−37%) | 10,306 |
-| Cost per question | $0.00537 (+71%) | **$0.00314** |
-| Cost per correct answer | $0.00568 (+52%) | **$0.00374** |
+| Tokens per question | **3,250** (−37%) | 5,153 |
+| Cost per question | $0.00268 (+71%) | **$0.00157** |
+| Cost per correct answer | $0.00284 (+52%) | **$0.00187** |
 | Agents | **2** | 4 |
 
 - **Significant.** Right more often on 17 questions against 2: sign test p = 0.0007.
+- **Cost is the cap's figure.** Per chunk of four questions, the larger of what neuro-san
+  reported and the list price of the tokens it reported. At list price alone the gap is
+  +65% a question and +46% a correct answer.
+- **Token and dollar figures were corrected on 10 October 2026.** neuro-san reports a run's
+  usage as a total and again per model, and the runner added both, so every token and
+  dollar figure published before then was twice the real one. Accuracy, every ratio and
+  every fitness value are unchanged. The committed logs are not rewritten:
+  `esp/eval/accounting.py` halves an old record as it is read.
 - **Chosen on select, judged on judge.** Every change was decided on the 60
   `meridian-select` questions (`2cc4` with the stronger Researcher scored 57/60 there).
   The judge questions come from the other half of the company and were never used to
@@ -119,7 +127,7 @@ so every network the search produces runs as an ordinary neuro-san network. Fitn
 **derived** from measured or predicted outcomes by a fixed formula, never learned:
 
 ```text
-fitness = accuracy − 0.06 · min(tokens / 600000, 1) − 0.02 · (agents / 9)
+fitness = accuracy − 0.06 · min(tokens / 300000, 1) − 0.02 · (agents / 9)
 ```
 
 [docs/DESIGN.md](docs/DESIGN.md) explains every part: the genome, the seven operators, the
@@ -177,11 +185,11 @@ each**, all on `gemini-3.1-flash-lite`:
 
 | | Accuracy | Tokens | Agents | Fitness |
 | --- | --- | --- | --- | --- |
-| `seed:designer_shaped` — the shape the designer produces | 0.8235 | 385,280 | 4 | 0.7761 |
-| `seed:flat_pair` | 0.8235 | 316,074 | 3 | 0.7852 |
-| `seed:solo` — one agent, one tool | 0.8235 | 377,716 | 1 | 0.7835 |
-| `mut:reassign_model` — cheapest win | 0.8824 | 260,052 | 5 | 0.8453 |
-| **`mut:reassign_model` — best measured** | **0.9412** | 359,600 | 5 | **0.8941** |
+| `seed:designer_shaped` — the shape the designer produces | 0.8235 | 192,640 | 4 | 0.7761 |
+| `seed:flat_pair` | 0.8235 | 158,037 | 3 | 0.7852 |
+| `seed:solo` — one agent, one tool | 0.8235 | 188,858 | 1 | 0.7835 |
+| `mut:reassign_model` — cheapest win | 0.8824 | 130,026 | 5 | 0.8453 |
+| **`mut:reassign_model` — best measured** | **0.9412** | 179,800 | 5 | **0.8941** |
 
 - **Seventeen questions cannot rank individual networks**, which is why the headline result
   is judged on held-out questions. Selecting on half and judging on the other half, the
@@ -252,16 +260,18 @@ resumes from its log.
 | Stage | Measured | Outcome |
 | --- | --- | --- |
 | 1 | `make headtohead GO=1`: the designer against the Gemini champion | 68 / 100 each; the champion cost 2.2× per question |
-| 2 | Six committed networks and the designer on select (four found by the Gemini search, two hand-written seeds); the best on judge × 2 | `flat` (the `flat_pair` seed): 77.5% against 67.5% (p = 0.011), equal tokens |
-| 3 | One search generation from `flat` (8 children) on select; the best on judge × 2 | `2cc4`: 76.5% against 69.0% (p = 0.052), 17% fewer tokens |
+| 2, 3 | Six committed networks and the designer on select (four found by the Gemini search, two hand-written seeds); the best on judge × 2 | `flat` (the `flat_pair` seed): 77.5% against 67.5% (p = 0.011), equal tokens |
+| 4, 5 | One search generation from `flat` (8 children) on select; the best on judge × 2 | `2cc4`: 76.5% against 69.0% (p = 0.052), 17% fewer tokens |
 | 6 | `2cc4` and the designer on P001 to P100, once | 77 against 68 (p = 0.108), 7% more tokens |
 | 7 | Search fixed to 10 documents; three networks and `2cc4` with its Researcher promoted, on select | 57, 53, 52 and 48 of 60 |
 | 8 | The best of stage 7 and the designer on judge × 2 | the headline: 94.5% against 84.0% (p = 0.0007) |
 
 The designer scored 67 to 70 of 100 in every run at 3 documents, so about ±2 questions is
-run-to-run noise. Stages 0 to 3 cost $5.18 for 1,888 question-runs; stages 6 to 8 cost
-$3.11 more. [The paid runs explained](docs/neuro-san-esp-Paid-Runs.pdf) walks through
-stages 0 to 3; it was written before stages 6 to 8 and before the logs were committed.
+run-to-run noise. Stages are numbered as their logs are, and stage 0 was a four-question
+check. Stages 0 to 5 cost $2.59 for 1,888 question-runs; stages 6 to 8 cost $1.55 more.
+[The paid runs explained](docs/neuro-san-esp-Paid-Runs.pdf) walks through stages 0 to 5; it
+was written before stages 6 to 8, before the logs were committed and before the token
+correction, so its token and dollar figures are twice the real ones.
 
 ## Pool benchmark
 
@@ -270,9 +280,9 @@ once on the select questions, compares search strategies over that pool in hundr
 replicate searches, tests each against a permutation null (Holm-adjusted), and judges the
 winners on the judge questions.
 
-The full run is 9,000 question-runs: about $123 to $251 if every agent ran
-`claude-haiku-4-5`, $245 to $501 on `claude-sonnet-5`, and $39 to $81 on
-`gemini-3.1-flash-lite`, at 9,741 to 19,892 tokens a question, the range committed runs
+The full run is 9,000 question-runs: about $61 to $125 if every agent ran
+`claude-haiku-4-5`, $123 to $251 on `claude-sonnet-5`, and $20 to $40 on
+`gemini-3.1-flash-lite`, at 4,871 to 9,946 tokens a question, the range committed runs
 have cost. The rehearsal takes about 30 minutes on four cores.
 
 ```bash
@@ -328,12 +338,14 @@ this README disagrees with the committed measurements. Transcripts of real runs 
 | [Beginner's guide](docs/neuro-san-esp-Beginner-Guide.pdf) | How it runs, step by step, with real examples |
 | [Dossier](docs/neuro-san-esp-Dossier.pdf) | The technical report, with captured evidence |
 | [Primer](docs/neuro-san-esp-Primer.pdf) | The same project without the jargon |
-| [Paid runs](docs/neuro-san-esp-Paid-Runs.pdf) | Paid stages 0 to 3, explained for a beginner |
+| [Paid runs](docs/neuro-san-esp-Paid-Runs.pdf) | Paid stages 0 to 5, explained for a beginner |
 
 The three PDFs above the last were written in September from the 17-question Gemini search.
 Their "0.94 against 0.82" is a score on the questions the network was chosen on; on held-out
 questions that network tied the designer. The headline above and
-[docs/FINDINGS.md](docs/FINDINGS.md) supersede them.
+[docs/FINDINGS.md](docs/FINDINGS.md) supersede them. The Dossier and the Paid runs PDF were
+built before the token correction, so their token and dollar figures are twice the real
+ones; the Beginner's guide and the Primer are rebuilt with it.
 
 Built on [neuro-san](https://github.com/cognizant-ai-lab/neuro-san) by Cognizant AI Lab.
 Licensed under Apache 2.0.

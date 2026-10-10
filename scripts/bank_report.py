@@ -18,6 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from esp.eval import accounting as usage  # noqa: E402
 from esp.eval import measurements  # noqa: E402
 from esp.eval.stats import mcnemar_exact  # noqa: E402
 
@@ -25,7 +26,7 @@ RESULTS = ROOT / "results" / "heldout_bank"
 
 
 def load(results: Path = RESULTS) -> dict[str, dict]:
-    return {path.stem: json.loads(path.read_text(encoding="utf-8"))
+    return {path.stem: usage.normalised(json.loads(path.read_text(encoding="utf-8")))
             for path in sorted(results.glob("*.json"))}
 
 

@@ -23,6 +23,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from esp.eval import accounting as usage
 from esp.genome.definition import Genome
 from esp.genome.seeds import SEEDS
 
@@ -165,7 +166,7 @@ def load(cache_dir: Path | None = None) -> list[Measurement]:
 
         try:
             accuracy = float(raw["accuracy"])
-            tokens = int(raw["tokens"])
+            tokens = usage.tokens_in(raw)
             agents = int(raw["agents"])
         except (KeyError, TypeError, ValueError):
             continue

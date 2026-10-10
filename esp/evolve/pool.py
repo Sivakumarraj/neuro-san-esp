@@ -43,6 +43,7 @@ import numpy as np
 from scipy.stats import norm
 from sklearn.ensemble import GradientBoostingRegressor
 
+from esp.eval import accounting as usage
 from esp.eval import runner
 from esp.eval.judge_plus import JUDGE_200
 from esp.eval.pricing import estimate, fitness_dollars
@@ -66,19 +67,20 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 def tokens_per_question(root: Path = ROOT) -> tuple[int, int]:
     """What a question has cost in tokens on committed runs: (low, high).
 
-    A single planning figure of 12,000 used to price the run. Nothing
-    committed measured it, and it sat below the rehearsal's own simulated
-    scale (about 16,000). The low end is the select set's own calibration run
-    (the designer's shape, 20 questions, only three of them aggregates, where
-    the full set is 40% aggregates); the high end is the twelve networks on
-    the seventeen, whose two whole-corpus aggregates most networks searched
-    until they timed out. The select set sits between the two."""
+    A single planning figure of 12,000 (6,000 counted once) used to price the
+    run. Nothing committed measured it, and it sat below the rehearsal's own
+    simulated scale (about 16,000, or 8,000 counted once). The low end is the
+    select set's own calibration run (the designer's shape, 20 questions, only
+    three of them aggregates, where the full set is 40% aggregates); the high
+    end is the twelve networks on the seventeen, whose two whole-corpus
+    aggregates most networks searched until they timed out. The select set
+    sits between the two."""
     def per_question(paths, count) -> list[float]:
         found = []
         for path in paths:
             try:
                 raw = json.loads(path.read_text(encoding="utf-8"))
-                found.append((int(raw["tokens"]), count(raw)))
+                found.append((usage.tokens_in(raw), count(raw)))
             except (OSError, ValueError, KeyError, TypeError):
                 continue
         return [tokens / questions for tokens, questions in found if questions]
@@ -88,7 +90,7 @@ def tokens_per_question(root: Path = ROOT) -> tuple[int, int]:
     high = per_question(sorted((root / "tests" / "fixtures" / "cache").glob("*.json")),
                         lambda raw: len(raw["results"]))
     if not low or not high:
-        return 12_000, 20_000
+        return 6_000, 10_000
     return round(float(np.mean(low))), round(float(np.mean(high)))
 
 

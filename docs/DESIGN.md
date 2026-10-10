@@ -34,7 +34,7 @@ Each candidate answers all 17 tasks through a real neuro-san session. Three obje
 recorded, then scalarised for selection while the Pareto front is kept separately:
 
 ```text
-fitness = accuracy − 0.06 · min(tokens / 600000, 1) − 0.02 · (agents / 9)
+fitness = accuracy − 0.06 · min(tokens / 300000, 1) − 0.02 · (agents / 9)
 ```
 
 The evaluation world (`esp/eval/world.py`) is generated from a fixed seed: 24 depots, 40

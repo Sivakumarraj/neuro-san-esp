@@ -88,7 +88,8 @@ def test_a_real_measurement_is_still_loaded(tmp_path):
 
     found = measurements.load(tmp_path)
     assert len(found) == 1
-    assert found[0].tokens == 316_074
+    # A record without an accounting version predates the fix and is halved.
+    assert found[0].tokens == 158_037
 
 
 def test_the_committed_measurements_all_spent_real_tokens():

@@ -111,6 +111,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def rehearse(plan, pool, out: Path, replicates: int, permutations: int = 19) -> int:
     """The whole pipeline, with a simulated provider in place of the model."""
+    from esp.eval import accounting as usage
     from esp.eval import rehearsal, runner
     from esp.genome.seeds import SEEDS
 
@@ -133,7 +134,7 @@ def rehearse(plan, pool, out: Path, replicates: int, permutations: int = 19) -> 
     (out / "compare.json").write_text(json.dumps(summary, indent=1))
     totals = {"simulated": True, "question_runs": provider.question_runs,
               "tokens": provider.tokens, "dollars": round(provider.dollars, 2),
-              "networks_judged": len(judged["judged"])}
+              "networks_judged": len(judged["judged"]), "accounting": usage.ACCOUNTING}
     (out / "totals.json").write_text(json.dumps(totals, indent=1))
     print("\nREHEARSAL -- a simulated provider, not a result\n" + show(summary))
     print(f"\n{provider.question_runs:,} question-runs, {provider.tokens / 1e6:,.0f}M "

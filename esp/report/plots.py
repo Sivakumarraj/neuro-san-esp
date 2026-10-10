@@ -11,6 +11,8 @@ from pathlib import Path
 
 import matplotlib
 
+from esp.eval import accounting as usage
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -135,7 +137,7 @@ def pareto(history: dict, out: Path) -> Path:
 
 def render_all(results_dir: str | Path = "results") -> list[Path]:
     results = Path(results_dir)
-    history = json.loads((results / "history.json").read_text())
+    history = usage.history_in(json.loads((results / "history.json").read_text()))
     figures = results / "figures"
     figures.mkdir(parents=True, exist_ok=True)
     return [

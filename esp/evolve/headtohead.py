@@ -37,14 +37,15 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from esp.eval import accounting as usage
 from esp.eval.tasks import Task
 from esp.genome.definition import Genome
 
 CHUNK = 4
-# What one question costs a network in tokens, measured: 7k to 23k on the
-# committed and live Gemini runs. The plan prices at the top of that range so
-# the cap is met early rather than late.
-TOKENS_PER_QUESTION = 20_000
+# What one question costs a network in tokens, measured: 3.5k to 11.5k on the
+# committed and live Gemini runs, counted once (esp/eval/accounting.py). The
+# plan prices at the top of that range so the cap is met early rather than late.
+TOKENS_PER_QUESTION = 10_000
 # Share of a network's tokens its router spends. The Coordinator reads every
 # specialist's report, so it carries more than an equal share.
 ROUTER_SHARE = 0.4
@@ -151,8 +152,10 @@ class Log:
         self.path = path
         self.rows: list[dict] = []
         if path.exists():
-            self.rows = [json.loads(line) for line in path.read_text().splitlines()
-                         if line.strip()]
+            # Rows written before the accounting fix carry doubled usage; read
+            # every row in one set of units (esp/eval/accounting.py).
+            self.rows = [usage.normalised(json.loads(line))
+                         for line in path.read_text().splitlines() if line.strip()]
 
     def done(self, repeat: int, index: int, contender: Contender) -> bool:
         return any(r["repeat"] == repeat and r["chunk"] == index
@@ -164,7 +167,7 @@ class Log:
     def add(self, row: dict) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as out:
-            out.write(json.dumps(row) + "\n")
+            out.write(json.dumps({**row, "accounting": usage.ACCOUNTING}) + "\n")
         self.rows.append(row)
 
 
@@ -274,7 +277,7 @@ def rehearsal_measure(contender: Contender, chunk: list[Task]) -> dict:
         results.append({"task_id": task.task_id, "hops": task.hops, "correct": correct,
                         "seconds": 1.0, "answer": task.answer if correct else "?",
                         "error": "", "infrastructure": False})
-        tokens += rng.randrange(6_000, 20_000)
+        tokens += rng.randrange(3_000, 10_000)
     return {"results": results, "tokens": tokens,
             "cost": estimate_cost(contender, len(chunk), tokens // len(chunk)),
             "seconds": 1.0, "rehearsal": True}

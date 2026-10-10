@@ -23,6 +23,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from esp.eval import accounting as usage
+
 # List prices in dollars per million tokens, (input, output). Claude figures
 # are Anthropic's first-party API list prices. The Gemini row is not a list
 # price: it is what this project's own committed runs cost per million tokens,
@@ -44,11 +46,13 @@ GEMINI_MEASURED_BLENDED = 0.45
 # answers and tool calls come out.
 OUTPUT_SHARE = 0.10
 
-# Dollar fitness. One question on the designer's shape cost about $0.0065 in
-# v1; the scale puts a network ten times dearer than that at the cap, which is
-# where the token scale of the v1 fitness sat relative to the designer too.
+# Dollar fitness. One question on the designer's shape cost about $0.0033 in
+# v1, counted once (esp/eval/accounting.py); the scale puts a network ten times
+# dearer than that at the cap, which is where the token scale of the v1 fitness
+# sat relative to the designer too. Halved with TOKEN_SCALE, so no dollar
+# fitness moved.
 DOLLAR_WEIGHT = 0.06
-DOLLAR_SCALE = 0.065
+DOLLAR_SCALE = 0.0325
 AGENT_WEIGHT = 0.02
 
 
@@ -112,7 +116,7 @@ def priced(cache_dir: Path) -> list[Priced]:
         try:
             raw = json.loads(path.read_text(encoding="utf-8"))
             found.append(Priced(raw["genome_hash"], float(raw["accuracy"]),
-                                int(raw["tokens"]), float(raw["cost"]),
+                                usage.tokens_in(raw), usage.cost_in(raw),
                                 len(raw["results"]), int(raw["agents"])))
         except (json.JSONDecodeError, KeyError, OSError, TypeError, ValueError):
             continue

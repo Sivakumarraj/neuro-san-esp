@@ -3,8 +3,9 @@
 It stands in for `esp.eval.runner.run_suite`: same arguments, same `SuiteRun`
 back. Answers are coin flips at a chance planted from the network's structure
 and the question's kind, and tokens and dollars are drawn to the scale v1
-actually measured (about 6,600 to 22,700 tokens a question, $0.29 to $0.50 a
-million). Everything is deterministic for a network and a question.
+actually measured (about 3,300 to 11,350 tokens a question, $0.29 to $0.50 a
+million, counted once; see `esp/eval/accounting.py`). Everything is
+deterministic for a network and a question.
 
 Nothing it produces is a result. It exists to prove the pipeline -- measuring,
 caching, stopping for quota and resuming, the replicate comparison, judging --
@@ -69,8 +70,8 @@ class SimulatedProvider:
         results, tokens = [], 0
         for task in tasks:
             right = _unit(digest, task.task_id, "answer") < planted_chance(genome, task)
-            spend = int(4_000 + 1_900 * f[0] + 900 * task.hops
-                        + 3_000 * _unit(digest, task.task_id, "tokens"))
+            spend = int(2_000 + 950 * f[0] + 450 * task.hops
+                        + 1_500 * _unit(digest, task.task_id, "tokens"))
             tokens += spend
             results.append(TaskResult(task.task_id, task.hops, right, 1.0,
                                       task.answer if right else "simulated miss"))

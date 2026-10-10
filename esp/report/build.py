@@ -11,6 +11,7 @@ from pathlib import Path
 
 from reportlab.platypus import PageBreak, Spacer
 
+from esp.eval import accounting as usage
 from esp.report.layout import (
     AMBER,
     CW,
@@ -26,7 +27,7 @@ from esp.report.layout import (
 class Report(Layout):
     def __init__(self, results_dir: str | Path = "results"):
         super().__init__(results_dir)
-        self.history = json.loads((self.dir / "history.json").read_text())
+        self.history = usage.history_in(json.loads((self.dir / "history.json").read_text()))
 
 
     def compose(self) -> list:

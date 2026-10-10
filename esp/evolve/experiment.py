@@ -30,6 +30,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from esp.eval import accounting as usage
 from esp.eval.runner import QuotaExhausted, evaluate
 from esp.eval.stats import paired
 from esp.eval.tasks import Task
@@ -59,7 +60,7 @@ def cost_per_question(root: Path = ROOT) -> float:
     reports = [json.loads(p.read_text(encoding="utf-8"))
                for p in sorted((root / "results" / "heldout_bank").glob("*.json"))]
     asked = sum(r["questions_asked"] for r in reports)
-    return sum(r["cost"] for r in reports) / asked if asked else 0.0
+    return sum(usage.cost_in(r) for r in reports) / asked if asked else 0.0
 
 
 @dataclass

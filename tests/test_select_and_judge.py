@@ -54,6 +54,21 @@ def test_the_readme_quotes_the_runs_as_measured():
     assert f"p = {p}" in README
 
 
+def test_the_headline_table_quotes_usage_counted_once():
+    """The token and dollar rows of the headline, from the stage 8 logs. Every
+    figure here was once published at twice its value; the logs held the
+    double count, and nothing checked the prose against them."""
+    networks = _summary()["8-judge-search10"]["networks"]
+    evolved, designer = networks["evolved"], networks["designer"]
+    for key, shown in (("tokens_per_question", "{:,}"), ("cost_per_question", "${:.5f}"),
+                       ("cost_per_correct", "${:.5f}")):
+        change = round(100 * (evolved[key] / designer[key] - 1))
+        row = (f"{shown.format(evolved[key])} ({change:+d}%)".replace("-", "\N{MINUS SIGN}"),
+               shown.format(designer[key]))
+        plain = README.replace("**", "")
+        assert all(cell in plain for cell in row), f"README misquotes {key}: {row}"
+
+
 def test_flat_and_solo_are_called_seeds_not_search_results():
     from esp.eval import measurements
     from esp.genome.seeds import SEEDS

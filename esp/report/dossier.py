@@ -710,7 +710,7 @@ class Dossier(Layout):
              "topologies. Neither had ever been run as written &mdash; every "
              "multi-agent measurement taken before this was invalid."),
             ("The cost objective had no gradient",
-             "Token cost was normalised by 60,000 while real candidates burned 260,000, "
+             "Token cost was normalised by a quarter of what real candidates burned, "
              "so the term saturated and contributed nothing. The run would have "
              "reported itself as multi-objective while optimising accuracy alone. "
              f"Fixed, the {spelled(facts().measured)} measured networks spread "

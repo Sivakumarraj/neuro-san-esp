@@ -35,6 +35,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from esp.config import bootstrap  # noqa: E402
+from esp.eval import accounting as usage  # noqa: E402
 
 # The children generated from flat in the committed paid search. The seed and
 # the operator list are what produced them; changing either produces others.
@@ -151,6 +152,7 @@ def contender_for(name: str, label: str | None = None, promote: list[str] | None
 def summarise(rows: list[dict]) -> dict:
     """Per label: accuracy, tokens and dollars per question and per right answer."""
     by = defaultdict(lambda: {"asked": 0, "right": 0, "tokens": 0, "cost": 0.0,
+                              "listed": 0.0, "reported": 0.0, "priced": True,
                               "unfinished": 0, "repeats": set()})
     for r in rows:
         n = by[r["label"]]
@@ -159,6 +161,14 @@ def summarise(rows: list[dict]) -> dict:
         n["unfinished"] += sum(x["infrastructure"] for x in r["results"])
         n["tokens"] += r["tokens"]
         n["cost"] += r["cost"]
+        # "cost" is the larger of the two per chunk, which is what the cap
+        # enforces. Comparing networks needs one price source for both, so
+        # each is kept on its own as well.
+        if "listed_cost" in r and "reported_cost" in r:
+            n["listed"] += r["listed_cost"]
+            n["reported"] += r["reported_cost"]
+        else:
+            n["priced"] = False
         n["repeats"].add(r.get("run", 0))
     out = {}
     for label, n in sorted(by.items()):
@@ -171,6 +181,13 @@ def summarise(rows: list[dict]) -> dict:
             "cost_per_correct": round(n["cost"] / max(n["right"], 1), 6),
             "cost": round(n["cost"], 4),
         }
+        if n["priced"]:
+            out[label].update({
+                "listed_cost_per_question": round(n["listed"] / n["asked"], 6),
+                "reported_cost_per_question": round(n["reported"] / n["asked"], 6),
+                "listed_cost_per_correct": round(n["listed"] / max(n["right"], 1), 6),
+                "reported_cost_per_correct": round(n["reported"] / max(n["right"], 1), 6),
+            })
     return out
 
 
@@ -197,7 +214,7 @@ def load_rows(directory: Path) -> list[dict]:
     rows = []
     for path in sorted(directory.rglob("*.jsonl")):
         run = path.parent.name
-        rows += [{**json.loads(line), "run": run}
+        rows += [{**usage.normalised(json.loads(line)), "run": run}
                  for line in path.read_text().splitlines() if line.strip()]
     return rows
 

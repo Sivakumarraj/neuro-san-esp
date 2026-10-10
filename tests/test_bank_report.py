@@ -24,10 +24,10 @@ def test_the_committed_reports_say_what_the_docs_say():
     designer, evolved = reports["designer"], reports["evolved"]
     assert designer["suite"] == evolved["suite"] == "meridian-bank:24"
     assert (right(designer), right(evolved)) == (23, 21)
-    assert (designer["tokens"], evolved["tokens"]) == (159_086, 176_740)
+    assert (designer["tokens"], evolved["tokens"]) == (79_543, 88_370)
     findings = (ROOT / "docs" / "FINDINGS.md").read_text(encoding="utf-8")
-    assert "| `seed:designer_shaped` | **23 / 24** | 159,086 |" in findings
-    assert "| `mut:reassign_model` 6859dd | 21 / 24 | 176,740 |" in findings
+    assert "| `seed:designer_shaped` | **23 / 24** | 79,543 |" in findings
+    assert "| `mut:reassign_model` 6859dd | 21 / 24 | 88,370 |" in findings
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "answered 21 against the designer's 23" in readme
 

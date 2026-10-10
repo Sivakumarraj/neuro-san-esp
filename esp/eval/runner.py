@@ -17,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from esp.eval import accounting as usage
 from esp.eval.ratelimit import install as install_rate_limit
 from esp.eval.ratelimit import install_others as install_other_rate_limits
 from esp.eval.tasks import TASKS, Task, grade
@@ -143,21 +144,26 @@ def _ask(hocon_path: str, question: str) -> tuple[str, dict, float]:
     return answer, accounting, time.monotonic() - started
 
 
-def _total_tokens(accounting: dict) -> int:
-    """Token accounting nests per-agent totals; sum whatever integer token
-    counts are present rather than guessing at one schema."""
-    total = 0
+def _sum_once(accounting: dict, keys: tuple[str, ...]) -> float:
+    """Add up a usage figure, counting every model call once.
+
+    neuro-san's front man reports a run's total at the top of the structure and
+    the same usage again per model under "models". A node that carries its own
+    total is the answer for everything beneath it, so nothing under it is
+    added; only where no total sits are the parts summed. Summing both used to
+    double every token and dollar figure; see esp/eval/accounting.py.
+    """
+    total = 0.0
 
     def walk(node) -> None:
         nonlocal total
         if isinstance(node, dict):
-            for key, value in node.items():
-                if key in ("total_tokens", "completion_tokens", "prompt_tokens") \
-                        and isinstance(value, (int, float)):
-                    if key == "total_tokens":
-                        total += int(value)
-                else:
-                    walk(value)
+            here = [node[k] for k in keys if isinstance(node.get(k), (int, float))]
+            if here:
+                total += float(here[0])
+                return
+            for value in node.values():
+                walk(value)
         elif isinstance(node, list):
             for item in node:
                 walk(item)
@@ -166,23 +172,14 @@ def _total_tokens(accounting: dict) -> int:
     return total
 
 
+def _total_tokens(accounting: dict) -> int:
+    """Tokens the run used, counted once."""
+    return int(_sum_once(accounting, ("total_tokens",)))
+
+
 def _cost(accounting: dict) -> float:
-    total = 0.0
-
-    def walk(node) -> None:
-        nonlocal total
-        if isinstance(node, dict):
-            for key, value in node.items():
-                if key in ("total_cost", "cost") and isinstance(value, (int, float)):
-                    total += float(value)
-                else:
-                    walk(value)
-        elif isinstance(node, list):
-            for item in node:
-                walk(item)
-
-    walk(accounting)
-    return round(total, 6)
+    """Dollars the provider accounting reports for the run, counted once."""
+    return round(_sum_once(accounting, ("total_cost", "cost")), 6)
 
 
 
@@ -412,7 +409,8 @@ def evaluation_from_cache(raw: dict) -> Evaluation:
     the same way, and the ones that constructed Evaluation(**raw) by hand broke
     the moment it was added.
     """
-    raw = dict(raw)
+    raw = usage.normalised(raw)
+    raw.pop("accounting", None)
     raw.pop("genome", None)
     raw.pop("from_cache", None)
     raw["results"] = classify([TaskResult(**r) for r in raw["results"]])
@@ -477,5 +475,6 @@ def evaluate(genome: Genome, tasks: list[Task] | None = None,
     # seeds it could rebuild from source -- three points out of every eleven
     # measured. A hash cannot be inverted; the canonical form can.
     payload["genome"] = genome.canonical()
+    payload["accounting"] = usage.ACCOUNTING
     cache_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return evaluation

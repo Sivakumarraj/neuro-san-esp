@@ -90,8 +90,10 @@ def test_the_readme_results_table_matches_the_committed_measurements():
     evolved candidate that beat every seed. Both were committed. A reader had
     no way to know which one the repository meant.
     """
-    history = json.loads(
-        (ROOT / "results" / "history.json").read_text(encoding="utf-8"))
+    from esp.eval import accounting as usage
+
+    history = usage.history_in(json.loads(
+        (ROOT / "results" / "history.json").read_text(encoding="utf-8")))
     records = {record["genome_hash"]: record for record in history["records"]}
 
     results = README[README.index("## Results"):README.index("## Limitations")]

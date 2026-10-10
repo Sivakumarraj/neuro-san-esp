@@ -48,11 +48,12 @@ def test_planning_prices():
 
 
 def test_the_dollar_fitness_charges_money_and_caps_it():
-    cheap = fitness_dollars(0.9, 0.001, 4)
-    dear = fitness_dollars(0.9, 0.05, 4)
+    # Dollars a question, counted once (esp/eval/accounting.py).
+    cheap = fitness_dollars(0.9, 0.0005, 4)
+    dear = fitness_dollars(0.9, 0.025, 4)
     assert cheap > dear
     assert fitness_dollars(0.9, DOLLAR_SCALE, 4) == fitness_dollars(0.9, 10.0, 4)
-    assert fitness_dollars(0.95, 0.05, 4) > fitness_dollars(0.9, 0.001, 4)
+    assert fitness_dollars(0.95, 0.025, 4) > fitness_dollars(0.9, 0.0005, 4)
 
 
 def test_the_report_runs_and_spends_nothing(capsys):

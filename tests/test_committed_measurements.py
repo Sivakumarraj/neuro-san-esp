@@ -21,6 +21,7 @@ from pathlib import Path
 
 import pytest
 
+from esp.eval import accounting as usage
 from esp.eval import measurements
 from esp.evolve.loop import TOKEN_SCALE, WEIGHTS
 from esp.genome.definition import Genome
@@ -40,7 +41,7 @@ def cached() -> dict[str, dict]:
 def scalarised(entry: dict) -> float:
     """The project's own fitness, recomputed from a cached measurement."""
     return (WEIGHTS["accuracy"] * entry["accuracy"]
-            - WEIGHTS["tokens"] * min(entry["tokens"] / TOKEN_SCALE, 1.0)
+            - WEIGHTS["tokens"] * min(usage.tokens_in(entry) / TOKEN_SCALE, 1.0)
             - WEIGHTS["agents"] * (entry["agents"] / 9.0))
 
 

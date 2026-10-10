@@ -45,6 +45,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from esp.eval import accounting as usage
 from esp.eval import failover
 from esp.eval.runner import Evaluation, QuotaExhausted, evaluate
 from esp.eval.tasks import Task
@@ -67,11 +68,13 @@ WEIGHTS = {"accuracy": 1.0, "tokens": 0.06, "agents": 0.02}
 # and the objective would carry no gradient at all -- multi-objective in shape
 # while optimising accuracy alone.
 #
-# The measured candidates span roughly 250k to 475k tokens. 600k keeps all of
-# them inside the range, with room to reward a cheaper topology and penalise a
-# profligate one. The cap remains because past this point a topology is runaway
-# rather than merely expensive.
-TOKEN_SCALE = 600_000.0
+# The measured candidates span roughly 120k to 240k tokens, counted once. 300k
+# keeps all of them inside the range, with room to reward a cheaper topology
+# and penalise a profligate one. The cap remains because past this point a
+# topology is runaway rather than merely expensive. It was 600k until the
+# runner stopped counting every run twice (esp/eval/accounting.py); halving it
+# with the counts left every fitness value where it was.
+TOKEN_SCALE = 300_000.0
 
 
 def scalarise(accuracy: float, tokens: int, agents: int) -> float:
@@ -442,6 +445,7 @@ class Evolution:
             "surrogate_quality": self.history.surrogate_quality,
             "stopped_early": self.history.stopped_early,
             "model_swaps": failover.swaps(),
+            "accounting": usage.ACCOUNTING,
             "records": [asdict(r) for r in self.history.records],
             "pareto": [asdict(r) for r in self.history.pareto()],
         }

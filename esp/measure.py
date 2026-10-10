@@ -43,6 +43,7 @@ import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from esp.eval import accounting as usage
 from esp.eval.runner import MAX_WORKERS, TaskResult, refuse_unmeasured, run_suite
 from esp.eval.tasks import TASKS, Task
 
@@ -125,6 +126,7 @@ class Report:
             "questions_asked": len(self.results), "accuracy": self.accuracy,
             "answered_accuracy": self.answered_accuracy, "unfinished": self.unfinished,
             "tokens": self.tokens, "cost": self.cost, "seconds": self.seconds,
+            "accounting": usage.ACCOUNTING,
             "results": [{**asdict(r), "question": self.questions.get(r.task_id, ""),
                          "expected": self.expected.get(r.task_id, "")}
                         for r in self.results],

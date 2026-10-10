@@ -12,6 +12,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from esp.eval import accounting as usage
 from esp.eval import runner
 from esp.eval.rehearsal import SimulatedProvider
 from esp.eval.suites import SELECT
@@ -243,17 +244,17 @@ def test_the_price_comes_from_what_committed_runs_cost():
     low, high = pool.tokens_per_question()
     calibration = json.loads((ROOT / "results" / "calibration" /
                               "designer_select20.json").read_text())
-    assert low == round(calibration["tokens"] / len(calibration["results"]))
+    assert low == round(usage.tokens_in(calibration) / len(calibration["results"]))
     rehearsed = json.loads((ROOT / "results" / "rehearsal" / "totals.json").read_text())
-    assert low < rehearsed["tokens"] / rehearsed["question_runs"] < high
+    assert low < usage.tokens_in(rehearsed) / rehearsed["question_runs"] < high
 
 
 def test_the_readme_quotes_the_price_the_plan_prints():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     plan = pool.Plan().describe()
-    for model, phrase in (("claude-haiku-4-5", "$123 to $251"),
-                          ("claude-sonnet-5", "$245 to $501"),
-                          ("gemini-3.1-flash-lite", "$39 to $81")):
+    for model, phrase in (("claude-haiku-4-5", "$61 to $125"),
+                          ("claude-sonnet-5", "$123 to $251"),
+                          ("gemini-3.1-flash-lite", "$20 to $40")):
         assert f"{model}: about {phrase}" in plan
         assert phrase in readme
     low, high = pool.tokens_per_question()

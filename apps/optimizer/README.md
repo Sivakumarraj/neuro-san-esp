@@ -103,7 +103,7 @@ python apps/optimizer/run_optimizer.py
   "selection": "3 chosen by the Predictor, trained on 11 measurements"
 }
 
-best so far: 6859dda0dfabcf2d  mut:reassign_model  acc=0.88 tokens=260,052 agents=5 fitness=+0.8453
+best so far: 6859dda0dfabcf2d  mut:reassign_model  acc=0.88 tokens=130,026 agents=5 fitness=+0.8453
 
 MATERIAL: a better topology was found -- worth telling someone.
 ```
