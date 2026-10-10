@@ -474,6 +474,18 @@ def test_the_token_model_is_gated_once_its_null_is_measured():
     assert "accuracy" not in quality.gated_outcomes()
 
 
+
+def test_a_refit_below_the_minimum_forgets_the_old_models():
+    """Models kept from an earlier, larger fit made a refit on too few
+    measurements still report trained and keep ranking."""
+    surrogate = OutcomeSurrogate(seed=0)
+    surrogate.fit(GENOMES, OUTCOMES)
+    assert surrogate.ranks()
+    surrogate.fit(GENOMES[:MIN_SAMPLES - 1], OUTCOMES[:MIN_SAMPLES - 1])
+    assert not surrogate.trained
+    assert not surrogate.ranks()
+
+
 def test_gating_every_objective_leaves_only_the_term_that_is_counted():
     """With both *learned* objectives gated, what remains is parsimony.
 

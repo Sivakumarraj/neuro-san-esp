@@ -289,6 +289,10 @@ class OutcomeSurrogate:
         moment the objective starts ranking.
         """
         self.gated = set(gated or ())
+        # A refit starts clean. Models kept from an earlier, larger fit made a
+        # refit below MIN_SAMPLES still report trained and keep ranking.
+        self.models = {}
+        self.trained = False
         matrix = np.vstack([features(g) for g in genomes])
         targets = {
             "accuracy": np.array([o.accuracy for o in outcomes], dtype=float),

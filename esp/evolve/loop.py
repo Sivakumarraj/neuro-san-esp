@@ -380,24 +380,21 @@ class Evolution:
             if not candidates:
                 print("  Phase C -- no new candidates; search exhausted", flush=True)
                 break
-            predictions = self.surrogate.predict([c for c, _ in candidates])
-            ranked = sorted(zip(candidates, predictions, strict=True),
-                            key=lambda pair: -pair[1])
+            ranked = self._order(candidates)
             if self.surrogate.ranks():
                 print(f"  Phase C -- {len(candidates)} candidates scored by "
                       f"surrogate, best predicted {ranked[0][1]:+.4f}", flush=True)
             else:
-                # Every prediction is the same constant, so the sort above did
-                # nothing and Phase D is about to buy the first few candidates
-                # in generation order. That is a random search, and printing a
-                # "best predicted" score over it would hide the one fact that
-                # matters about this generation.
+                # Printing a "best predicted" score here would hide the one fact
+                # that matters about this generation: nothing learned chose it.
+                why = (f"UNTRAINED ({len(genomes)} of {MIN_SAMPLES} samples)"
+                       if len(genomes) < MIN_SAMPLES else
+                       "NOT RANKING (an objective was constant, or every learned "
+                       "model lost to its own null)")
                 print(f"  Phase C -- {len(candidates)} candidates generated, but "
-                      f"the surrogate is UNTRAINED ({len(genomes)} of "
-                      f"{MIN_SAMPLES} samples): every prediction is the same "
-                      f"constant, so the elite below is an arbitrary slice, not "
-                      f"a selection. This generation is a random search.",
-                      flush=True)
+                      f"the surrogate is {why}, so the elite below is the first "
+                      f"few in generation order, not a selection. This "
+                      f"generation is a random search.", flush=True)
 
             # Phase D: pay for the elite only.
             print("  Phase D -- real evaluation of the elite", flush=True)
@@ -413,6 +410,22 @@ class Evolution:
 
         self.save()
         return self.history
+
+    def _order(self, candidates: list[tuple[Genome, str]]) -> list:
+        """Candidates with their predicted fitness: best first when the
+        surrogate ranks, generation order when it does not.
+
+        A surrogate that cannot rank still returns predictions that differ by
+        agent count, the one exact term in them. Sorting those anyway bought
+        the smallest networks every generation while the log called it a random
+        search. Generation order is what the service takes too
+        (esp/service/optimizer.py), so batch and service select alike.
+        """
+        predictions = self.surrogate.predict([c for c, _ in candidates])
+        pairs = list(zip(candidates, predictions, strict=True))
+        if self.surrogate.ranks():
+            pairs.sort(key=lambda pair: -pair[1])
+        return pairs
 
     def _take(self) -> int:
         """How many candidates this generation may pay for."""

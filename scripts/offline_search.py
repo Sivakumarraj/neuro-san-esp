@@ -184,8 +184,12 @@ def main() -> int:
     scoring = time.monotonic()
     predictions = surrogate.predict([c for c, _ in candidates])
     elapsed = time.monotonic() - scoring
-    ranked = sorted(zip(candidates, predictions, strict=True),
-                    key=lambda pair: -pair[1])
+    ranked = list(zip(candidates, predictions, strict=True))
+    # Sorted only when something learned the order. Otherwise the predictions
+    # differ by agent count alone, and sorting them put the smallest networks
+    # first under a heading that says "generation order".
+    if surrogate.ranks():
+        ranked.sort(key=lambda pair: -pair[1])
 
     print(f"  {len(candidates)} distinct viable, {rejected} rejected as invalid, "
           f"{repeats} duplicates, {already} already measured")
@@ -206,9 +210,12 @@ def main() -> int:
           f"to rank")
 
     if not surrogate.ranks():
-        print(f"\n  !! The surrogate is UNTRAINED on {len(genomes)} samples "
-              f"(needs {MIN_SAMPLES}). Every prediction below is the same "
-              f"constant, so this is NOT a ranking -- it is the first "
+        why = (f"UNTRAINED on {len(genomes)} samples (needs {MIN_SAMPLES})"
+               if len(genomes) < MIN_SAMPLES else
+               "NOT RANKING (an objective was constant, or every learned model "
+               "lost to its own null)")
+        print(f"\n  !! The surrogate is {why}. Nothing it learned orders the "
+              f"candidates below, so this is NOT a ranking -- it is the first "
               f"{args.top} candidates in generation order. Phase C's cost "
               f"claim holds; its selection claim does not, until there are "
               f"more real evaluations.")

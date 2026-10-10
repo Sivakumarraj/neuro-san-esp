@@ -115,6 +115,18 @@ def test_a_front_larger_than_the_elite_keeps_its_best():
     assert SEEDS["solo"]().genome_hash() not in parents
 
 
+
+def test_phase_c_takes_generation_order_when_the_predictor_cannot_rank():
+    """An unranking surrogate's predictions still differ by agent count. Sorting
+    them anyway bought the smallest networks every generation while the log
+    said "random search"."""
+    run = Evolution(seed=1, elite=3, out_dir="/tmp")
+    assert not run.surrogate.ranks()
+    candidates = [(SEEDS[name](), "seed") for name in ("designer_shaped", "flat_pair", "solo")]
+    ordered = [genome.genome_hash() for (genome, _), _ in run._order(candidates)]
+    assert ordered == [genome.genome_hash() for genome, _ in candidates]
+
+
 def test_the_service_elite_uses_the_same_rule():
     """Batch and service must not select differently, or the population that
     accumulates over weeks is shaped by which code path paid for it."""
