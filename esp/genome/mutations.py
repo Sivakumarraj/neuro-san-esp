@@ -245,7 +245,11 @@ def reassign_model(genome: Genome, rng: random.Random) -> Genome:
     choices = [m for m in MODEL_TIERS if m != current]
     if not choices:
         raise InvalidMutant("only one model tier available")
-    mutant.agents[name].model = rng.choice(choices)
+    choice = rng.choice(choices)
+    # The default is written as None, never by name. On a ladder that starts at
+    # the network default, the only demotion wrote the default out explicitly:
+    # the same network under a second hash, measured and paid for twice.
+    mutant.agents[name].model = None if choice == mutant.default_model else choice
     return mutant
 
 

@@ -153,3 +153,19 @@ def test_agents_created_by_mutation_carry_the_prior_too():
     genome = OPERATORS["add_agent"](solo(), random.Random(0))
     new = [a for a in genome.agents.values() if a.name.startswith("Specialist")]
     assert new and all("memory" in a.instructions.lower() for a in new)
+
+
+def test_moving_an_agent_back_to_the_default_is_the_same_network(monkeypatch):
+    """On a ladder that starts at the network default (every non-Gemini one),
+    the only demotion wrote the default out by name, so the same network got a
+    second hash and was measured, and paid for, twice."""
+    from esp.genome import mutations
+
+    monkeypatch.setattr(mutations, "MODEL_TIERS", ("gpt-5.4-nano", "gpt-5.4-mini"))
+    plain = solo()
+    plain.default_model = "gpt-5.4-nano"
+    promoted = plain.clone()
+    promoted.agents[promoted.top].model = "gpt-5.4-mini"
+    demoted = reassign_model(promoted, random.Random(0))
+    assert demoted.agents[demoted.top].model is None
+    assert demoted.genome_hash() == plain.genome_hash()
