@@ -9,14 +9,14 @@
     "optimizer.hocon": {
         "serve": true,
 
-        # Not reachable from a browser or any client by default. This agent
-        # spends real provider budget when it is asked to run, and the day's
-        # budget is about three evaluations -- an endpoint anyone can poke is
-        # an endpoint that can empty it before the scheduler gets a turn.
+        # Not listed by default. "public": false is neuro-san's "protected":
+        # hidden from the Concierge list but still callable over the server's
+        # web API by anyone who can reach the port. This agent spends real
+        # provider budget when asked to run, and the day's budget is about three
+        # evaluations, so the server must not be reachable from untrusted
+        # networks at all -- compose.yaml publishes no port; see SERVING.md.
         #
-        # Set ESP_OPTIMIZER_PUBLIC=true to expose it for a local demonstration.
-        # The deployed default stays closed; this only opens it for whoever
-        # deliberately typed the variable.
+        # Set ESP_OPTIMIZER_PUBLIC=true to list it for a local demonstration.
         "public": false,
         "public": ${?ESP_OPTIMIZER_PUBLIC},
         "periodic": {
@@ -36,9 +36,10 @@ topology was found. Most wakes find nothing; say nothing when that happens.
         },
     },
 
-    # Measures networks on request and compares them. Private by default for
-    # the same reason as the optimiser: every request is paid model calls, and
-    # ESP_EVAL_MAX_RUNS caps them per process. ESP_EVALUATOR_PUBLIC=true opens
+    # Measures networks on request and compares them. Unlisted by default for
+    # the same reason as the optimiser, and callable the same way by anyone who
+    # can reach the server: every request is paid model calls, and
+    # ESP_EVAL_MAX_RUNS caps them per process. ESP_EVALUATOR_PUBLIC=true lists
     # it, for a deployment whose operator means to offer measurement.
     "evaluator.hocon": {
         "serve": true,

@@ -113,11 +113,20 @@ MAX_KEPT_JOBS = 50
 MAX_MEASURE = int(os.environ.get("ESP_WEB_MAX_MEASURE", "68"))
 MAX_NETWORKS = 4
 MAX_SUITE_QUESTIONS = 50
+MAX_SUITE_BYTES = 200_000
 # The longest question either form sends to a network. /ask cut at this and a
 # question file had no limit at all: one 192,027-character question went to
 # every chosen network and was charged as one run.
 MAX_QUESTION_CHARS = 1_000
-MAX_SUITE_BYTES = 200_000
+# Every POST body must declare its length and stay under this, checked before a
+# byte of it is read. The schema's own limits apply only after a body is read and
+# parsed whole: a 150 MB question was read, parsed and echoed back in a 422.
+# Twice the largest question file, because JSON escaping can grow it.
+MAX_BODY_BYTES = 2 * MAX_SUITE_BYTES
+# Who may show this page in a frame. The page has paid buttons, so another site
+# must not frame it and click them through. Hugging Face Spaces shows an app in
+# an iframe on huggingface.co, which is why that origin is allowed by default.
+FRAME_ANCESTORS = os.environ.get("ESP_WEB_FRAME_ANCESTORS", "'self' https://huggingface.co")
 # Networks an operator adds by placing HOCON files here. Never uploaded: a
 # network names Python classes to import, so taking one from a visitor would be
 # taking code.
@@ -136,6 +145,16 @@ _KEY_SHAPES = re.compile(
 
 def redact(text: str) -> str:
     return _KEY_SHAPES.sub("[redacted key]", text)
+
+
+# A file path in an exception says where this server keeps things. The visitor
+# needs the provider's words, not the layout of the machine.
+_PATHS = re.compile(r"(?:/[\w.\-]+){2,}")
+
+
+def public_error(text: str) -> str:
+    """An error as a visitor may see it: keys masked, server paths hidden."""
+    return _PATHS.sub("[path]", redact(text))
 
 
 def log_failure(where: str) -> None:
@@ -242,14 +261,14 @@ def run_job(job: dict, chosen: list[Candidate], tasks: list, suite: str) -> None
                                        **report.as_dict()})
             except (OSError, SuiteError) as exc:
                 job["reports"].append({"id": candidate.id, "name": candidate.name,
-                                       "error": redact(str(exc))[:300]})
+                                       "error": public_error(str(exc))[:300]})
             # A refused network still used up its share of the run, so progress
             # reaches the total whatever happened to it.
             job["done"] = before + len(tasks)
         pareto(job["reports"])
         job["state"] = "done"
     except Exception as exc:                       # reported to the page, never raised
-        job["state"], job["error"] = "error", redact(f"{type(exc).__name__}: {exc}")[:300]
+        job["state"], job["error"] = "error", public_error(f"{type(exc).__name__}: {exc}")[:300]
         log_failure("measurement job")
     finally:
         job["current"] = None
@@ -477,9 +496,36 @@ def failure_hint(reply: str) -> str:
 
 def build_app():
     from fastapi import FastAPI
+    from fastapi.exceptions import RequestValidationError
     from fastapi.responses import HTMLResponse, JSONResponse
 
-    app = FastAPI(title="neuro-san-esp champion")
+    # No /docs, /redoc or /openapi.json: they described every paid endpoint to
+    # anyone, and /openapi.json answered 500.
+    app = FastAPI(title="neuro-san-esp champion", docs_url=None, redoc_url=None,
+                  openapi_url=None)
+
+    @app.middleware("http")
+    async def guard(request, call_next):
+        """Refuse an unbounded or oversized body before it is read, and keep the
+        page out of other sites' frames."""
+        if request.method == "POST":
+            length = request.headers.get("content-length", "")
+            if not length.isdigit():
+                return JSONResponse({"error": "a request body must declare its length"},
+                                    status_code=411)
+            if int(length) > MAX_BODY_BYTES:
+                return JSONResponse({"error": "the request is too large"}, status_code=413)
+        response = await call_next(request)
+        response.headers["Content-Security-Policy"] = f"frame-ancestors {FRAME_ANCESTORS}"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid(_request, exc):
+        # FastAPI's own 422 echoes every input back; name the fields instead.
+        fields = sorted({".".join(str(part) for part in error.get("loc", ())[1:]) or "body"
+                         for error in exc.errors()})
+        return JSONResponse({"error": f"invalid request: {', '.join(fields)}"}, status_code=422)
 
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:
@@ -525,7 +571,7 @@ def build_app():
         except Exception as exc:      # a provider 429 must not 500 the page
             log_failure("/ask")
             return JSONResponse(
-                {"error": redact(f"{type(exc).__name__}: {exc}")[:300]}, status_code=502)
+                {"error": public_error(f"{type(exc).__name__}: {exc}")[:300]}, status_code=502)
         # A promoted router on a model that is busy or out of its daily quota
         # (gemini-3.5-flash allows about twenty requests a day on a free key)
         # left the page erroring on most questions. One retry with every agent
@@ -665,7 +711,12 @@ def main() -> int:
     port = int(os.environ.get("PORT", "7860"))
     print(f"champion={NAME} measured={RECORD is not None} "
           f"provider={SERVED.provider} retargeted={SERVED.retargeted} port={port}")
-    uvicorn.run(build_app(), host="0.0.0.0", port=port, log_level="info")
+    # Never let uvicorn rewrite the client address from X-Forwarded-For: it
+    # trusts the header from 127.0.0.1 by default, so behind a local proxy every
+    # visitor chose their own address and their own hourly share. client_key
+    # reads the header itself, and only when ESP_WEB_TRUST_PROXY says to.
+    uvicorn.run(build_app(), host="0.0.0.0", port=port, log_level="info",
+                proxy_headers=False)
     return 0
 
 

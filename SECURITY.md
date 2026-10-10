@@ -77,9 +77,13 @@ UTC day, gives each visitor a share per hour, and keeps the day's counts in
 `ESP_WEB_SPEND_FILE` so a restart does not reset them. Any error shown to a visitor passes
 through a filter that replaces anything shaped like a provider key, because provider errors
 sometimes echo request details. A visitor can never upload a network: a network names Python
-classes to import, so accepting one would be accepting code. Request bodies are bounded at the schema, so an oversized
-question is refused before it is read, and every failure is logged whole, keys masked, to
-the server's own log while the visitor sees one line.
+classes to import, so accepting one would be accepting code. Every request body must declare
+its length and is refused above 400 KB before any of it is read; the schema then bounds each
+field, and a malformed request is answered without echoing what was sent. Errors a visitor
+sees have server file paths hidden as well as keys, the page cannot be framed by sites other
+than huggingface.co (`ESP_WEB_FRAME_ANCESTORS` changes that), and there are no `/docs` or
+`/openapi.json` pages. Every failure is logged whole, keys masked, to the server's own log
+while the visitor sees one line.
 
 ## Dependencies and known advisories
 

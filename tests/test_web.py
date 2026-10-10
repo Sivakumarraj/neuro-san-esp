@@ -560,6 +560,59 @@ def test_a_failure_is_logged_whole_for_the_operator(client, monkeypatch, capsys)
     assert secret not in logged
 
 
+
+def test_a_body_over_the_cap_is_refused_before_it_is_read(client, monkeypatch):
+    """The schema's limits apply after a body is read and parsed whole: a 150 MB
+    question was read, parsed and echoed back."""
+    called = []
+    monkeypatch.setattr(serve, "_ask", lambda *a: called.append(1) or ("x", {}, 1.0))
+    big = json.dumps({"question": "q" * (serve.MAX_BODY_BYTES + 1)})
+    response = client.post("/ask", content=big, headers={"content-type": "application/json"})
+    assert response.status_code == 413 and not called
+    chunked = client.post("/ask", content=iter([b'{"question": "q"}']),
+                          headers={"content-type": "application/json"})
+    assert chunked.status_code == 411 and not called
+
+
+def test_a_malformed_request_is_not_echoed_back(client):
+    """FastAPI's own 422 returned every input in full."""
+    secret = "sk-ant-" + "z" * 40
+    response = client.post("/ask", json={"question": secret * 200})
+    assert response.status_code == 422
+    assert secret not in response.text and "question" in response.json()["error"]
+
+
+def test_the_page_cannot_be_framed_by_another_site_and_has_no_api_docs(client):
+    """It has paid buttons, so another site must not frame it and click them;
+    huggingface.co may, because Spaces shows the app in an iframe there."""
+    policy = client.get("/").headers["content-security-policy"]
+    assert policy.startswith("frame-ancestors") and "https://huggingface.co" in policy
+    for path in ("/docs", "/redoc", "/openapi.json"):
+        assert client.get(path).status_code == 404
+
+
+def test_a_failure_shown_to_a_visitor_hides_server_paths(client, monkeypatch):
+    def boom(*a):
+        raise FileNotFoundError(2, "No such file or directory", "/app/.esp-networks/abc.hocon")
+
+    monkeypatch.setattr(serve, "_ask", boom)
+    error = client.post("/ask", json={"question": "q"}).json()["error"]
+    assert "/app/.esp-networks" not in error and "[path]" in error
+
+
+def test_the_server_never_takes_the_client_address_from_a_header(monkeypatch):
+    """uvicorn trusts X-Forwarded-For from 127.0.0.1 by default, so behind a
+    local proxy every visitor chose their own address and hourly share."""
+    import uvicorn
+
+    seen = {}
+    monkeypatch.setattr(uvicorn, "run", lambda app, **options: seen.update(options))
+    monkeypatch.setattr(serve, "key_problem", lambda *a: None)
+    monkeypatch.setenv(serve.key_name_for(serve.SERVED.genome.default_model), "set")
+    assert serve.main() == 0
+    assert seen["proxy_headers"] is False
+
+
 def test_an_oversized_body_is_refused_before_it_is_read(client, monkeypatch):
     called = []
     monkeypatch.setattr(serve, "_ask", lambda *a: called.append(1) or ("x", {}, 1.0))

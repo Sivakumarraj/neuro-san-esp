@@ -172,8 +172,13 @@ accepted, since a network names Python classes to import. It has two tools:
   a paid model call, so a request that would pass `ESP_EVAL_MAX_RUNS` (68 by
   default, per server process) is refused before anything is asked.
 
-The deployed manifest keeps it private unless `ESP_EVALUATOR_PUBLIC=true`;
-`make studio` serves it publicly, because that UI is the operator's own. Both
+The deployed manifest leaves it unlisted unless `ESP_EVALUATOR_PUBLIC=true`;
+`make studio` lists it, because that UI is the operator's own. Unlisted is not private:
+`"public": false` is neuro-san's "protected" class, hidden from the Concierge list but
+callable over the server's web API by anyone who can reach its port, and the same holds for
+the optimiser. Both spend real budget, so never expose the server's port to a network you do
+not control: `compose.yaml` publishes none, and anything else should bind to loopback or sit
+behind a firewall. Both
 agents' own models come from neuro-san's `llm_config` fallbacks, in
 neuro-san-studio's order, so either runs on whichever provider has a key.
 
