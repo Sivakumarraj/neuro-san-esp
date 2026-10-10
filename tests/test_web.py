@@ -8,6 +8,7 @@ that keep a visitor from being lied to or from emptying the quota.
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -390,6 +391,8 @@ def test_the_committed_networks_are_offered_with_what_they_scored(measuring):
     ({"networks": ["__first__"], "suite": "{nope"}, "not JSON"),
     ({"networks": ["__first__"], "suite": "\n".join(
         f'{{"question": "q{i}", "answer": "a"}}' for i in range(60))}, "at most 50"),
+    ({"networks": ["__first__"], "suite": json.dumps(
+        {"question": "q" * 1_001, "answer": "a"})}, "longer than 1,000"),
 ])
 def test_a_bad_measurement_request_is_refused_before_anything_runs(measuring, body, complaint):
     if body["networks"] == ["__first__"]:
@@ -397,6 +400,28 @@ def test_a_bad_measurement_request_is_refused_before_anything_runs(measuring, bo
     response = measuring.post("/api/measure", json=body)
     assert response.status_code == 400 and complaint in response.json()["error"]
     assert serve._measured["count"] == 0, "a refused request spent budget"
+
+
+
+def test_a_measurement_never_shows_a_key(measuring, monkeypatch):
+    """A job's reports carry the networks' replies and the providers' errors as
+    they came back. A key in either must not reach whoever holds the link."""
+    secret = "sk-ant-" + "z" * 40
+    listed = measuring.get("/api/networks").json()
+    first, second = listed[0]["id"], listed[1]["id"]
+
+    def fake_measure(hocon, tasks, suite, on_result):
+        if hocon == serve.candidates()[second].hocon:
+            raise OSError(f"401 bad key {secret}")
+        report = _report((0.75, 1000))
+        report.results[0].answer = f"the provider said {secret}"
+        return report
+
+    monkeypatch.setattr(serve, "measure_network", fake_measure)
+    job = measuring.post("/api/measure", json={"networks": [first, second]}).json()["job"]
+    state = _wait(measuring, job)
+    assert secret not in json.dumps(state)
+    assert "[redacted key]" in json.dumps(state)
 
 
 def test_the_deployment_budget_is_enforced_up_front(measuring, monkeypatch):

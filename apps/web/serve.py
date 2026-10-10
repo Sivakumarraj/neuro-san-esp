@@ -113,6 +113,10 @@ MAX_KEPT_JOBS = 50
 MAX_MEASURE = int(os.environ.get("ESP_WEB_MAX_MEASURE", "68"))
 MAX_NETWORKS = 4
 MAX_SUITE_QUESTIONS = 50
+# The longest question either form sends to a network. /ask cut at this and a
+# question file had no limit at all: one 192,027-character question went to
+# every chosen network and was charged as one run.
+MAX_QUESTION_CHARS = 1_000
 MAX_SUITE_BYTES = 200_000
 # Networks an operator adds by placing HOCON files here. Never uploaded: a
 # network names Python classes to import, so taking one from a visitor would be
@@ -485,7 +489,7 @@ def build_app():
 
     @app.post("/ask")
     def ask(payload: Question, request: Request = None) -> JSONResponse:
-        question = payload.question.strip()[:1000]
+        question = payload.question.strip()[:MAX_QUESTION_CHARS]
         if not question:
             return JSONResponse({"error": "empty question"}, status_code=400)
 
@@ -543,7 +547,7 @@ def build_app():
         # nonsense, under a 200 -- nothing on the page said to go and fix .env.
         if never_answered(answer):
             return JSONResponse(
-                {"error": redact(f"{failure_hint(answer)} The provider said: {answer[:500]}")},
+                {"error": f"{failure_hint(answer)} The provider said: {redact(answer)[:500]}"},
                 status_code=502)
 
         # If it is one of the benchmark questions, grade it in front of the
@@ -599,6 +603,10 @@ def build_app():
                 return JSONResponse(
                     {"error": f"at most {MAX_SUITE_QUESTIONS} questions per measurement"},
                     status_code=400)
+            if any(len(task.question) > MAX_QUESTION_CHARS for task in tasks):
+                return JSONResponse(
+                    {"error": f"a question is longer than {MAX_QUESTION_CHARS:,} characters"},
+                    status_code=400)
 
         runs = len(wanted) * len(tasks)
         with _job_lock, _budget_lock:
@@ -629,7 +637,10 @@ def build_app():
         job = _jobs.get(job_id)
         if job is None:
             return JSONResponse({"error": "no such measurement"}, status_code=404)
-        return JSONResponse(job)
+        # Reports carry every network's replies and every provider error as they
+        # came back, so a key a provider echoed would reach whoever holds the
+        # link. Masked here, on the one way out.
+        return JSONResponse(json.loads(redact(json.dumps(job))))
 
     return app
 
