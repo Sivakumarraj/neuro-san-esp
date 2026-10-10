@@ -574,6 +574,15 @@ def test_a_body_over_the_cap_is_refused_before_it_is_read(client, monkeypatch):
     assert chunked.status_code == 411 and not called
 
 
+
+def test_an_over_long_question_is_refused_not_cut(client, monkeypatch):
+    """Questions of 1,001 to 4,000 characters were accepted and silently cut."""
+    called = []
+    monkeypatch.setattr(serve, "_ask", lambda *a: called.append(a) or ("x", {}, 1.0))
+    response = client.post("/ask", json={"question": "q" * (serve.MAX_QUESTION_CHARS + 1)})
+    assert response.status_code == 422 and not called
+
+
 def test_a_malformed_request_is_not_echoed_back(client):
     """FastAPI's own 422 returned every input in full."""
     secret = "sk-ant-" + "z" * 40

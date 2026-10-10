@@ -27,6 +27,10 @@ _STOP = {"the", "a", "an", "of", "for", "is", "are", "was", "were", "which",
 # short. ESP_SEARCH_RESULTS raises it for a run; results measured at one value
 # are never compared with results measured at another.
 MAX_RESULTS = int(os.environ.get("ESP_SEARCH_RESULTS", "3"))
+if MAX_RESULTS < 1:
+    # 0 returned no documents and a negative count all but the last few, so
+    # every network answered from the wrong evidence and nothing said why.
+    raise ValueError(f"ESP_SEARCH_RESULTS={MAX_RESULTS}: a search returns at least one document")
 
 
 def _terms(text: str) -> list[str]:

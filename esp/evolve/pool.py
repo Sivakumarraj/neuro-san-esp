@@ -20,8 +20,9 @@ need, for free. This is that, for neuro-san networks.
    Scoring on the answers it chose by would reward luck: on a pool of pure
    noise, any strategy with a consistent preference looked significantly
    better than random until this split was added. Strategies are compared
-   across hundreds of replicates with bootstrap intervals; every strategy sees
-   the same starts, so the comparison is paired.
+   across hundreds of replicates, each difference against the same difference
+   in permuted pools (Holm-adjusted); every strategy sees the same starts, so
+   the comparison is paired.
 3. **Judge.** The best networks by `select` fitness, and the designer's shape,
    answer the 200 judge questions they were never chosen on, compared question
    by question with an exact McNemar test.

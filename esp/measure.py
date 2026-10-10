@@ -187,8 +187,10 @@ def load_suite(path: str | Path | None) -> tuple[str, list[Task]]:
     if path in (None, "", BUILTIN):
         return BUILTIN, builtin_suite()
     named = path.partition(":")[0] if isinstance(path, str) else None
-    if named in NAMED:
-        questions = NAMED[named]()
+    # The built-in set is named too: `--help` offered meridian:N, and it was
+    # read as a file called "meridian:5".
+    if named == BUILTIN or named in NAMED:
+        questions = builtin_suite() if named == BUILTIN else NAMED[named]()
         count = path.partition(":")[2]
         if not count:
             return named, list(questions)

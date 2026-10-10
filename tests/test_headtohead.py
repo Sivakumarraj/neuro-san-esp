@@ -167,3 +167,24 @@ def test_a_run_the_cap_stopped_does_not_exit_zero(tmp_path, monkeypatch):
     assert script.main([*common, "--budget", "0.00001", "--out", str(tmp_path / "cap")]) == 1
     assert script.main([*common, "--budget", "10", "--out", str(tmp_path / "full")]) == 0
 
+
+def test_a_row_cut_off_mid_write_is_dropped_and_measured_again(tmp_path):
+    """A run killed while writing a row left half a line, and both resume and the
+    summary crashed on it."""
+    log = h2h.Log(tmp_path / "runs.jsonl")
+    plan = _plan(10.0, questions=8, repeats=1)
+    assert h2h.run(plan, h2h.rehearsal_measure, log, say=lambda *_: None) == "done"
+    whole = (tmp_path / "runs.jsonl").read_text()
+    (tmp_path / "runs.jsonl").write_text(whole + '{"label": "designer", "repe')
+    again = h2h.Log(tmp_path / "runs.jsonl")
+    assert len(again.rows) == len(log.rows)
+    assert (tmp_path / "runs.jsonl").read_text() == whole
+    assert h2h.run(plan, h2h.rehearsal_measure, again, say=lambda *_: None) == "done"
+
+
+def test_a_plan_names_its_questions_whichever_set_they_are():
+    """The plan said "judge questions" for a run on the select set."""
+    from esp.eval.suites import SELECT
+
+    described = h2h.Plan(SELECT, 1, 1.0, h2h.contenders()[:1]).describe()
+    assert described.startswith(f"{len(SELECT)} questions") and "judge" not in described

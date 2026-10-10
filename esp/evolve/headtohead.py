@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import json
 import random
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -130,7 +131,7 @@ class Plan:
         return sum(estimate_cost(c, runs) for c in self.field_)
 
     def describe(self) -> str:
-        lines = [f"{len(self.tasks)} judge questions x {len(self.field_)} networks x "
+        lines = [f"{len(self.tasks)} questions x {len(self.field_)} networks x "
                  f"{self.repeats} repeats = {len(self.tasks) * len(self.field_) * self.repeats}"
                  " question-runs",
                  f"estimated ${self.estimate():.2f} at {TOKENS_PER_QUESTION:,} tokens a "
@@ -145,6 +146,32 @@ class Plan:
 Measure = Callable[[Contender, list[Task]], dict]
 
 
+def read_rows(path: Path, repair: bool = False) -> list[dict]:
+    """Every complete row of a log.
+
+    A run killed while writing a row left half a line, and both resume and the
+    summary crashed on it. A half row at the end is dropped, and with `repair`
+    cut off the file too so its chunk is measured again; a broken row anywhere
+    else is corruption, and still raises.
+    """
+    text = path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    rows = []
+    for number, line in enumerate(lines):
+        if not line.strip():
+            continue
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            if number != len(lines) - 1:
+                raise
+            print(f"{path}: dropped a row cut off mid-write ({len(line)} characters)",
+                  file=sys.stderr)
+            if repair:
+                path.write_text(text[:text.rfind(line)], encoding="utf-8")
+    return rows
+
+
 class Log:
     """Append-only record of every chunk measured."""
 
@@ -154,8 +181,7 @@ class Log:
         if path.exists():
             # Rows written before the accounting fix carry doubled usage; read
             # every row in one set of units (esp/eval/accounting.py).
-            self.rows = [usage.normalised(json.loads(line))
-                         for line in path.read_text().splitlines() if line.strip()]
+            self.rows = [usage.normalised(row) for row in read_rows(path, repair=True)]
 
     def done(self, repeat: int, index: int, contender: Contender) -> bool:
         return any(r["repeat"] == repeat and r["chunk"] == index

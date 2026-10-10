@@ -348,7 +348,9 @@ FALLBACK_HOCON = str(write_network(_FALLBACK)) if _FALLBACK else None
 # Bounded at the schema, so an oversized body is refused (422) before anything
 # reads it, instead of being parsed whole and then cut down.
 class Question(BaseModel):
-    question: str = Field(max_length=4_000)
+    # Refused above the length /ask would send, rather than accepted and cut:
+    # questions of 1,001 to 4,000 characters were silently shortened.
+    question: str = Field(max_length=MAX_QUESTION_CHARS)
 
 
 class MeasureRequest(BaseModel):

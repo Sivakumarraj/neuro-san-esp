@@ -58,11 +58,6 @@ what one agent can spend. They exist to stop a runaway loop, and the time budget
 is deliberately larger than the model needs because it must also cover queueing
 behind the rate limiter.
 
-## Reporting
-
-Open an issue. There is no production deployment and no user data here, so
-please just describe the problem in the open.
-
 ## Reporting a vulnerability
 
 Please report a vulnerability privately, through GitHub's private vulnerability

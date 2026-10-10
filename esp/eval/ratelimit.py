@@ -33,6 +33,9 @@ from esp.eval import failover
 # `ESP_RPM` raises it -- set it to one under the requests-per-minute limit your
 # provider console shows for your account.
 DEFAULT_RPM = int(os.environ.get("ESP_RPM", "14"))
+if DEFAULT_RPM < 1:
+    # 0 or less made every paced call raise IndexError from an empty window.
+    raise ValueError(f"ESP_RPM={DEFAULT_RPM}: the pace is at least one request a minute")
 MAX_RETRIES = 6
 
 _buckets: dict[str, Bucket] = {}

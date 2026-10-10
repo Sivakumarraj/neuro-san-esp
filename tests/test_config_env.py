@@ -32,3 +32,20 @@ def test_a_value_already_in_the_environment_wins(tmp_path, monkeypatch):
     assert config.load_env(env) == []
     import os
     assert os.environ["K"] == "from-shell"
+
+
+@pytest.mark.parametrize("module, setting", [("esp.eval.corpus_tool", "ESP_SEARCH_RESULTS"),
+                                             ("esp.eval.ratelimit", "ESP_RPM")])
+def test_a_setting_that_breaks_every_call_fails_at_import(module, setting):
+    """ESP_SEARCH_RESULTS=0 returned no documents to every agent, and ESP_RPM=0
+    made every paced call raise IndexError, both without saying why."""
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    env = {**os.environ, setting: "0", "ESP_NO_DOTENV": "1", "PYTHONPATH": str(root)}
+    done = subprocess.run([sys.executable, "-c", f"import {module}"], env=env, cwd=root,
+                          capture_output=True, text=True, check=False)
+    assert done.returncode != 0 and f"{setting}=0" in done.stderr

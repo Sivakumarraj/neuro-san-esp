@@ -138,3 +138,10 @@ def test_the_command_line_rejects_a_bad_file_without_asking(monkeypatch, tmp_pat
     monkeypatch.setattr(runner, "_ask", lambda *a: called.append(1))
     assert m.main(["net.hocon", "--tasks", str(bad)]) == 2
     assert not called
+
+
+def test_the_built_in_set_takes_a_count_like_every_named_set():
+    """`--help` offered meridian:N, and meridian:5 was read as a file of that name."""
+    name, tasks = m.load_suite("meridian:5")
+    assert name == "meridian:5"
+    assert [t.task_id for t in tasks] == [t.task_id for t in m.builtin_suite()[:5]]

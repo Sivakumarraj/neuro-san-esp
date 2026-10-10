@@ -228,11 +228,12 @@ def paired(rows: list[dict], a: str, b: str) -> dict:
 
 def load_rows(directory: Path) -> list[dict]:
     """Every chunk under a directory; a subdirectory per independent run."""
+    from esp.evolve.headtohead import read_rows
+
     rows = []
     for path in sorted(directory.rglob("*.jsonl")):
         run = path.parent.name
-        rows += [{**usage.normalised(json.loads(line)), "run": run}
-                 for line in path.read_text().splitlines() if line.strip()]
+        rows += [{**usage.normalised(row), "run": run} for row in read_rows(path)]
     return rows
 
 
