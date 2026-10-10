@@ -13,7 +13,7 @@ import pytest
 
 from esp.eval import runner
 from esp.eval.corpus_tool import search
-from esp.eval.tasks import TASKS, build_tasks, normalise, score
+from esp.eval.tasks import TASKS, Task, build_tasks, normalise, score
 from esp.eval.world import build_world, documents
 from esp.genome.mutations import mutate
 from esp.genome.seeds import designer_shaped, flat_pair, solo
@@ -186,6 +186,18 @@ def test_token_accounting_counts_neuro_sans_structure_once():
                                                          "total_cost": 0.000325}}}}
     assert runner._total_tokens(accounting) == 1100
     assert runner._cost(accounting) == 0.000325
+
+
+
+def test_a_blown_recursion_cap_is_not_graded_as_the_answer(monkeypatch):
+    """neuro-san reports a blown cap as the reply. "Recursion limit of 40"
+    contains 40, the answer to J048 and P025, and was graded correct."""
+    task = Task("X001", "How many incidents?", "40", 1)
+    reply = "Recursion limit of 40 reached without hitting a stop condition."
+    monkeypatch.setattr(runner, "_ask", lambda *a: (reply, {"total_tokens": 10}, 1.0))
+    result = runner.run_suite("unused.hocon", [task], workers=1).results[0]
+    assert result.correct is False
+    assert result.infrastructure is True
 
 
 # ------------------------------------------------------------------ surrogate

@@ -92,6 +92,29 @@ def test_the_elite_is_filled_when_the_front_is_smaller_than_it():
     assert len(parents) == min(3, len(builds))
 
 
+
+def test_a_front_larger_than_the_elite_keeps_its_best():
+    """The front was cut in insertion order, so the networks measured first, the
+    seeds, stayed parents and the fittest could be left out of breeding."""
+    run = Evolution(seed=1, elite=2, out_dir="/tmp")
+    # Measured in this order; none dominates another on (accuracy, tokens,
+    # agents), and the last one measured is the fittest.
+    for name, accuracy, tokens, fitness in (("solo", 0.70, 100_000, 0.60),
+                                            ("flat_pair", 0.80, 150_000, 0.70),
+                                            ("designer_shaped", 0.95, 200_000, 0.90)):
+        genome = SEEDS[name]()
+        digest = genome.genome_hash()
+        run.pool[digest] = genome
+        run.scored[digest] = fitness
+        run.outcomes[digest] = Outcome(accuracy=accuracy, tokens=tokens)
+    points = [(o.accuracy, float(o.tokens), float(len(run.pool[h].reachable())))
+              for h, o in run.outcomes.items()]
+    assert len(non_dominated(points)) == 3, "the case needs a front larger than the elite"
+    parents = {g.genome_hash() for g in run._parents()}
+    assert SEEDS["designer_shaped"]().genome_hash() in parents
+    assert SEEDS["solo"]().genome_hash() not in parents
+
+
 def test_the_service_elite_uses_the_same_rule():
     """Batch and service must not select differently, or the population that
     accumulates over weeks is shaped by which code path paid for it."""

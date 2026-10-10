@@ -257,7 +257,11 @@ class Evolution:
             return []
         points = [(self.outcomes[h].accuracy, float(self.outcomes[h].tokens),
                    float(len(self.pool[h].reachable()))) for h in digests]
-        chosen = [digests[i] for i in non_dominated(points)][:self.elite]
+        # Best fitness first before the cut. Taken in insertion order, a front
+        # larger than the elite kept the seeds, measured first, as parents
+        # forever and could leave the best network out.
+        front = [digests[i] for i in non_dominated(points)]
+        chosen = sorted(front, key=lambda h: -self.scored[h])[:self.elite]
 
         if len(chosen) < self.elite:
             for digest in sorted(digests, key=lambda h: -self.scored[h]):

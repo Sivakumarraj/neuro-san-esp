@@ -217,7 +217,10 @@ def _propose(state: ServiceState, population: list[Genome], rng: random.Random,
     # that happens to sit high under one weighting.
     points = [(r.accuracy, float(r.tokens), float(r.agents))
               for _, r in trainable]
-    chosen = [trainable[i] for i in non_dominated(points)][:ELITE]
+    # Best fitness first before the cut, as in the batch loop: insertion order
+    # kept the oldest measurements as parents and could leave the best out.
+    front = [trainable[i] for i in non_dominated(points)]
+    chosen = sorted(front, key=lambda p: -p[1].fitness)[:ELITE]
     if len(chosen) < ELITE:
         for pair in sorted(trainable, key=lambda p: -p[1].fitness):
             if pair not in chosen:

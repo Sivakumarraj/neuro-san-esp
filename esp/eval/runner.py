@@ -283,7 +283,11 @@ def run_suite(hocon_path: str, tasks: list[Task], workers: int = MAX_WORKERS,
         try:
             answer, accounting, seconds = _ask(hocon_path, task.question)
             kept = answer if answer_limit is None else answer[:answer_limit]
-            return TaskResult(task.task_id, task.hops, grade(task, answer),
+            # neuro-san reports a blown cap as the reply, and "Recursion limit
+            # of 40" contains the answer to every question whose answer is 40.
+            # A reply that is an agent failure is never graded as an answer.
+            correct = grade(task, answer) and not never_answered(answer)
+            return TaskResult(task.task_id, task.hops, correct,
                               round(seconds, 2), kept), accounting
         except Exception as exc:
             return TaskResult(task.task_id, task.hops, False, 0.0, "",
