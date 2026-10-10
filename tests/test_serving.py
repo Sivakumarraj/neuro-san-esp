@@ -122,6 +122,28 @@ def test_a_demotion_below_the_default_stays_a_demotion():
     assert moved.agents[worker].model == "claude-haiku-4-5"
 
 
+
+def test_nano_and_mini_are_two_models_to_the_predictor_and_to_retarget():
+    """Both are OpenAI's cheap rung at release 5.4. Read as one model, the
+    headline network (2cc4 with its Researcher on gpt-5.4-mini) had the same
+    features as 2cc4, and lost its promotion when served on another provider."""
+    from esp.config import model_rank
+    from esp.genome.seeds import SEEDS
+    from esp.surrogate.predictor import _tier, features
+
+    assert model_rank("gpt-5.4-nano") < model_rank("gpt-5.4-mini")
+    assert _tier("gpt-5.4-nano") < _tier("gpt-5.4-mini")
+    assert _tier("gemini-3.5-flash-lite") == pytest.approx(0.035)   # no other family moved
+    plain = SEEDS["flat_pair"]()
+    plain.default_model = "gpt-5.4-nano"
+    promoted = plain.clone()
+    worker = next(name for name in promoted.agents if name != promoted.top)
+    promoted.agents[worker].model = "gpt-5.4-mini"
+    assert list(features(plain)) != list(features(promoted))
+    moved = retarget(promoted, "claude-haiku-4-5", "claude-sonnet-5")
+    assert moved.agents[worker].model == "claude-sonnet-5"
+
+
 def test_retargeting_leaves_the_measured_genome_untouched():
     before = CHAMPION.genome.canonical()
     retarget(CHAMPION.genome, "claude-haiku-4-5", "claude-sonnet-5")

@@ -196,8 +196,15 @@ def cost_tier(model: str) -> int:
     return 0 if any(marker in name for marker in markers) else 1
 
 
-def model_rank(model: str) -> tuple[int, float]:
-    """Order models within a family: the rung first, then the release.
+# Sizes inside OpenAI's cheap rung, smallest first. gpt-5.4-nano and
+# gpt-5.4-mini share the rung and the release, so without this the Predictor and
+# retarget saw one model, and the headline network's promoted Researcher read as
+# not promoted. A model with no size marker is size 0, so no other family moves.
+_SIZE_MARKERS = ("-nano", "-mini")
+
+
+def model_rank(model: str) -> tuple[int, int, float]:
+    """Order models within a family: the rung, then the size, then the release.
 
     The rung alone is not enough. One of the two winning networks promoted its
     router from gemini-3.1-flash-lite to gemini-3.5-flash-lite -- both the cheap
@@ -205,9 +212,11 @@ def model_rank(model: str) -> tuple[int, float]:
     search found worth making. A version-free alias (`claude-sonnet`) has no
     release number and sorts by its rung alone.
     """
+    name = (model or "").lower()
+    size = next((rank for rank, marker in enumerate(_SIZE_MARKERS) if marker in name), 0)
     found = re.search(r"(\d+)(?:[.-](\d+))?", model or "")
     release = float(f"{found.group(1)}.{found.group(2) or 0}") if found else 0.0
-    return cost_tier(model), release
+    return cost_tier(model), size, release
 
 
 def load_env(path: Path | None = None) -> list[str]:

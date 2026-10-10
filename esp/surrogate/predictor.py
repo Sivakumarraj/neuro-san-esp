@@ -49,10 +49,12 @@ def _tier(model: str) -> float:
     the token-cost margin from -0.47 to its current value and changed no
     exclusion verdict; docs/FINDINGS.md records both.
 
-    Never raises: an unknown model reads as the cheap rung, release 0.
+    Never raises: an unknown model reads as the cheap rung, release 0. The size
+    term separates gpt-5.4-nano from gpt-5.4-mini and is zero for every model
+    without a size in its name, so no Gemini or Claude value moved.
     """
-    rung, release = model_rank(model)
-    return rung + release / 100
+    rung, size, release = model_rank(model)
+    return rung + size / 10 + release / 100
 
 
 def features(genome: Genome) -> np.ndarray:
