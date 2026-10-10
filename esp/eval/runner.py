@@ -192,9 +192,18 @@ class QuotaExhausted(OSError):
     """
 
 
-_QUOTA_MARKERS = ("RESOURCE_EXHAUSTED", "429", "quota", "exceeded your current quota")
+# A rejected key or an account out of credit. neuro-san replaces either with one
+# fixed message (its api_key_error_check.py) and hands it back as the reply, so a
+# balance that ran out part-way through a run read as a wrong answer to every
+# question after it, and the run was cached. The raw provider phrases cover the
+# error path. Like a daily cap, it says nothing about the network.
+_ACCOUNT_MARKERS = ("environment variable must be correctly set", "credit balance is too low",
+                    "Insufficient credits", "Incorrect API key provided")
+_QUOTA_MARKERS = ("RESOURCE_EXHAUSTED", "429", "quota", "exceeded your current quota",
+                  *_ACCOUNT_MARKERS)
 # Markers no answer about the Meridian corpus can contain by accident.
-_UNAMBIGUOUS_QUOTA_MARKERS = ("RESOURCE_EXHAUSTED", "exceeded your current quota")
+_UNAMBIGUOUS_QUOTA_MARKERS = ("RESOURCE_EXHAUSTED", "exceeded your current quota",
+                              *_ACCOUNT_MARKERS)
 
 
 def _is_quota_failure(result: TaskResult) -> bool:
@@ -224,6 +233,7 @@ _INFRASTRUCTURE_MARKERS = (
     "max_execution_seconds",
     "Recursion limit of",
     "Agent stopped due to exception",
+    "environment variable must be correctly set",
 )
 
 
@@ -390,7 +400,8 @@ def refuse_unmeasured(results: list[TaskResult], tokens: int,
     starved = [r for r in results if _is_quota_failure(r)]
     if starved:
         raise QuotaExhausted(
-            f"{len(starved)} of {len(results)} tasks hit a provider quota -- "
+            f"{len(starved)} of {len(results)} tasks hit a provider quota or an "
+            f"account failure (key or credit) -- "
             f"refusing to {action} a score the environment caused, not the topology. "
             f"First: {starved[0].error[:200]}"
         )
@@ -415,6 +426,7 @@ def evaluation_from_cache(raw: dict) -> Evaluation:
     """
     raw = usage.normalised(raw)
     raw.pop("accounting", None)
+    raw.pop("settings", None)
     raw.pop("genome", None)
     raw.pop("from_cache", None)
     raw["results"] = classify([TaskResult(**r) for r in raw["results"]])
@@ -438,9 +450,31 @@ def suite_key(tasks: list[Task] | None) -> str | None:
     return hashlib.sha256(body.encode("utf-8")).hexdigest()[:12]
 
 
+def run_settings() -> dict[str, int]:
+    """The settings a run used that the genome hash cannot see.
+
+    How many documents a search returns and how many steps an agent may take
+    are environment settings, not part of a network, yet they change what it
+    can answer: a network measured at 3 documents was served from the cache to
+    a run at 10. Read at call time, so a reloaded module is seen.
+    """
+    from esp.eval import corpus_tool
+    from esp.genome import definition
+    return {"search_results": corpus_tool.MAX_RESULTS, "max_steps": definition.MAX_STEPS,
+            "max_execution_seconds": definition.MAX_EXECUTION_SECONDS}
+
+
+# What every committed measurement ran with. These keep the flat layout; a run
+# under any other value gets a directory of its own.
+_KEYED_DEFAULTS = {"search_results": 3, "max_steps": 40}
+
+
 def cache_path_for(genome: Genome, tasks: list[Task] | None = None) -> Path:
     key = suite_key(tasks)
     base = CACHE_DIR if key is None else CACHE_DIR / "suites" / key
+    settings = run_settings()
+    if any(settings[name] != value for name, value in _KEYED_DEFAULTS.items()):
+        base = base / f"search{settings['search_results']}-steps{settings['max_steps']}"
     return base / f"{genome.genome_hash()}.json"
 
 
@@ -480,5 +514,6 @@ def evaluate(genome: Genome, tasks: list[Task] | None = None,
     # measured. A hash cannot be inverted; the canonical form can.
     payload["genome"] = genome.canonical()
     payload["accounting"] = usage.ACCOUNTING
+    payload["settings"] = run_settings()
     cache_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return evaluation

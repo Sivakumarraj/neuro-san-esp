@@ -113,6 +113,7 @@ def test_a_report_serialises_with_the_question_and_expected_answer(monkeypatch):
     assert first["question"] == "Which city is depot D08 in?"
     assert first["expected"] == "Eastgate"
     assert blob["questions_asked"] == 3 and blob["suite"] == "mine"
+    assert blob["settings"] == runner.run_settings()   # which search it ran with
     json.dumps(blob)                                  # must be serialisable
 
 

@@ -6,6 +6,7 @@ before any real evaluation is worth paying for.
 
 from __future__ import annotations
 
+import json
 import random
 
 import numpy as np
@@ -198,6 +199,25 @@ def test_a_blown_recursion_cap_is_not_graded_as_the_answer(monkeypatch):
     result = runner.run_suite("unused.hocon", [task], workers=1).results[0]
     assert result.correct is False
     assert result.infrastructure is True
+
+
+def test_an_account_that_runs_dry_mid_run_stops_the_run(monkeypatch):
+    """neuro-san swaps a rejected key or an empty balance for one fixed message
+    and returns it as the reply. It was graded as a wrong answer, and the run
+    was cached at a score the account caused, not the network."""
+    from neuro_san.internals.run_context.langchain.util.api_key_error_check import ApiKeyErrorCheck
+
+    refused = ApiKeyErrorCheck.check_for_api_key_exception(Exception(
+        "Error code: 400 - Your credit balance is too low to access the Anthropic API."))
+    first, second = TASKS[0], TASKS[1]
+    replies = {first.question: first.answer, second.question: refused}
+    monkeypatch.setattr(runner, "_ask",
+                        lambda _hocon, question: (replies[question], {"total_tokens": 10}, 1.0))
+    run = runner.run_suite("unused.hocon", [first, second], workers=1)
+    assert [r.correct for r in run.results] == [True, False]
+    assert run.results[1].infrastructure is True
+    with pytest.raises(runner.QuotaExhausted):
+        runner.refuse_unmeasured(run.results, run.tokens)
 
 
 # ------------------------------------------------------------------ surrogate
@@ -462,3 +482,34 @@ def test_the_cache_never_answers_one_exam_with_another(monkeypatch, tmp_path):
     assert other != default and other.parent.parent.name == "suites"
     assert runner.cache_path_for(genome, BANK[:5]) == other
     assert runner.cache_path_for(genome, BANK[:6]) != other
+
+
+def test_the_cache_never_answers_one_search_setting_with_another(monkeypatch, tmp_path):
+    """The search width and the step cap are not in the genome hash. A network
+    measured at 3 documents was served from the cache to a run at 10."""
+    from esp.eval import corpus_tool
+    from esp.genome import definition
+    from esp.genome.seeds import SEEDS
+
+    monkeypatch.setattr(runner, "CACHE_DIR", tmp_path / "cache")
+    genome = SEEDS["solo"]()
+    default = runner.cache_path_for(genome)
+    assert default == tmp_path / "cache" / f"{genome.genome_hash()}.json"
+    monkeypatch.setattr(corpus_tool, "MAX_RESULTS", 10)
+    wider = runner.cache_path_for(genome)
+    monkeypatch.setattr(definition, "MAX_STEPS", 10)
+    shorter = runner.cache_path_for(genome)
+    assert len({default, wider, shorter}) == 3
+
+
+def test_a_cached_measurement_records_its_settings_and_reads_back(monkeypatch, tmp_path):
+    from esp.genome.seeds import SEEDS
+
+    monkeypatch.setattr(runner, "CACHE_DIR", tmp_path / "cache")
+    monkeypatch.setattr(runner, "NETWORK_DIR", tmp_path / "networks")
+    monkeypatch.setattr(runner, "_ask", lambda *a: ("Brindle", {"total_tokens": 100}, 1.0))
+    genome = SEEDS["solo"]()
+    runner.evaluate(genome, tasks=TASKS[:2], use_cache=False)
+    stored = json.loads(runner.cache_path_for(genome, TASKS[:2]).read_text())
+    assert stored["settings"] == runner.run_settings()
+    assert runner.evaluate(genome, tasks=TASKS[:2]).from_cache is True

@@ -102,6 +102,10 @@ def test_a_provider_failure_does_not_500_the_page(client, monkeypatch):
     ("Error from Coordinator: Agent stopped due to exception 429 RESOURCE_EXHAUSTED",
      "limit is used up"),
     ("Error from Coordinator: Agent stopped due to exception 404 NOT_FOUND", "make probe"),
+    # neuro-san's own wording when it swaps out a rejected key or an empty balance.
+    ("\nA value for the ANTHROPIC_API_KEY environment variable must be correctly set in the "
+     "neuro-san\nserver or run-time environment in order to use this agent network.",
+     "out of credit"),
 ])
 def test_an_agent_failure_is_an_error_not_an_answer(client, monkeypatch, reply, hint):
     """neuro-san returns an agent's failure as the reply text. It reached the

@@ -134,7 +134,9 @@ for twice.
 `ESP_SEARCH_RESULTS` sets how many documents `CorpusSearch` returns. Every committed
 measurement used the default, 3; the README's headline used 10, because at 3 a question
 about every incident of some kind cannot be answered. Never compare runs made at
-different values.
+different values. The cache keeps them apart: a run with `ESP_SEARCH_RESULTS` or
+`ESP_MAX_STEPS` off its default stores its measurements in a directory of its own, and
+every new measurement records the settings it ran with.
 
 ### On Google's free tier
 

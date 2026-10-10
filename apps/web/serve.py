@@ -451,6 +451,10 @@ _FAILURE_HINTS = (
       "authentication_error", "Incorrect API key", "invalid x-api-key"),
      "The provider rejected the key. Fix it in .env, run `make check-key`, "
      "then restart this server -- the key is read once, at startup."),
+    # neuro-san's own wording for a rejected key or an account out of credit.
+    (("environment variable must be correctly set", "credit balance", "Insufficient credits"),
+     "The provider refused the key, or the account is out of credit. Check both "
+     "in the provider's console, run `make check-key`, then restart this server."),
     (("RESOURCE_EXHAUSTED", "429", "rate_limit", "quota"),
      "The key's rate or daily limit is used up. Wait and ask again; on a free "
      "Gemini key, GOOGLE_API_KEYS spreads the day over several projects."),

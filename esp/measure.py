@@ -44,7 +44,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from esp.eval import accounting as usage
-from esp.eval.runner import MAX_WORKERS, TaskResult, refuse_unmeasured, run_suite
+from esp.eval.runner import MAX_WORKERS, TaskResult, refuse_unmeasured, run_settings, run_suite
 from esp.eval.tasks import TASKS, Task
 
 BUILTIN = "meridian"
@@ -103,6 +103,9 @@ class Report:
     seconds: float
     questions: dict[str, str] = field(default_factory=dict)
     expected: dict[str, str] = field(default_factory=dict)
+    # The search width and step cap it ran with: results at one setting are
+    # never compared with results at another, so the record has to say which.
+    settings: dict[str, int] = field(default_factory=run_settings)
 
     @property
     def accuracy(self) -> float:
@@ -126,7 +129,7 @@ class Report:
             "questions_asked": len(self.results), "accuracy": self.accuracy,
             "answered_accuracy": self.answered_accuracy, "unfinished": self.unfinished,
             "tokens": self.tokens, "cost": self.cost, "seconds": self.seconds,
-            "accounting": usage.ACCOUNTING,
+            "accounting": usage.ACCOUNTING, "settings": self.settings,
             "results": [{**asdict(r), "question": self.questions.get(r.task_id, ""),
                          "expected": self.expected.get(r.task_id, "")}
                         for r in self.results],
