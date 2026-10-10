@@ -693,6 +693,14 @@ one-point front cannot collapse the search onto a single parent. The batch loop 
 service wake share one `non_dominated()` so the front the reports draw and the front the
 search breeds from cannot drift apart.
 
+**That fix had a bug of its own, found on 10 October 2026.** A front larger than the elite
+was cut in the order networks were measured. The seeds are measured first, so they stayed
+parents whatever they scored, and a network found late could be left out however good it
+was: with the twelve committed measurements loaded seeds first and the best network last,
+the best was not a parent and the `solo` seed, 10th of 12 by fitness, was. The front is now
+ranked by fitness before the cut, in the batch loop and the service alike, and
+`tests/test_pareto_selection.py` measures the seeds first and the best network last.
+
 ## An audit before the paid run
 
 Before any money goes through the pool benchmark, the whole repository was read again as a

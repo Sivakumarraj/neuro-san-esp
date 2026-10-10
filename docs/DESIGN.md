@@ -52,9 +52,20 @@ teaches the search that a good topology is bad.
 cycle, no front man — is **discarded, never repaired**, so every candidate that reaches a
 real evaluation is a network neuro-san would actually serve.
 
+**The gate checks structure, not meaning.** It does not read instructions, so it accepts a
+network whose only searching agent was told something that rules searching out.
+`merge_agents` keeps the keeper's instructions, and in paid stage 4 it folded `flat`'s
+Researcher into Arithmetic: the one searching agent of `b60ab38` is told to "use only the
+numbers you were handed", and it scored 35 of 60 on select, the lowest of the children that
+finished. A stricter gate changes which mutants a seed produces, so it would stop
+`scripts/select_and_judge.py` reproducing the committed stages. It is left for a versioned
+gate.
+
 **The Pareto front breeds.** Parents are chosen by non-dominated sorting on
-(accuracy up, tokens down, agents down), topped up with the best scalarised fitness when the
-front is smaller than the elite. Selection used to take the top few by fitness alone while
+(accuracy up, tokens down, agents down), fittest first when the front is larger than the
+elite, topped up with the best scalarised fitness when the front is smaller. The front used
+to be cut in the order networks were measured, so the seeds stayed parents and the best
+network could be left out. Selection used to take the top few by fitness alone while
 the front was computed, plotted in three documents and never consulted — multi-objective in
 the report and single-objective in the search.
 
