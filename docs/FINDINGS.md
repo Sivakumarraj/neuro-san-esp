@@ -35,7 +35,7 @@ and nine mutants, every one of them cached with its per-task outcomes and its ge
 
 **The search beat all three seeds twice, and both wins came from the same knob.** The best
 network answers 16 of 17 against `designer_shaped`'s 14, on 7% fewer tokens. A second one
-reaches 15 of 17 for 32% fewer. Six networks now sit on the Pareto front; five of the six
+reaches 15 of 17 for 33% fewer. Six networks now sit on the Pareto front; five of the six
 are evolved, and the one seed on it is there only for being the smallest.
 
 **Both winners reassigned the front man's model and left every specialist alone.** The best
@@ -281,7 +281,7 @@ table from `results/heldout_bank/`, with no key.
 | `mut:reassign_model` 6859dd | 21 / 24 | 88,370 | 15 / 17 | 130,026 |
 
 **The evolved network did not beat the designer's shape on questions it was not selected
-on.** It answered two fewer and spent 11% more tokens, reversing the 32% saving it showed
+on.** It answered two fewer and spent 11% more tokens, reversing the 33% saving it showed
 on the seventeen. The whole difference sits in one shape, the four-document penalty
 arithmetic, where it got 1 of 4 and the designer 3 of 4; at every other depth, including
 the nine-document sums, both answered 4 of 4. Paired question by question, two questions
@@ -777,7 +777,7 @@ found four times in five.
 ## Two live reruns, and the head-to-head they led to
 
 On 2026-09-29 the designer's shape and `mut:reassign_model` 6859dd, the evolved network
-with 32% fewer tokens on the seventeen, were asked judge questions on a free Gemini key.
+with 33% fewer tokens on the seventeen, were asked judge questions on a free Gemini key.
 The raw logs are in `results/live/2026-09-29/`. They are not in the fitness cache and
 change no committed measurement.
 
@@ -832,18 +832,20 @@ promoted agent on `gpt-5.4-mini`, models pinned. Networks were chosen on the 60
 `meridian-select` questions and judged on judge questions from the other half of the
 company, both contenders at the same time, every chunk logged in
 `results/headtohead/paid-2026-10/`. `tests/test_select_and_judge.py` recomputes the
-committed summary and every figure below from those logs.
+committed summary and every figure below from those logs. Dollar figures are neuro-san's own
+count, every call's input and output tokens at list prices; the cap ran on a more cautious
+figure, the larger of that count and a blended estimate, per chunk.
 
 | Stage | What | Result |
 | :-- | :-- | :-- |
-| 1 | Designer against the pruned Gemini champion (router on `gpt-5.4-mini`), J001 to J100 | 68 / 100 each; champion 2.2× the cost per question |
+| 1 | Designer against the pruned Gemini champion (router on `gpt-5.4-mini`), J001 to J100 | 68 / 100 each in the first repeat (the second stopped after 12 question-runs); champion 2.1× the cost per question |
 | 2 | Six committed networks and the designer on select | `flat` 51 / 60, designer 47 / 60 |
 | 3 | `flat` against the designer, judge × 2 | 155 / 200 against 135 / 200, p = 0.011, equal tokens |
-| 4 | Eight children of `flat` on select (seed 20261002, `reassign_model` left out) | `2cc4` 54 / 60 at 3,650 tokens a question |
+| 4 | Eight children of `flat` on select (seed 20261002, `reassign_model` left out) | `2cc4` 54 / 60 at 3,650 tokens a question; four stopped short of 60 (at 56, 56, 52 and 44 questions) and none could have reached 54 |
 | 5 | `2cc4` against the designer, judge × 2 | 153 / 200 against 138 / 200, p = 0.052, 17% fewer tokens |
 | 6 | The same pair on P001 to P100, once | 77 / 100 against 68 / 100, p = 0.108, 7% more tokens |
 | 7 | Search raised to 10 documents; four networks on select | `2cc4` with its Researcher on `gpt-5.4-mini` 57, `flat` 53, `2cc4` 52, designer 48, of 60 |
-| 8 | That network against the designer, judge × 2, 10 documents | 189 / 200 against 168 / 200, p = 0.0007, 37% fewer tokens, 52% more per correct answer |
+| 8 | That network against the designer, judge × 2, 10 documents | 189 / 200 against 168 / 200, p = 0.0007, 37% fewer tokens, 72% more per correct answer |
 
 **The stronger router bought nothing.** Stage 1 is the claim the Gemini search left
 standing, and it tied. On the questions both networks missed, the facts are fetched by the
@@ -867,18 +869,19 @@ what it was shown: 3 incidents where the answer was 5. `ESP_SEARCH_RESULTS=10` l
 cap. On judge it raised the designer's shape from 69% to 84%. Every result at 3 and every
 result at 10 stays in its own stage and is never compared across the two.
 
-**Where the model goes matters more than which model.** With the cap lifted, the misses on
-select were arithmetic and counting errors: 84 for 24, 875 for 6,625. Promoting the
-Researcher, the agent that reads the documents and adds them up, took `2cc4` from 52 to 57
-of 60 on select and to 94.5% on judge, where promoting the router in stage 1 had bought
-nothing.
+**Where the model goes matters more than which model.** With the cap lifted, most misses on
+select were arithmetic and counting errors: 84 for 24, 875 for 6,625. Six of the 30 were
+refusals or zeros: five on the depot-wide penalty sums (S43, S46, S51) and one count of 0
+where the answer was 2. Promoting the Researcher, the agent that reads the documents and
+adds them up, took `2cc4` from 52 to 57 of 60 on select and to 94.5% on judge, where
+promoting the router in stage 1 had bought nothing.
 
 What stage 8 does not show:
 
 - **How much is structure.** The designer's shape was not measured with its specialists on
   `gpt-5.4-mini`, so the gap mixes a structural change with a model change.
-- **A cheaper network.** Fewer tokens, but on a model 3.7× dearer per token: 52% more per
-  correct answer.
+- **A cheaper network.** Fewer tokens, but on a model 3.7× dearer per token: 72% more per
+  correct answer by neuro-san's own count (52% on the cap's more cautious basis).
 - **Fresh questions.** J001 to J100 had been asked in stages 1, 3 and 5. They were never
   used to choose, but the judge half has no unused aggregate questions left, and a fresh
   set without them would be easier than this one.

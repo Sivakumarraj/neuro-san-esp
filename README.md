@@ -34,14 +34,15 @@ network neuro-san's designer would build, using 37% fewer tokens but costing mor
 | --- | --- | --- |
 | Accuracy | **94.5%** (189/200; 91, then 98) | 84.0% (168/200; 82, then 86) |
 | Tokens per question | **3,250** (−37%) | 5,153 |
-| Cost per question | $0.00268 (+71%) | **$0.00157** |
-| Cost per correct answer | $0.00284 (+52%) | **$0.00187** |
+| Cost per question | $0.00263 (+94%) | **$0.00135** |
+| Cost per correct answer | $0.00278 (+72%) | **$0.00161** |
 | Agents | **2** | 4 |
 
 - **Significant.** Right more often on 17 questions against 2: sign test p = 0.0007.
-- **Cost is the cap's figure.** Per chunk of four questions, the larger of what neuro-san
-  reported and the list price of the tokens it reported. At list price alone the gap is
-  +65% a question and +46% a correct answer.
+- **Cost is neuro-san's own count**: every call's input and output tokens at the
+  provider's list prices, with no cache discount. The dollar cap ran on a more cautious
+  figure per chunk (the larger of that count and a blended estimate), on which the gap is
+  +71% a question and +52% a correct answer. Earlier versions of this page quoted those.
 - **Token and dollar figures were corrected on 10 October 2026.** neuro-san reports a run's
   usage as a total and again per model, and the runner added both, so every token and
   dollar figure published before then was twice the real one. Accuracy, every ratio and
@@ -197,7 +198,7 @@ each**, all on `gemini-3.1-flash-lite`:
   from the population does so 85.5% of the time (`make holdout`). On 24 held-out bank
   questions the evolved network answered 21 against the designer's 23 (`make bank-report`).
 - **That champion's gain was a stronger router model.** Re-measured on held-out questions
-  it tied the designer at 2.2× the cost, so the search was re-run for structure instead.
+  it tied the designer at 2.1× the cost, so the search was re-run for structure instead.
 - **The select set leaves room to rank.** The designer's shape scored 16 of 20 (80%) on its
   first 20 questions, against 96% on the bank.
 - **The Predictor beats chance offline.** At nine measurements its rank correlation was
@@ -221,10 +222,12 @@ Every number above is recomputed from committed data by a test.
 - **Shape is not the whole network.** Two children of `flat` with the same shape, a
   Coordinator over one searching Researcher, scored 54 and 48 of 60 on select: the
   instructions differ. The Predictor sees only shape.
-- **Three models measured.** The search on `gemini-3.1-flash-lite`, the head-to-heads on
-  `gpt-5.4-nano`, with `gpt-5.4-mini` on one agent in the headline.
+- **Few models measured.** The search ran its workers on `gemini-3.1-flash-lite`, with
+  promoted routers on `gemini-3.5-flash-lite` and `gemini-3.5-flash`. The head-to-heads ran
+  on `gpt-5.4-nano`, with `gpt-5.4-mini` on one agent in stages 0 and 1 (the router) and 7
+  and 8 (the Researcher).
 - **The web page and `make smoke` serve the 17-question champion** (`3bf9c00`), the
-  network that tied the designer at 2.2× the cost on judge, not `2cc4`.
+  network that tied the designer at 2.1× the cost on judge, not `2cc4`.
 - **A tree-based Predictor cannot extrapolate** beyond the shapes it has seen, and twelve
   measured networks are too few to show that it helps the search. The pool benchmark is
   built to answer that.
@@ -260,16 +263,17 @@ measured on other questions or at another search width.
 
 | Stage | Measured | Outcome |
 | --- | --- | --- |
-| 1 | `make headtohead GO=1`: the designer against the Gemini champion | 68 / 100 each; the champion cost 2.2× per question |
+| 1 | `make headtohead GO=1`: the designer against the Gemini champion | 68 / 100 each (the second repeat stopped after 12 question-runs); the champion cost 2.1× per question |
 | 2, 3 | Six committed networks and the designer on select (four found by the Gemini search, two hand-written seeds); the best on judge × 2 | `flat` (the `flat_pair` seed): 77.5% against 67.5% (p = 0.011), equal tokens |
-| 4, 5 | One search generation from `flat` (8 children) on select; the best on judge × 2 | `2cc4`: 76.5% against 69.0% (p = 0.052), 17% fewer tokens |
+| 4, 5 | One search generation from `flat` (8 children, four stopped short of 60) on select; the best on judge × 2 | `2cc4`: 76.5% against 69.0% (p = 0.052), 17% fewer tokens |
 | 6 | `2cc4` and the designer on P001 to P100, once | 77 against 68 (p = 0.108), 7% more tokens |
 | 7 | Search fixed to 10 documents; three networks and `2cc4` with its Researcher promoted, on select | 57, 53, 52 and 48 of 60 |
 | 8 | The best of stage 7 and the designer on judge × 2 | the headline: 94.5% against 84.0% (p = 0.0007) |
 
 The designer scored 67 to 70 of 100 in every run at 3 documents, so about ±2 questions is
 run-to-run noise. Stages are numbered as their logs are, and stage 0 was a four-question
-check. Stages 0 to 5 cost $2.59 for 1,888 question-runs; stages 6 to 8 cost $1.55 more.
+check. By neuro-san's own count, stages 0 to 5 cost $2.31 for 1,888 question-runs and stages
+6 to 8 $1.42 more ($2.59 and $1.55 on the cap's basis).
 [The paid runs explained](docs/neuro-san-esp-Paid-Runs.pdf) walks through stages 0 to 5; it
 was written before stages 6 to 8, before the logs were committed and before the token
 correction, so its token and dollar figures are twice the real ones.

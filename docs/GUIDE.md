@@ -132,8 +132,9 @@ provider's console. A stop for quota or a restart resumes from the cache; nothin
 for twice.
 
 `ESP_SEARCH_RESULTS` sets how many documents `CorpusSearch` returns. Every committed
-measurement used the default, 3; the README's headline used 10, because at 3 a question
-about every incident of some kind cannot be answered. Never compare runs made at
+measurement used the default, 3, except paid stages 7 and 8, which include the README's
+headline and used 10, because at 3 a question about every incident of some kind cannot be
+answered. Never compare runs made at
 different values. The cache keeps them apart: a run with `ESP_SEARCH_RESULTS` or
 `ESP_MAX_STEPS` off its default stores its measurements in a directory of its own, and
 every new measurement records the settings it ran with.
@@ -231,7 +232,7 @@ poking it starts a paid evaluation.
 
 "Champion" here, on the web page and in the accelerator UI means rank 1 of the twelve
 networks measured on the 17 built-in questions. On held-out judge questions that network
-tied the designer at 2.2× the cost; the held-out result is in the README's headline and in
+tied the designer at 2.1× the cost; the held-out result is in the README's headline and in
 [FINDINGS](FINDINGS.md#the-paid-runs).
 
 ```bash
