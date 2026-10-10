@@ -1,0 +1,691 @@
+{
+ "fps": 30,
+ "scenes": [
+  {
+   "id": "s01_hook",
+   "chapter": "",
+   "title": "neuro-san-esp",
+   "frames": 840,
+   "lines": [
+    {
+     "text": "Imagine typing one sentence, like: build me a team that answers questions about my company. And getting back a working team of AI agents.",
+     "start": 21,
+     "end": 289
+    },
+    {
+     "text": "That is real today. But nobody answers the next question. Is it a good team?",
+     "start": 301,
+     "end": 441
+    },
+    {
+     "text": "Could a smaller team do better? Could it be cheaper?",
+     "start": 452,
+     "end": 531
+    },
+    {
+     "text": "This video explains a project that answers exactly that: neuro-san-esp. No background needed. We start from zero.",
+     "start": 543,
+     "end": 809
+    }
+   ]
+  },
+  {
+   "id": "s02_agent",
+   "chapter": "1 \u00b7 The basics",
+   "title": "What is an AI agent?",
+   "frames": 701,
+   "lines": [
+    {
+     "text": "First, what is an AI agent? Think of a new employee on their first day.",
+     "start": 21,
+     "end": 155
+    },
+    {
+     "text": "They have a brain. Here, that is a large language model, like GPT, Claude or Gemini.",
+     "start": 167,
+     "end": 343
+    },
+    {
+     "text": "They have instructions, like a job description.",
+     "start": 355,
+     "end": 435
+    },
+    {
+     "text": "And they have tools, like a search box for the company's files.",
+     "start": 446,
+     "end": 552
+    },
+    {
+     "text": "Give them a question. They think, use their tools, and reply.",
+     "start": 563,
+     "end": 671
+    }
+   ]
+  },
+  {
+   "id": "s03_team",
+   "chapter": "1 \u00b7 The basics",
+   "title": "A team of agents",
+   "frames": 1093,
+   "lines": [
+    {
+     "text": "One employee can only do so much, so we build teams. Picture a restaurant kitchen.",
+     "start": 21,
+     "end": 175
+    },
+    {
+     "text": "The head chef takes the order and passes parts of it to specialists: one on the grill, one on sauces, one on desserts.",
+     "start": 186,
+     "end": 411
+    },
+    {
+     "text": "In AI, the head chef is called the front man, or coordinator. The cooks are specialist agents.",
+     "start": 423,
+     "end": 610
+    },
+    {
+     "text": "neuro-san, an open-source framework from Cognizant AI Lab, lets you describe a team in a simple config file, and it runs the whole team for you.",
+     "start": 622,
+     "end": 917
+    },
+    {
+     "text": "It even has a designer agent that writes the team for you, from one sentence.",
+     "start": 929,
+     "end": 1062
+    }
+   ]
+  },
+  {
+   "id": "s04_gap",
+   "chapter": "2 \u00b7 The problem",
+   "title": "Built once, never measured",
+   "frames": 900,
+   "lines": [
+    {
+     "text": "Here is the gap. neuro-san's designer builds one team, and stops. It never measures it.",
+     "start": 21,
+     "end": 187
+    },
+    {
+     "text": "Nothing in the framework scores one team against another.",
+     "start": 199,
+     "end": 286
+    },
+    {
+     "text": "So you cannot say whether a 9-agent team beats a 5-agent team for the same job, or which AI model each agent should use.",
+     "start": 297,
+     "end": 552
+    },
+    {
+     "text": "It is like hiring a whole department without ever giving anyone a test.",
+     "start": 563,
+     "end": 693
+    },
+    {
+     "text": "This project supplies the missing half. It measures a team. Then it searches for a better one.",
+     "start": 705,
+     "end": 870
+    }
+   ]
+  },
+  {
+   "id": "s05_world",
+   "chapter": "3 \u00b7 Measuring",
+   "title": "An exam no model has seen",
+   "frames": 879,
+   "lines": [
+    {
+     "text": "To measure a team, you need an exam.",
+     "start": 21,
+     "end": 85
+    },
+    {
+     "text": "But ask about a real company, and the model might answer from memory. Then you learn nothing about the team.",
+     "start": 96,
+     "end": 283
+    },
+    {
+     "text": "So the project invents a company: Meridian Logistics.",
+     "start": 294,
+     "end": 396
+    },
+    {
+     "text": "It has 24 depots, 40 contracts and 60 incidents, written up in 124 documents.",
+     "start": 408,
+     "end": 613
+    },
+    {
+     "text": "None of it exists anywhere else, so no model saw it in training. An open-book exam, on a book nobody has read.",
+     "start": 624,
+     "end": 849
+    }
+   ]
+  },
+  {
+   "id": "s06_hops",
+   "chapter": "3 \u00b7 Measuring",
+   "title": "A real exam question",
+   "frames": 1097,
+   "lines": [
+    {
+     "text": "A real question: \u201cIncident INC-4413 affected a contract serviced by a depot. Who is that depot's manager?\u201d",
+     "start": 21,
+     "end": 297
+    },
+    {
+     "text": "One document says the incident hit contract C-2113.",
+     "start": 309,
+     "end": 434
+    },
+    {
+     "text": "Another says C-2113 is serviced by depot D04, in Ashford.",
+     "start": 445,
+     "end": 581
+    },
+    {
+     "text": "A third says D04 is managed by R. Delacroix.",
+     "start": 592,
+     "end": 723
+    },
+    {
+     "text": "Four hops across three documents, like a detective following clues from one file to the next.",
+     "start": 735,
+     "end": 908
+    },
+    {
+     "text": "And because the company was generated by code, every answer is known to be correct.",
+     "start": 920,
+     "end": 1067
+    }
+   ]
+  },
+  {
+   "id": "s07_fitness",
+   "chapter": "3 \u00b7 Measuring",
+   "title": "The report card",
+   "frames": 1066,
+   "lines": [
+    {
+     "text": "Each team sits the exam, and three things are recorded.",
+     "start": 21,
+     "end": 118
+    },
+    {
+     "text": "Accuracy: how many answers are right.",
+     "start": 130,
+     "end": 194
+    },
+    {
+     "text": "Tokens: how many words the models read and wrote, which is what you pay for.",
+     "start": 206,
+     "end": 336
+    },
+    {
+     "text": "And size: how many agents are in the team.",
+     "start": 347,
+     "end": 421
+    },
+    {
+     "text": "These combine into one score, called fitness. Think of a report card: your marks, minus a small fine for being expensive, minus a tiny fine for being big.",
+     "start": 433,
+     "end": 749
+    },
+    {
+     "text": "One more fairness rule. If a team runs out of time, that is marked unfinished, not wrong. A student whose pen ran out did not give a wrong answer.",
+     "start": 760,
+     "end": 1035
+    }
+   ]
+  },
+  {
+   "id": "s08_evolve",
+   "chapter": "4 \u00b7 Searching",
+   "title": "Evolution for teams",
+   "frames": 1177,
+   "lines": [
+    {
+     "text": "Now the search. The project borrows an idea from nature: evolution.",
+     "start": 21,
+     "end": 157
+    },
+    {
+     "text": "Each team's recipe is its genome: neuro-san's own config file, plus the model each agent uses. Every candidate is a real, runnable team.",
+     "start": 169,
+     "end": 546
+    },
+    {
+     "text": "To make new candidates, there are seven mutations.",
+     "start": 557,
+     "end": 642
+    },
+    {
+     "text": "Add an agent. Remove an agent. Rewire who talks to whom. Split one agent into two. Merge two into one. Switch searching on or off. And give an agent a different model.",
+     "start": 653,
+     "end": 999
+    },
+    {
+     "text": "It is like a chef changing one ingredient at a time, and tasting the result.",
+     "start": 1010,
+     "end": 1147
+    }
+   ]
+  },
+  {
+   "id": "s09_gate",
+   "chapter": "4 \u00b7 Searching",
+   "title": "The validity gate",
+   "frames": 707,
+   "lines": [
+    {
+     "text": "Some mutations make nonsense. An agent nobody can reach. A loop where agents call each other forever. Or no front man at all.",
+     "start": 21,
+     "end": 265
+    },
+    {
+     "text": "A validity gate throws those away. It never patches them.",
+     "start": 277,
+     "end": 382
+    },
+    {
+     "text": "Like a building inspector rejecting a house with no door.",
+     "start": 394,
+     "end": 494
+    },
+    {
+     "text": "So every candidate that reaches a real test is a team neuro-san would actually serve.",
+     "start": 505,
+     "end": 677
+    }
+   ]
+  },
+  {
+   "id": "s10_esp",
+   "chapter": "5 \u00b7 Saving money",
+   "title": "The ESP loop",
+   "frames": 1532,
+   "lines": [
+    {
+     "text": "There is a catch. Every real exam costs money and time, because every answer calls a real AI model.",
+     "start": 21,
+     "end": 226
+    },
+    {
+     "text": "So it borrows ESP, Evolutionary Surrogate-assisted Prescription, from Cognizant AI Lab: built for problems where each real test is expensive.",
+     "start": 237,
+     "end": 594
+    },
+    {
+     "text": "Phase A: measure a few starting teams for real.",
+     "start": 605,
+     "end": 736
+    },
+    {
+     "text": "Phase B: train a Predictor that guesses a team's results from its shape.",
+     "start": 747,
+     "end": 896
+    },
+    {
+     "text": "Phase C: breed thousands of candidates and rank them with the Predictor. Free: zero AI calls.",
+     "start": 908,
+     "end": 1099
+    },
+    {
+     "text": "Phase D: pay to test only the most promising few, and feed the results back into B.",
+     "start": 1110,
+     "end": 1266
+    },
+    {
+     "text": "It is like a car maker testing designs in a computer simulation, and only building the best ones for the real wind tunnel.",
+     "start": 1277,
+     "end": 1502
+    }
+   ]
+  },
+  {
+   "id": "s11_predictor",
+   "chapter": "5 \u00b7 Saving money",
+   "title": "Inside the Predictor",
+   "frames": 1232,
+   "lines": [
+    {
+     "text": "The Predictor is careful about what it learns. There is one small model per outcome. One guesses accuracy. One guesses token cost.",
+     "start": 21,
+     "end": 277
+    },
+    {
+     "text": "They read 13 features of a team's shape: how many agents, how deep, how many can search.",
+     "start": 288,
+     "end": 459
+    },
+    {
+     "text": "Fitness is then worked out with plain arithmetic. It is never learned. And the agent count is not predicted at all, because you can simply count it.",
+     "start": 471,
+     "end": 731
+    },
+    {
+     "text": "To choose parents, it uses a Pareto front. Think of buying a phone. One is cheapest, one has the best camera, one has the longest battery.",
+     "start": 743,
+     "end": 1009
+    },
+    {
+     "text": "Any phone that no other phone beats on every count stays on the shortlist. Those teams get to breed.",
+     "start": 1021,
+     "end": 1201
+    }
+   ]
+  },
+  {
+   "id": "s12_gate_null",
+   "chapter": "5 \u00b7 Saving money",
+   "title": "A predictor that ran backwards",
+   "frames": 1138,
+   "lines": [
+    {
+     "text": "Splitting the Predictor this way exposed a real problem.",
+     "start": 21,
+     "end": 121
+    },
+    {
+     "text": "The accuracy model ranks teams well, clearly better than chance. But the token model ranks them backwards. It calls the cheap teams expensive.",
+     "start": 132,
+     "end": 399
+    },
+    {
+     "text": "A single combined score had hidden that, because accuracy carried the average.",
+     "start": 411,
+     "end": 546
+    },
+    {
+     "text": "The fix is a gate. Each round, every prediction is compared with what shuffled, meaningless data would score. A predictor that loses to chance is muted for that round.",
+     "start": 557,
+     "end": 880
+    },
+    {
+     "text": "Like a weather forecaster who does worse than a coin flip on wind. You still listen for rain. You stop asking about wind.",
+     "start": 891,
+     "end": 1107
+    }
+   ]
+  },
+  {
+   "id": "s13_holdout",
+   "chapter": "6 \u00b7 Proving it",
+   "title": "Never grade on the questions you chose with",
+   "frames": 1358,
+   "lines": [
+    {
+     "text": "The next trap is subtle. If you choose a winner with some questions, then report its score on those same questions, you fool yourself.",
+     "start": 21,
+     "end": 253
+    },
+    {
+     "text": "It is like a student who memorised last year's paper.",
+     "start": 264,
+     "end": 359
+    },
+    {
+     "text": "So the questions come from two separate halves of the company. 60 select questions choose. Judge questions only grade, never choose.",
+     "start": 370,
+     "end": 683
+    },
+    {
+     "text": "This rule changed the story. The first search, on 17 questions, found a champion scoring 94%.",
+     "start": 695,
+     "end": 913
+    },
+    {
+     "text": "On fresh questions it only tied the designer's team, at 2.2\u00d7 the cost. Its gain came from a stronger model on the coordinator, not a better structure.",
+     "start": 924,
+     "end": 1234
+    },
+    {
+     "text": "The project says so openly, and searched again.",
+     "start": 1245,
+     "end": 1327
+    }
+   ]
+  },
+  {
+   "id": "s14_result",
+   "chapter": "7 \u00b7 The result",
+   "title": "Two agents beat four",
+   "frames": 1147,
+   "lines": [
+    {
+     "text": "So what did the improved search find?",
+     "start": 21,
+     "end": 82
+    },
+    {
+     "text": "On 100 judge questions, asked twice: a team of just two agents, a coordinator and one researcher, with a stronger model only on the researcher that reads the documents.",
+     "start": 93,
+     "end": 466
+    },
+    {
+     "text": "It scored 94.5%. The four-agent team neuro-san's designer would build scored 84.0%.",
+     "start": 477,
+     "end": 704
+    },
+    {
+     "text": "The small team used 37% fewer tokens.",
+     "start": 716,
+     "end": 805
+    },
+    {
+     "text": "On 17 questions it was right more often than the designer; on only 2, less often. Chance of that by luck: p = 0.0007.",
+     "start": 817,
+     "end": 1116
+    }
+   ]
+  },
+  {
+   "id": "s15_fineprint",
+   "chapter": "7 \u00b7 The result",
+   "title": "The fine print",
+   "frames": 1563,
+   "lines": [
+    {
+     "text": "Now the fine print, because good science shows it.",
+     "start": 21,
+     "end": 105
+    },
+    {
+     "text": "The stronger model costs more per token, so the winner cost 71% more per question, even with fewer tokens.",
+     "start": 116,
+     "end": 340
+    },
+    {
+     "text": "The designer's team was not tested with upgraded specialists. So we cannot yet say how much of the gain is structure, and how much is the model.",
+     "start": 352,
+     "end": 615
+    },
+    {
+     "text": "The search tool now returns 10 documents instead of 3, so these numbers are never compared with older runs.",
+     "start": 627,
+     "end": 855
+    },
+    {
+     "text": "The winner, 2cc4, is one hand-written starting team with its Arithmetic agent removed: one mutation, chosen by measurement. The Predictor was not used in the paid runs.",
+     "start": 867,
+     "end": 1243
+    },
+    {
+     "text": "So the takeaway, on this benchmark so far: a small team, with the strong model where the hard reading happens, beat a bigger team of cheap specialists.",
+     "start": 1254,
+     "end": 1532
+    }
+   ]
+  },
+  {
+   "id": "s16_v2",
+   "chapter": "8 \u00b7 The newest parts",
+   "title": "Dollars, a pool, and a $0 rehearsal",
+   "frames": 1206,
+   "lines": [
+    {
+     "text": "The newest parts push this further.",
+     "start": 21,
+     "end": 76
+    },
+    {
+     "text": "Fitness can now be counted in dollars, from the provider's own bills. So a pricey model is charged what it really costs.",
+     "start": 87,
+     "end": 307
+    },
+    {
+     "text": "A per-question Predictor guesses a team's chance on each kind of question, and an ensemble shows how sure it is.",
+     "start": 318,
+     "end": 542
+    },
+    {
+     "text": "A pool benchmark is built to measure 120 teams once, then replay hundreds of searches for free, each tested against shuffled data so luck cannot pass for skill.",
+     "start": 554,
+     "end": 945
+    },
+    {
+     "text": "Before real money is spent, a rehearsal runs the whole plan against a simulated provider, for $0.",
+     "start": 956,
+     "end": 1175
+    }
+   ]
+  },
+  {
+   "id": "s17_names",
+   "chapter": "8 \u00b7 The newest parts",
+   "title": "ESP, LEAF, and what comes next",
+   "frames": 1121,
+   "lines": [
+    {
+     "text": "A word on names. In the original ESP paper, the part that proposes solutions, the Prescriptor, is itself a learned model.",
+     "start": 21,
+     "end": 288
+    },
+    {
+     "text": "Here it is not. It is the seven mutations, plus selection.",
+     "start": 299,
+     "end": 412
+    },
+    {
+     "text": "So in shape this is closer to LEAF, Cognizant's method for evolving neural networks, with agents where LEAF had layers.",
+     "start": 423,
+     "end": 651
+    },
+    {
+     "text": "There is now a seam for the next step: describe a workload (mostly totals, or mostly linking facts across documents) plus a price cap, and it picks a team for that.",
+     "start": 662,
+     "end": 980
+    },
+    {
+     "text": "Learning that choice is future work, and the project says so.",
+     "start": 991,
+     "end": 1091
+    }
+   ]
+  },
+  {
+   "id": "s18_run",
+   "chapter": "9 \u00b7 Try it",
+   "title": "Run it yourself",
+   "frames": 1115,
+   "lines": [
+    {
+     "text": "You can try it without any account or key. Install it with pip.",
+     "start": 21,
+     "end": 131
+    },
+    {
+     "text": "make validate runs the linter, the full test suite and an offline search.",
+     "start": 142,
+     "end": 269
+    },
+    {
+     "text": "make offline breeds and ranks candidates with zero AI calls. make holdout shows the select-and-judge split.",
+     "start": 281,
+     "end": 489
+    },
+    {
+     "text": "Add a key for Gemini, Claude or GPT, and make smoke sends four questions to a team, end to end.",
+     "start": 501,
+     "end": 705
+    },
+    {
+     "text": "It also runs as a service. An hourly agent spends what the budget allows, saves after every candidate, and stops. And a web page lets you ask a team a question, and measure teams.",
+     "start": 717,
+     "end": 1085
+    }
+   ]
+  },
+  {
+   "id": "s19_limits",
+   "chapter": "9 \u00b7 Try it",
+   "title": "Honest limits",
+   "frames": 984,
+   "lines": [
+    {
+     "text": "It has limits, and it lists them.",
+     "start": 21,
+     "end": 77
+    },
+    {
+     "text": "One task domain. So it measures stability across questions, not transfer to new kinds of work.",
+     "start": 88,
+     "end": 261
+    },
+    {
+     "text": "Only three models measured so far.",
+     "start": 272,
+     "end": 335
+    },
+    {
+     "text": "And the idea itself is not new. Research like AgentSquare also uses a predictor to search agent designs. What is new is doing it for neuro-san, which had no fitness function at all.",
+     "start": 346,
+     "end": 715
+    },
+    {
+     "text": "Every number in the README is recomputed from committed data by a test, so the docs cannot quietly drift from the evidence.",
+     "start": 726,
+     "end": 954
+    }
+   ]
+  },
+  {
+   "id": "s20_recap",
+   "chapter": "Recap",
+   "title": "Measure. Search. Prove.",
+   "frames": 889,
+   "lines": [
+    {
+     "text": "Let's recap. neuro-san builds teams of AI agents from a sentence.",
+     "start": 21,
+     "end": 153
+    },
+    {
+     "text": "This project measures them, on an invented company no model has seen.",
+     "start": 165,
+     "end": 293
+    },
+    {
+     "text": "It searches for better teams by evolution, with a cheap Predictor deciding which few are worth paying for.",
+     "start": 304,
+     "end": 490
+    },
+    {
+     "text": "And it proves results on questions it never chose with.",
+     "start": 501,
+     "end": 597
+    },
+    {
+     "text": "The best team so far: two agents, with the strong model where the reading happens.",
+     "start": 608,
+     "end": 744
+    },
+    {
+     "text": "The code is open source on GitHub. Thanks for watching.",
+     "start": 756,
+     "end": 859
+    }
+   ]
+  }
+ ],
+ "frames": 21745
+}
