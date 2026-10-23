@@ -108,6 +108,19 @@ def test_the_router_was_judged_on_questions_it_was_not_fitted_or_tuned_on(study)
     assert not {t.question for t in SELECT} & {t.question for t in JUDGE}
 
 
+def test_dollars_are_neuro_sans_count_in_version_2_units(study):
+    """The routing prices both networks as the headline table does: neuro-san's
+    own count, halved for logs written before accounting version 2."""
+    from esp.eval import accounting
+
+    for name, (_, judge) in (("cheap", route.CHEAP), ("strong", route.STRONG)):
+        rows = [json.loads(line) for line in
+                (route.RUNS / judge).read_text(encoding="utf-8").splitlines() if line.strip()]
+        asked = sum(len(r["results"]) for r in rows)
+        paid = sum(accounting.cost_in(r, "reported_cost") for r in rows) / asked
+        assert study["judge"][name]["dollars"] == pytest.approx(paid, abs=1e-6)
+
+
 def test_the_docs_quote_the_study_as_computed(study):
     j = study["judge"]
     router, rule, strong, cheap = j["router"], j["rule"], j["strong"], j["cheap"]
@@ -118,6 +131,7 @@ def test_the_docs_quote_the_study_as_computed(study):
         assert f"p = {j['p_against_random']}" in text
         assert f"{1 - router['dollars'] / strong['dollars']:.0%}" in text
         assert f"${rule['dollars']:.5f}" in text
+        assert f"costs {strong['dollars'] / cheap['dollars'] - 1:.0%} more per question" in text
     for quoted in (f"${cheap['dollars']:.5f}", f"${strong['dollars']:.5f}",
                    f"{study['select']['leave_one_out_accuracy']:.1%}",
                    f"{j['oracle']:.1%}", f"${router['dollars_by_time']:.5f}"):

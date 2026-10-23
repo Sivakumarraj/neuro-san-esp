@@ -78,21 +78,21 @@ every figure in this section from those logs.
 
 ## Routing each question
 
-The stronger network costs 71% more per question, and the designer's shape already
+The stronger network costs 94% more per question, and the designer's shape already
 answers 84% of the questions alone. `make route` trains a router on the select runs that
 sends a question up only when its text predicts a gain, fixes its threshold on select, and
 judges it once on judge. It runs on the committed logs, for $0.
 
 | Judge, 100 questions × 2 | Accuracy | Cost per question |
 | --- | --- | --- |
-| Designer's shape alone | 84.0% | $0.00314 |
-| **Router**, 40% of questions sent up | **93.0%** | **$0.00403** (25% less than the strong network) |
-| The strong network alone | 94.5% | $0.00537 |
+| Designer's shape alone | 84.0% | $0.00135 |
+| **Router**, 40% of questions sent up | **93.0%** | **$0.00186** (29% less than the strong network) |
+| The strong network alone | 94.5% | $0.00263 |
 
 - **The choice of questions is real.** Sending the same 40% up at random scores 88.2%
   (p = 0.0005).
 - **It does not beat a one-line rule.** "Two or more named entities, or an aggregate" keeps
-  all 94.5% at $0.00472. The router saves more and gives up 3 answers in 200.
+  all 94.5% at $0.00226. The router saves more and gives up 3 answers in 200.
 - **This is ESP with a context:** the question is the context, the network is the action,
   right-and-dollars are the outcomes. The prescription is a threshold, not a learned
   Prescriptor. [What it does not show](docs/FINDINGS.md#routing-each-question-to-a-network).
