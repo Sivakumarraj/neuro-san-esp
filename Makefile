@@ -1,4 +1,4 @@
-.PHONY: install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool headtohead experiment guide check-key smoke measure figures ablation probe baseline search holdout offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
+.PHONY: install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool headtohead experiment guide check-key smoke measure figures ablation probe baseline search holdout route offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -120,6 +120,12 @@ search:
 # individual task, so the question is already answerable from what is committed.
 holdout:
 	PYTHONPATH=$$PWD python scripts/holdout_report.py
+
+# Route each question to the cheap or the strong network: fitted and tuned on the
+# select runs, judged once on the judge runs. Costs nothing; reads the committed
+# logs in results/headtohead/paid-2026-10/.
+route:
+	PYTHONPATH=$$PWD python scripts/route_report.py
 
 # Phase B and C only: train the Predictor on whatever real evaluations are
 # cached, then evolve against it. Zero provider calls, so this runs with no

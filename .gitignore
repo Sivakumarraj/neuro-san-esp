@@ -30,6 +30,9 @@ results/*
 !results/live/**
 !results/headtohead/
 !results/headtohead/**
+# The routing study over those runs, which `make route` recomputes.
+!results/routing/
+!results/routing/summary.json
 
 # The live cache is machine-local and quota-dependent. The committed
 # measurements live in tests/fixtures/cache instead, so CI can reproduce them.

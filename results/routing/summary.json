@@ -1,0 +1,66 @@
+{
+  "networks": {
+    "cheap": [
+      "designer",
+      "0378ca26cd9fe977"
+    ],
+    "strong": [
+      "2cc4-mini",
+      "47322479eb9cba1e"
+    ]
+  },
+  "select": {
+    "questions": 60,
+    "cheap": 0.8,
+    "strong": 0.95,
+    "threshold": 0.1361,
+    "leave_one_out_accuracy": 0.9333,
+    "leave_one_out_share": 0.48
+  },
+  "judge": {
+    "questions": 100,
+    "cheap": {
+      "accuracy": 0.84,
+      "dollars": 0.003143,
+      "dollars_by_time": 0.003143,
+      "share_to_strong": 0.0
+    },
+    "strong": {
+      "accuracy": 0.945,
+      "dollars": 0.005368,
+      "dollars_by_time": 0.005368,
+      "share_to_strong": 1.0
+    },
+    "router": {
+      "accuracy": 0.93,
+      "dollars": 0.004033,
+      "dollars_by_time": 0.004092,
+      "share_to_strong": 0.4
+    },
+    "rule": {
+      "accuracy": 0.945,
+      "dollars": 0.004723,
+      "dollars_by_time": 0.004903,
+      "share_to_strong": 0.71
+    },
+    "random_same_share": 0.8823,
+    "p_against_random": 0.0005,
+    "oracle": 0.955
+  },
+  "coefficients": {
+    "cheap": {
+      "named": -0.98,
+      "aggregate": -0.51,
+      "arithmetic": -0.43,
+      "chain": 1.81,
+      "numeric": -0.57
+    },
+    "strong": {
+      "named": -0.2,
+      "aggregate": -0.3,
+      "arithmetic": -0.66,
+      "chain": 0.75,
+      "numeric": -0.2
+    }
+  }
+}
