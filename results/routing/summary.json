@@ -21,26 +21,26 @@
     "questions": 100,
     "cheap": {
       "accuracy": 0.84,
-      "dollars": 0.003143,
-      "dollars_by_time": 0.003143,
+      "dollars": 0.001354,
+      "dollars_by_time": 0.001354,
       "share_to_strong": 0.0
     },
     "strong": {
       "accuracy": 0.945,
-      "dollars": 0.005368,
-      "dollars_by_time": 0.005368,
+      "dollars": 0.002627,
+      "dollars_by_time": 0.002627,
       "share_to_strong": 1.0
     },
     "router": {
       "accuracy": 0.93,
-      "dollars": 0.004033,
-      "dollars_by_time": 0.004092,
+      "dollars": 0.001863,
+      "dollars_by_time": 0.00189,
       "share_to_strong": 0.4
     },
     "rule": {
       "accuracy": 0.945,
-      "dollars": 0.004723,
-      "dollars_by_time": 0.004903,
+      "dollars": 0.002258,
+      "dollars_by_time": 0.002353,
       "share_to_strong": 0.71
     },
     "random_same_share": 0.8823,

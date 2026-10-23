@@ -21,7 +21,10 @@ Predictor says is best. Here:
 This is not a learned Prescriptor. With two actions, a threshold on the predicted
 gain is the whole decision, so there is nothing for one to learn.
 
-Cost is each network's average dollars per question, because the provider
+Cost is neuro-san's own count, every call's tokens at list prices, as the
+headline table and `scripts/select_and_judge.py` quote it, and halved for the
+committed logs that predate accounting version 2 (`esp/eval/accounting.py`).
+It is each network's average dollars per question, because the provider
 reports cost per chunk of four questions, not per question. A hard question
 costs more than an easy one on the same network, and the router sends the hard
 ones to the strong network, so `analyse` also prices every routing with the
@@ -39,6 +42,8 @@ from pathlib import Path
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 
+from esp.eval import accounting
+
 ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "results" / "headtohead" / "paid-2026-10"
 
@@ -48,6 +53,9 @@ RUNS = ROOT / "results" / "headtohead" / "paid-2026-10"
 # carry genome 47322479eb9cba1e. Results at 3 documents are never mixed in.
 CHEAP = ("7-select-search10/designer.jsonl", "8-judge-search10/designer.jsonl")
 STRONG = ("7-select-search10/2cc4-mini.jsonl", "8-judge-search10/evolved.jsonl")
+
+# neuro-san's own count, the figure every published dollar amount uses.
+COST_KEY = "reported_cost"
 
 FEATURE_NAMES = ["named", "aggregate", "arithmetic", "chain", "numeric"]
 
@@ -114,13 +122,14 @@ def load(path: Path) -> Outcomes:
             continue
         chunk = json.loads(line)
         label, genome_hash = chunk["label"], chunk["genome_hash"]
+        paid = accounting.cost_in(chunk, COST_KEY)
         seconds = sum(r["seconds"] for r in chunk["results"]) or 1.0
         for r in chunk["results"]:
-            shares.setdefault(r["task_id"], []).append(chunk["cost"] * r["seconds"] / seconds)
+            shares.setdefault(r["task_id"], []).append(paid * r["seconds"] / seconds)
             if not r["infrastructure"]:
                 runs.setdefault(r["task_id"], []).append(r["correct"])
         asked += len(chunk["results"])
-        cost += chunk["cost"]
+        cost += paid
     return Outcomes(label, genome_hash,
                     {t: sum(v) / len(v) for t, v in runs.items()},
                     cost / asked if asked else 0.0,
