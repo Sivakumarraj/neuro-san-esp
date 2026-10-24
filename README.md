@@ -248,6 +248,7 @@ checks on Python 3.12 and 3.13. Transcripts of real runs are in `docs/proofs/`.
 
 | | |
 | --- | --- |
+| [docs/REPORT.md](docs/REPORT.md) | How it works end to end, with diagrams and charts from the logs |
 | [docs/RESULTS.md](docs/RESULTS.md) | Every measured result, the paid stages, and how to reproduce them |
 | [docs/DESIGN.md](docs/DESIGN.md) | How the search works, part by part |
 | [docs/GUIDE.md](docs/GUIDE.md) | Running it: providers, web page, accelerator UI, service |
