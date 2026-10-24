@@ -28,11 +28,18 @@ from esp.evolve import paid  # noqa: E402
 
 OUT = ROOT / "results" / "figures"
 STAGE = paid.PAID_RUNS / paid.WINNER_STAGE
+REPLICATION = ROOT / "results" / "replication" / "fresh-2026-10" / "1-fresh"
 
 # Fixed by entity, never by rank: the designer's shape is always orange, the
-# evolved network always blue, a routing of the two always aqua.
-COLORS = {"designer": "#eb6834", "evolved": "#2a78d6", "router": "#1baf7a", "rule": "#1baf7a"}
+# evolved network always blue, a routing of the two always aqua, and the
+# designer's shape on the stronger model always violet.
+COLORS = {"designer": "#eb6834", "evolved": "#2a78d6", "router": "#1baf7a", "rule": "#1baf7a",
+          "designer-promoted": "#8455c9"}
 NAMES = {"designer": "Designer's shape (4 agents)", "evolved": "2cc4 (2 agents)"}
+# The replication has two networks of the designer's shape, told apart by model.
+FRESH_NAMES = {"evolved": "2cc4 (2 agents)",
+               "designer-promoted": "Designer's shape, specialists on gpt-5.4-mini",
+               "designer": "Designer's shape, all gpt-5.4-nano"}
 INK, MUTED, GRID = "#0b0b0b", "#52514e", "#e4e3df"
 # The judge set's aggregate questions, matched as tests/test_suites.py matches them.
 AGGREGATE = re.compile(r"serviced by depot D\d{2}\?|by depot D\d{2},|depot D\d{2} at its own"
@@ -46,6 +53,7 @@ class ReportFigures:
         self.out = out
         self.rows = sj.load_rows(STAGE)
         self.summary = sj.summarise(self.rows)
+        self.fresh = sj.summarise(sj.load_rows(REPLICATION))
 
     @staticmethod
     def _style(ax) -> None:
@@ -132,16 +140,44 @@ class ReportFigures:
         ax.spines["left"].set_color(MUTED)
         return self._save(fig, "report-frontier.png")
 
-    def _save(self, fig, name: str) -> Path:
+    def replication(self) -> Path:
+        """The fresh questions: the three networks on four measures, one chart each."""
+        panels = (("Accuracy", "accuracy", lambda v: f"{v:.1%}"),
+                  ("Tokens per question", "tokens_per_question", lambda v: f"{v:,.0f}"),
+                  ("Model calls per question", "requests_per_question", lambda v: f"{v:.2f}"),
+                  ("Dollars per correct answer", "reported_cost_per_correct",
+                   lambda v: f"${v:.5f}"))
+        labels = ["evolved", "designer-promoted", "designer"]
+        fig, axes = plt.subplots(1, 4, figsize=(13, 3.8))
+        for ax, (title, key, fmt) in zip(axes, panels, strict=True):
+            values = [self.fresh[label][key] for label in labels]
+            bars = ax.bar(range(len(labels)), values, width=0.6,
+                          color=[COLORS[label] for label in labels])
+            ax.bar_label(bars, labels=[fmt(v) for v in values], padding=3, color=INK, fontsize=8)
+            ax.set_title(title, color=INK, fontsize=10, loc="left")
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.margins(y=0.15)
+            self._style(ax)
+        handles = [plt.Rectangle((0, 0), 1, 1, color=COLORS[label]) for label in labels]
+        fig.legend(handles, [FRESH_NAMES[label] for label in labels], frameon=False,
+                   fontsize=8, loc="lower center", ncol=3)
+        fig.suptitle("Fresh questions F01-F40, twice each, 10 documents a search",
+                     color=MUTED, fontsize=9, x=0.01, ha="left")
+        fig.tight_layout(rect=(0, 0.08, 1, 1))
+        return self._save(fig, "report-replication.png", tight=False)
+
+    def _save(self, fig, name: str, tight: bool = True) -> Path:
         self.out.mkdir(parents=True, exist_ok=True)
         path = self.out / name
-        fig.tight_layout()
+        if tight:
+            fig.tight_layout()
         fig.savefig(path, dpi=150, facecolor="white")
         plt.close(fig)
         return path
 
     def draw(self) -> list[Path]:
-        return [self.headline(), self.by_kind(), self.frontier()]
+        return [self.headline(), self.by_kind(), self.frontier(), self.replication()]
 
     @staticmethod
     def main() -> int:

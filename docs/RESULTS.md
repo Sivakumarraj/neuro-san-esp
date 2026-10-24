@@ -36,8 +36,8 @@ network neuro-san's designer would build, using 37% fewer tokens but costing mor
   choose. They are not fresh: J001 to J100 were also asked in the earlier runs below,
   because the judge half has no unused aggregate questions left to draw.
 - **Not a pure structure result.** The winner promotes one agent to a model 3.7× dearer
-  per token; the designer's shape was not measured with its specialists promoted, so how
-  much of the gap is structure and how much is model is not separated.
+  per token; the designer's shape was not measured here with its specialists promoted. The
+  [replication](#replication-on-40-fresh-questions) measured that control.
 - **The benchmark changed.** The search tool returned 3 documents in every earlier run.
   At 3, a question such as "how many incidents were caused by a mis-picked pallet" cannot
   be answered: the word is in 8 documents. With 10 (`ESP_SEARCH_RESULTS=10`), the
@@ -57,6 +57,46 @@ Every measured chunk is committed in `results/headtohead/paid-2026-10/`, and
 `scripts/select_and_judge.py` reproduces the networks, the search and the summary
 ([details](#reproducing-the-head-to-head)). `tests/test_select_and_judge.py` recomputes
 every figure in this section from those logs.
+
+## Replication on 40 fresh questions
+
+`make replicate` asked 40 questions no network had been asked (F01 to F40, drawn from the
+judge half by `esp/eval/fresh.py` with the judge set's mix), twice each at 10 documents, of
+the designer's shape, `2cc4` with its Researcher promoted, and the designer's shape with all
+three specialists promoted to `gpt-5.4-mini`. The three ran at the same time, each under its
+own dollar cap, and every one of the 240 question-runs finished.
+
+| 40 fresh questions × 2 | `2cc4` | Control: designer's shape, specialists on mini | Designer's shape, all nano |
+| --- | --- | --- | --- |
+| Accuracy | **90.0%** (72/80; 37, then 35) | 77.5% (62/80; 30, then 32) | 75.0% (60/80; 31, then 29) |
+| Tokens per question | **3,342** | 4,493 | 5,773 |
+| Model calls per question | **5.62** | 7.39 | 7.47 |
+| Cost per question | $0.00278 | $0.00340 | **$0.00153** |
+| Cost per correct answer | $0.00309 | $0.00438 | **$0.00204** |
+
+| Kind of question (runs) | `2cc4` | Control | Designer's shape |
+| --- | --- | --- | --- |
+| Aggregate (32) | **29** | 20 | 23 |
+| 1-, 2- and 3-document join (24) | 24 | 24 | 24 |
+| 4-document join (8) | **4** | 2 | 0 |
+| 6-document join (8) | 7 | 8 | 8 |
+| 9-document join (8) | 8 | 8 | 5 |
+
+- **Against the designer's shape**: better on 9 questions, worse on 1 (F12), sign test
+  p = 0.0215. Tokens −42%, model calls −25%, cost +81% a question and +51% a correct answer
+  by neuro-san's own count (+60% and +33% on the cap's more cautious count).
+- **Against the control**: better on 7 questions, worse on 1 (F12), p = 0.0703. Tokens −26%,
+  model calls −24%, cost −18% a question and −29% a correct answer. Promoting every
+  specialist raised the designer's shape by only 2.5 points, and its aggregates fell from 23
+  to 20, so the stronger model alone does not explain the headline.
+- **Harder than judge.** Both networks scored lower than on J001 to J100, mostly on the
+  four-document joins, which compare two computed penalties: the all-nano designer got none
+  of its 8 right, against 60% on judge.
+- **One question went the other way.** F12, a six-document join, was answered right in both
+  repeats by both designer networks and in one of two by `2cc4`.
+
+Every chunk is committed in `results/replication/fresh-2026-10/1-fresh/`, with
+`summary.json` beside it, and `tests/test_replication.py` recomputes this section from them.
 
 ## Reproducing the head-to-head
 

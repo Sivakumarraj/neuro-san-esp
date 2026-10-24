@@ -879,12 +879,14 @@ promoting the router in stage 1 had bought nothing.
 What stage 8 does not show:
 
 - **How much is structure.** The designer's shape was not measured with its specialists on
-  `gpt-5.4-mini`, so the gap mixes a structural change with a model change.
+  `gpt-5.4-mini`, so the gap mixes a structural change with a model change. The
+  [replication](RESULTS.md#replication-on-40-fresh-questions) measured that control on 40
+  fresh questions: it gained 2.5 points, and `2cc4` still led it by 12.5.
 - **A cheaper network.** Fewer tokens, but on a model 3.7× dearer per token: 72% more per
   correct answer by neuro-san's own count (52% on the cap's more cautious basis).
 - **Fresh questions.** J001 to J100 had been asked in stages 1, 3 and 5. They were never
-  used to choose, but the judge half has no unused aggregate questions left, and a fresh
-  set without them would be easier than this one.
+  used to choose. The replication's 40 fresh questions take the judge half's last 16 unused
+  aggregates, and both networks scored lower on them, not higher.
 - **A fully simultaneous run.** The designer's second repeat partly ran after the evolved
   network had finished.
 
