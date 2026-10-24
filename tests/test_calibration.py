@@ -26,6 +26,6 @@ def test_the_docs_quote_it_and_it_clears_the_ceiling():
     assert (right, usage.tokens_in(REPORT)) == (16, 97_414)
     assert REPORT["accuracy"] < CEILING
     findings = (ROOT / "docs" / "FINDINGS.md").read_text(encoding="utf-8")
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    results = (ROOT / "docs" / "RESULTS.md").read_text(encoding="utf-8")
     assert "**16 of 20 (80%)**, using 97,414 tokens" in findings
-    assert "scored 16 of 20 (80%)" in readme
+    assert "scored 16 of 20 (80%)" in results

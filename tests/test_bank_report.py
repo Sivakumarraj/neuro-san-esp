@@ -28,8 +28,8 @@ def test_the_committed_reports_say_what_the_docs_say():
     findings = (ROOT / "docs" / "FINDINGS.md").read_text(encoding="utf-8")
     assert "| `seed:designer_shaped` | **23 / 24** | 79,543 |" in findings
     assert "| `mut:reassign_model` 6859dd | 21 / 24 | 88,370 |" in findings
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "answered 21 against the designer's 23" in readme
+    results = (ROOT / "docs" / "RESULTS.md").read_text(encoding="utf-8")
+    assert "answered 21 against the designer's 23" in results
 
 
 def test_the_reports_name_networks_that_were_measured():

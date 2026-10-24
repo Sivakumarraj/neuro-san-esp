@@ -31,9 +31,10 @@ sys.path.insert(0, str(ROOT))
 os.environ.setdefault("AGENT_TOOL_PATH", str(ROOT))
 os.environ.setdefault("PYTHONPATH", str(ROOT))
 
-from esp.eval import measurements  # noqa: E402
+from esp.eval import corpus_tool, measurements  # noqa: E402
 from esp.eval.runner import _ask, _total_tokens, never_answered, write_network  # noqa: E402
 from esp.eval.tasks import score  # noqa: E402
+from esp.evolve import paid  # noqa: E402
 from esp.service.preflight import failures, report, run_checks  # noqa: E402
 from esp.serving import SHOWCASE, display_question, presentable  # noqa: E402
 
@@ -50,16 +51,25 @@ def main() -> int:
         print("preflight failed -- nothing was asked", file=sys.stderr)
         return 1
 
-    champion = measurements.best()
-    if champion is None:
-        print("no committed measurements to serve", file=sys.stderr)
-        return 1
-    served = presentable(champion.genome)
+    # The same choice the web page makes (ESP_SERVE, apps/web/serve.py): the
+    # held-out winner at the width it was judged at, unless told otherwise.
+    if os.environ.get("ESP_SERVE", "heldout").strip().lower() == "heldout":
+        name, genome = paid.WINNER_NAME, paid.winner()
+        if "ESP_SEARCH_RESULTS" not in os.environ:
+            corpus_tool.MAX_RESULTS = paid.WINNER_SEARCH_RESULTS
+    else:
+        champion = measurements.best()
+        if champion is None:
+            print("no committed measurements to serve", file=sys.stderr)
+            return 1
+        name, genome = champion.name(), champion.genome
+    served = presentable(genome)
     hocon = str(write_network(served.genome))
-    router = served.genome.agents[served.genome.top].model or served.genome.default_model
-    print(f"champion {champion.name()} ({champion.genome_hash}), serving on "
-          f"{served.provider}: router {router}, workers {served.genome.default_model}")
-    print(f"  {served.note(champion.genome.default_model)}\n")
+    models = ", ".join(f"{agent} {served.genome.agents[agent].model or served.genome.default_model}"
+                       for agent in sorted(served.genome.reachable()))
+    print(f"champion {name} ({genome.genome_hash()}), serving on {served.provider}: "
+          f"{models}; {corpus_tool.MAX_RESULTS} documents a search")
+    print(f"  {served.note(genome.default_model)}\n")
 
     results = []
     for task in SHOWCASE[:args.questions]:

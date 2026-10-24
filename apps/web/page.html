@@ -161,7 +161,7 @@ async function ask(){
     if(d.error){ans.textContent='Error: '+d.error;return}
     ans.textContent=d.answer||'(the network returned no answer)';
     meta.appendChild(el('div',`${d.agents} agents · ${d.seconds}s · ${d.provider}`
-      +` · router ${d.router_model}, workers ${d.worker_model}`));
+      +' · '+Object.entries(d.models||{}).map(([n,m])=>n+' '+m).join(', ')));
     if(d.fallback){meta.appendChild(el('div',d.fallback,'bad'))}
     if(d.expected){
       const g=el('div','Benchmark answer: '+d.expected+' — ');

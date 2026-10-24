@@ -26,7 +26,6 @@ import argparse
 import json
 import math
 import os
-import random
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -37,86 +36,21 @@ sys.path.insert(0, str(ROOT))
 from esp.config import bootstrap  # noqa: E402
 from esp.eval import accounting as usage  # noqa: E402
 
-# The children generated from flat in the committed paid search. The seed and
-# the operator list are what produced them; changing either produces others.
-SEARCH_SEED = 20261002
-SEARCH_CHILDREN = 8
-# reassign_model is left out: on this ladder it can only promote an agent to the
-# 3.7x dearer rung, and the search was for a cheaper network.
-SEARCH_OPERATORS = ["add_agent", "remove_agent", "rewire", "split_agent",
-                    "merge_agents", "toggle_search"]
+# The networks themselves live in the package, because the web page and the
+# smoke test serve the winner too.
+from esp.evolve.paid import (  # noqa: E402
+    COMMITTED,
+    SEARCH_CHILDREN,
+    SEARCH_OPERATORS,
+    SEARCH_SEED,
+    SEED_HASHES,
+    mutants,
+    network,
+    origin_of,
+)
 
-# Networks the committed Gemini search measured, named by what they are. Two of
-# them, flat and solo, are hand-written seeds the search started from, not
-# networks it found; `origin_of` says which.
-COMMITTED = {
-    "flat": "c3ee2e0c4a6156c5",
-    "mergeA": "39fd57c6e575c298",
-    "mergeB": "4c20dbbed359ab7a",
-    "pair": "59b12db4896e63d8",
-    "solo": "cbe128a617466fe9",
-    "searchcoord": "cd06778520823bc3",
-}
-
-
-def _committed(genome_hash: str):
-    from esp.eval import measurements
-    from esp.genome.prune import without_copies
-
-    rows = {r.genome_hash: r for r in measurements.load()}
-    if genome_hash not in rows:
-        raise SystemExit(f"no committed measurement {genome_hash}")
-    return without_copies(rows[genome_hash].genome)
-
-
-def mutants() -> dict[str, tuple[str, object]]:
-    """The search's children of flat, by hash: (operator, genome)."""
-    from esp.genome.mutations import InvalidMutant, mutate
-    from esp.serving import measurable
-
-    flat = measurable(_committed(COMMITTED["flat"])).genome
-    rng = random.Random(SEARCH_SEED)
-    seen, out = {flat.genome_hash()}, {}
-    for _ in range(500):
-        if len(out) == SEARCH_CHILDREN:
-            break
-        try:
-            child, op = mutate(flat, rng, SEARCH_OPERATORS)
-        except InvalidMutant:
-            continue
-        if child.genome_hash() not in seen:
-            seen.add(child.genome_hash())
-            out[child.genome_hash()] = (op, child)
-    return out
-
-
-# The committed measurements of the three hand-written seeds, by the hash they
-# were measured under (tests/fixtures/cache/). Fixed, because a hash recomputed
-# here carries whatever provider is configured and would match nothing.
-SEED_HASHES = {"459ac1a66d925b0c": "designer_shaped",
-               "c3ee2e0c4a6156c5": "flat_pair",
-               "cbe128a617466fe9": "solo"}
-
-
-def origin_of(genome_hash: str) -> str:
-    """Where a committed network came from: a hand-written seed, or the search."""
-    if genome_hash in SEED_HASHES:
-        return f"{genome_hash} (hand-written seed:{SEED_HASHES[genome_hash]}), copies removed"
-    return f"{genome_hash} (found by the Gemini search), copies removed"
-
-
-def network(name: str):
-    """A named network, a committed hash, or a child of flat by hash prefix."""
-    from esp.genome.seeds import designer_shaped
-
-    if name == "designer":
-        return designer_shaped(), "seed:designer_shaped"
-    if name in COMMITTED:
-        return _committed(COMMITTED[name]), origin_of(COMMITTED[name])
-    for genome_hash, (op, genome) in mutants().items():
-        if genome_hash.startswith(name):
-            return genome, f"{genome_hash}: {op} on flat (paid search)"
-    return _committed(name), origin_of(name)
+__all__ = ["COMMITTED", "SEARCH_CHILDREN", "SEARCH_OPERATORS", "SEARCH_SEED", "SEED_HASHES",
+           "mutants", "network", "origin_of"]
 
 
 SUITES = ("select", "judge", "judge-plus")
@@ -169,7 +103,8 @@ def summarise(rows: list[dict]) -> dict:
     one_network_per_label(rows)
     by = defaultdict(lambda: {"asked": 0, "right": 0, "tokens": 0, "cost": 0.0,
                               "listed": 0.0, "reported": 0.0, "priced": True,
-                              "unfinished": 0, "repeats": set()})
+                              "unfinished": 0, "repeats": set(), "requests": 0,
+                              "counted_requests": True})
     for r in rows:
         n = by[r["label"]]
         n["asked"] += len(r["results"])
@@ -186,6 +121,12 @@ def summarise(rows: list[dict]) -> dict:
         else:
             n["priced"] = False
         n["repeats"].add(r.get("run", 0))
+        # Model calls were not recorded before October 2026, so a figure is
+        # given only when every chunk under the label has one.
+        if "requests" in r:
+            n["requests"] += r["requests"]
+        else:
+            n["counted_requests"] = False
     out = {}
     for label, n in sorted(by.items()):
         out[label] = {
@@ -197,6 +138,8 @@ def summarise(rows: list[dict]) -> dict:
             "cost_per_correct": round(n["cost"] / max(n["right"], 1), 6),
             "cost": round(n["cost"], 4),
         }
+        if n["counted_requests"]:
+            out[label]["requests_per_question"] = round(n["requests"] / n["asked"], 2)
         if n["priced"]:
             out[label].update({
                 "listed_cost_per_question": round(n["listed"] / n["asked"], 6),

@@ -354,4 +354,5 @@ def live_measure(contender: Contender, chunk: list[Task]) -> dict:
     return {"results": [asdict(r) for r in report.results], "tokens": report.tokens,
             "cost": max(report.cost, listed), "reported_cost": report.cost,
             "listed_cost": round(listed, 6), "seconds": report.seconds,
+            "requests": report.requests,
             "models": contender.models(), "settings": report.settings}

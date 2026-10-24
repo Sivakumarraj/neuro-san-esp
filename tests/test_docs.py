@@ -19,6 +19,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 README = (ROOT / "README.md").read_text(encoding="utf-8")
+# Every measured result the README leaves out lives in docs/RESULTS.md, and is held to
+# the same checks.
+RESULTS = (ROOT / "docs" / "RESULTS.md").read_text(encoding="utf-8")
+PUBLISHED = README + "\n" + RESULTS
 
 # Counts in the README are written out in words, because that is how a sentence
 # reads. The checks below need them as numbers.
@@ -33,7 +37,7 @@ def test_every_make_target_the_readme_mentions_exists():
     one: the reader assumes they got it wrong."""
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     targets = set(re.findall(r"^([a-z][\w-]*):", makefile, re.M))
-    mentioned = set(re.findall(r"^make ([a-z][\w-]*)", README, re.M))
+    mentioned = set(re.findall(r"^make ([a-z][\w-]*)", PUBLISHED, re.M))
     missing = mentioned - targets
     assert not missing, f"README documents make targets that do not exist: {missing}"
 
@@ -96,7 +100,8 @@ def test_the_readme_results_table_matches_the_committed_measurements():
         (ROOT / "results" / "history.json").read_text(encoding="utf-8")))
     records = {record["genome_hash"]: record for record in history["records"]}
 
-    results = README[README.index("## Results"):README.index("## Limitations")]
+    results = RESULTS[RESULTS.index("## Results of the search"):]
+    results = results[:results.find("\n## ", 1) if "\n## " in results[1:] else len(results)]
     rows = [line for line in results.splitlines()
             if line.startswith("|") and "---" not in line][1:]
     assert rows, "the README's results table has gone"
@@ -121,9 +126,9 @@ def test_the_readme_does_not_overstate_how_much_was_measured():
     history = json.loads(
         (ROOT / "results" / "history.json").read_text(encoding="utf-8"))
     measured = history["real_evaluations"]
-    claimed = {int(n) for n in re.findall(r"(\w+) networks measured", README)
+    claimed = {int(n) for n in re.findall(r"(\w+) networks measured", PUBLISHED)
                if n.isdigit()}
-    claimed |= {WORDS[n.lower()] for n in re.findall(r"(\w+) networks measured", README)
+    claimed |= {WORDS[n.lower()] for n in re.findall(r"(\w+) networks measured", PUBLISHED)
                 if n.lower() in WORDS}
     assert claimed == {measured}, (
         f"the README claims {claimed or 'nothing'} networks measured; "
@@ -141,7 +146,7 @@ def test_the_readme_reports_the_surrogate_quality_the_search_actually_used():
         shown = f"{abs(report['spearman']):.3f}"
         # The README writes a negative correlation with a typographic minus,
         # which is the right character for prose and not the one Python emits.
-        assert shown in README.replace("\N{MINUS SIGN}", "-"), (
+        assert shown in PUBLISHED.replace("\N{MINUS SIGN}", "-"), (
             f"the search measured spearman={report['spearman']:+.3f} at "
             f"{report['samples']} samples and the README does not say so")
 
@@ -262,7 +267,7 @@ def test_the_readme_counts_the_committed_measurements_correctly_everywhere():
         r"(?:committed|in `tests/fixtures/cache/`)",
         re.IGNORECASE)
     wrong = []
-    for word in pattern.findall(README):
+    for word in pattern.findall(PUBLISHED):
         lowered = word.lower()
         value = WORDS.get(lowered, int(word) if word.isdigit() else None)
         if value is not None and value != real:

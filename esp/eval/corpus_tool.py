@@ -37,13 +37,20 @@ def _terms(text: str) -> list[str]:
     return [t for t in re.findall(r"[a-z0-9\-]+", text.lower()) if t not in _STOP]
 
 
-def search(query: str, max_results: int = MAX_RESULTS) -> list[dict[str, Any]]:
+def search(query: str, max_results: int | None = None) -> list[dict[str, Any]]:
     """Rank documents by how many query terms they contain.
+
+    `max_results` defaults to the module's MAX_RESULTS as it is when the search
+    runs, not as it was when this function was defined. A default bound at
+    definition time kept returning 3 documents after MAX_RESULTS was raised in
+    process, while the cache key, which reads MAX_RESULTS, said 10.
 
     Identifiers (D03, C-2105, INC-4407) are weighted heavily because they are
     the join keys of a multi-hop question — matching one is far stronger
     evidence than matching a common word.
     """
+    if max_results is None:
+        max_results = MAX_RESULTS
     query_terms = _terms(query)
     if not query_terms:
         return []
