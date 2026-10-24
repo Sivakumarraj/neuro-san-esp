@@ -57,3 +57,12 @@ def test_a_deployment_without_the_logs_is_told_what_to_do(tmp_path):
 
     with pytest.raises(FileNotFoundError, match="ESP_SERVE=fitness"):
         paid.judged(tmp_path / "summary.json")
+
+
+def test_a_logged_child_is_found_by_its_logged_name_on_any_provider():
+    """The logs call it 2cc4, its hash on the ladder it was measured on. On the
+    default Gemini configuration its hash differs, and `make replicate` stopped
+    with "no committed measurement 2cc4"."""
+    genome, origin = paid.network("2cc4")
+    assert origin.startswith(paid.WINNER_CHILD)
+    assert sorted(genome.reachable()) == ["Coordinator", "Researcher"]

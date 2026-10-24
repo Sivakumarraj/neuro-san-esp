@@ -267,7 +267,7 @@ def test_flat_and_solo_are_called_seeds_not_search_results():
 
 
 def test_the_suites_are_the_ones_named():
-    assert [len(sj.suite_tasks(s)) for s in sj.SUITES] == [60, 100, 100]
+    assert [len(sj.suite_tasks(s)) for s in sj.SUITES] == [60, 100, 100, 40]
     assert sj.suite_tasks("judge-plus")[0].task_id == "P001"
 
 

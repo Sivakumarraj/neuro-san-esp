@@ -53,16 +53,18 @@ __all__ = ["COMMITTED", "SEARCH_CHILDREN", "SEARCH_OPERATORS", "SEARCH_SEED", "S
            "mutants", "network", "origin_of"]
 
 
-SUITES = ("select", "judge", "judge-plus")
+SUITES = ("select", "judge", "judge-plus", "fresh")
 
 
 def suite_tasks(name: str) -> list:
     """select: S01-S60. judge: J001-J100. judge-plus: P001-P100, the temporal,
-    filtered, compare and unanswerable kinds no other set asks."""
+    filtered, compare and unanswerable kinds no other set asks. fresh: F01-F40,
+    never asked of any network (esp/eval/fresh.py)."""
+    from esp.eval.fresh import FRESH
     from esp.eval.judge_plus import JUDGE_PLUS
     from esp.eval.suites import JUDGE, SELECT
 
-    return {"select": SELECT, "judge": JUDGE, "judge-plus": JUDGE_PLUS}[name]
+    return {"select": SELECT, "judge": JUDGE, "judge-plus": JUDGE_PLUS, "fresh": FRESH}[name]
 
 
 def contender_for(name: str, label: str | None = None, promote: list[str] | None = None):
@@ -197,6 +199,8 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("--go", action="store_true", help="spend: ask the provider")
     s = sub.add_parser("summary")
     s.add_argument("directory")
+    s.add_argument("--pair", nargs=2, action="append", default=[], metavar=("A", "B"),
+                   help="also compare these two labels in any stage with more than two")
     args = parser.parse_args(argv)
 
     os.environ.setdefault("ESP_PIN_MODELS", "1")
@@ -211,6 +215,10 @@ def main(argv: list[str] | None = None) -> int:
             report[stage.name] = {"networks": summarise(rows)}
             if len(labels) == 2:
                 report[stage.name]["paired"] = paired(rows, *labels)
+            for a, b in args.pair:
+                if len(labels) > 2 and {a, b} <= set(labels):
+                    two = [r for r in rows if r["label"] in (a, b)]
+                    report[stage.name].setdefault("pairs", {})[f"{a} vs {b}"] = paired(two, a, b)
         print(json.dumps(report, indent=2))
         return 0
 

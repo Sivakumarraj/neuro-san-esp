@@ -120,6 +120,14 @@ def network(name: str) -> tuple[Genome, str]:
     for genome_hash, (op, genome) in mutants().items():
         if genome_hash.startswith(name):
             return genome, f"{genome_hash}: {op} on flat (paid search)"
+    # The children's hashes carry the provider, and the logs name them as they
+    # were on the measured ladder, so `2cc4` is found there on any provider.
+    from esp.serving import retarget
+
+    measured = children_of(retarget(committed(COMMITTED["flat"]), *MEASURED_LADDER))
+    for genome_hash, (op, genome) in measured.items():
+        if genome_hash.startswith(name):
+            return genome, f"{genome_hash}: {op} on flat (paid search, {MEASURED_LADDER[0]})"
     return committed(name), origin_of(name)
 
 

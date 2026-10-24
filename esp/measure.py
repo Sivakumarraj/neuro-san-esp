@@ -74,6 +74,11 @@ def _judge_plus() -> list[Task]:
     return JUDGE_PLUS
 
 
+def _fresh() -> list[Task]:
+    from esp.eval.fresh import FRESH
+    return FRESH
+
+
 def _judge_200() -> list[Task]:
     from esp.eval.judge_plus import JUDGE_200
     return JUDGE_200
@@ -84,7 +89,8 @@ def _judge_200() -> list[Task]:
 # judge questions plus a hundred of four newer kinds), which share no entity
 # (esp/eval/suites.py, esp/eval/judge_plus.py).
 NAMED = {BANK: _bank, "meridian-select": _select, "meridian-judge": _judge,
-         "meridian-judge-plus": _judge_plus, "meridian-judge-200": _judge_200}
+         "meridian-judge-plus": _judge_plus, "meridian-judge-200": _judge_200,
+         "meridian-fresh": _fresh}
 
 
 class SuiteError(ValueError):
