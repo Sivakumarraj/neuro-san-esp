@@ -1,0 +1,92 @@
+{
+  "1-fresh": {
+    "networks": {
+      "designer": {
+        "question_runs": 80,
+        "correct": 60,
+        "unfinished": 0,
+        "accuracy": 0.75,
+        "tokens_per_question": 5773,
+        "cost_per_question": 0.001761,
+        "tokens_per_correct": 7698,
+        "cost_per_correct": 0.002348,
+        "cost": 0.1409,
+        "requests_per_question": 7.47,
+        "listed_cost_per_question": 0.001761,
+        "reported_cost_per_question": 0.001534,
+        "listed_cost_per_correct": 0.002348,
+        "reported_cost_per_correct": 0.002045
+      },
+      "designer-promoted": {
+        "question_runs": 80,
+        "correct": 62,
+        "unfinished": 0,
+        "accuracy": 0.775,
+        "tokens_per_question": 4493,
+        "cost_per_question": 0.003602,
+        "tokens_per_correct": 5798,
+        "cost_per_correct": 0.004648,
+        "cost": 0.2882,
+        "requests_per_question": 7.39,
+        "listed_cost_per_question": 0.003581,
+        "reported_cost_per_question": 0.003395,
+        "listed_cost_per_correct": 0.00462,
+        "reported_cost_per_correct": 0.00438
+      },
+      "evolved": {
+        "question_runs": 80,
+        "correct": 72,
+        "unfinished": 0,
+        "accuracy": 0.9,
+        "tokens_per_question": 3342,
+        "cost_per_question": 0.00282,
+        "tokens_per_correct": 3713,
+        "cost_per_correct": 0.003134,
+        "cost": 0.2256,
+        "requests_per_question": 5.62,
+        "listed_cost_per_question": 0.002663,
+        "reported_cost_per_question": 0.002782,
+        "listed_cost_per_correct": 0.002959,
+        "reported_cost_per_correct": 0.003091
+      }
+    },
+    "pairs": {
+      "designer vs evolved": {
+        "better_on": {
+          "designer": [
+            "F12"
+          ],
+          "evolved": [
+            "F04",
+            "F11",
+            "F13",
+            "F18",
+            "F21",
+            "F27",
+            "F29",
+            "F39",
+            "F40"
+          ]
+        },
+        "sign_test_p": 0.0215
+      },
+      "designer-promoted vs evolved": {
+        "better_on": {
+          "designer-promoted": [
+            "F12"
+          ],
+          "evolved": [
+            "F11",
+            "F14",
+            "F18",
+            "F21",
+            "F28",
+            "F29",
+            "F40"
+          ]
+        },
+        "sign_test_p": 0.0703
+      }
+    }
+  }
+}

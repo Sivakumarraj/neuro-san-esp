@@ -44,9 +44,9 @@ network neuro-san's designer builds:
 - **Fewer tokens, more dollars.** It uses 37% fewer tokens, but its one document-reading agent
   runs a model 3.7× dearer per token, so each question costs 94% more. If cost matters more
   than the last few points of accuracy, use the router below.
-- **It is not a pure structure result.** The designer's shape was not measured with its own
-  specialists promoted, so how much of the gap is the topology and how much the stronger model
-  is not separated.
+- **The stronger model does not explain it.** This run did not separate structure from model.
+  The replication below did: the designer's shape with every specialist on `gpt-5.4-mini`
+  gained only 2.5 points over the all-nano one, and `2cc4` still beat it.
 - **It was chosen on different questions.** Every decision was made on the 60 `meridian-select`
   questions. The judge questions come from the other half of the generated company.
 - **Where `2cc4` came from.** It is the hand-written `flat_pair` seed with its Arithmetic agent
@@ -57,6 +57,35 @@ Cost is neuro-san's own count, at list prices. [docs/RESULTS.md](docs/RESULTS.md
 stage of the paid runs, how to reproduce them, and the earlier results, including the ones that
 did not hold up. A test recomputes every figure in this README and in that page from the
 committed logs in `results/headtohead/paid-2026-10/`.
+
+## Replicated on 40 questions no network had seen, with a model control
+
+The judge questions had been asked in earlier paid runs, and the headline mixed a change of
+structure with a change of model. `make replicate` answers both: 40 new questions, F01 to F40
+(`esp/eval/fresh.py`), twice each, of three networks. The third is the control: the designer's
+shape with **every** specialist promoted to `gpt-5.4-mini`.
+
+| 40 fresh questions × 2, 10 documents a search | `2cc4`, Researcher on mini | Designer's shape, specialists on mini (control) | Designer's shape, all nano |
+| --- | --- | --- | --- |
+| Accuracy | **90.0%** (72/80) | 77.5% (62/80) | 75.0% (60/80) |
+| Tokens per question | **3,342** | 4,493 | 5,773 |
+| Model calls per question | **5.62** | 7.39 | 7.47 |
+| Cost per question | $0.00278 | $0.00340 | **$0.00153** |
+| Cost per correct answer | $0.00309 | $0.00438 | **$0.00204** |
+| Agents | **2** | 4 | 4 |
+
+- **The headline replicates.** Against the designer's shape, `2cc4` was right more often on 9
+  questions against 1 (p = 0.0215), with 42% fewer tokens and 25% fewer model calls.
+- **The stronger model alone does not explain the gain.** Promoting all three specialists bought the designer's
+  shape 2.5 points and more than doubled its cost. `2cc4` beat that control on 7 questions
+  against 1 with 26% fewer tokens, 24% fewer model calls and 29% less per correct answer. On
+  40 questions that gap is not significant at 0.05 (p = 0.0703).
+- **The all-nano designer is still the cheapest.** `2cc4` costs 81% more a question and 51%
+  more a correct answer. The trade is the same as in the headline: 15 points of accuracy for
+  about $0.0012 a question.
+- **The run cost $0.65** on the dollar cap's cautious count. Every chunk is committed in
+  `results/replication/fresh-2026-10/`, and `tests/test_replication.py` recomputes each figure
+  here from those logs. [Accuracy by kind of question](docs/RESULTS.md#replication-on-40-fresh-questions).
 
 ## Routing each question: most of the accuracy for less money
 
@@ -203,9 +232,11 @@ the web page, the accelerator UI, and running the optimizer as a service.
 - **Shape is not the whole network.** Two children with the same shape scored 54 and 48 of 60
   on select because their instructions differ, and the Predictor sees only shape.
 - **Few models measured.** The search ran on `gemini-3.1-flash-lite` and the head-to-heads on
-  `gpt-5.4-nano`, with `gpt-5.4-mini` on one agent.
-- **Model calls are recorded from now on.** Runs record neuro-san's count of model calls beside
-  tokens, but every committed run predates that, so no call counts are quoted here.
+  `gpt-5.4-nano`, with `gpt-5.4-mini` only on the agents that read documents.
+- **Model calls are counted only in the replication.** Runs record neuro-san's count of model
+  calls beside tokens, but every run before the replication predates that.
+- **40 fresh questions.** The replication beats the designer's shape significantly, but its
+  edge over the model control (7 questions against 1) needs more questions to be significant.
 - **Not novel as an idea.** AgentSquare (ICLR 2025) also uses a performance predictor to search
   agent designs. What is new here is doing it for neuro-san, which has no fitness function.
 

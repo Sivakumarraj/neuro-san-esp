@@ -159,15 +159,14 @@ the designer's shape is right 74% of the time and `2cc4` 91%, and on the four-do
 which compare two computed figures, 60% against 80%. One reading, not yet tested: a single
 agent that searches and keeps every fact it finds counts better than three specialists who
 each see part of the evidence and report to a coordinator that has to assemble it. The
-stronger model is the other candidate explanation, and the control in section 7 separates
-the two.
+stronger model is the other candidate explanation, and the control in section 7 tests it.
 
 ![Accuracy by kind of question](../results/figures/report-by-kind.png)
 
 **What it costs.** `2cc4` uses 37% fewer tokens, but the Researcher's model is 3.7× dearer per
 token, so each question costs 94% more. That is not a pure structure result: the designer's
-shape was not measured with its own specialists promoted. `make replicate` measures exactly
-that control (section 7).
+shape was not measured here with its own specialists promoted. `make replicate` measured
+exactly that control (section 7).
 
 ## 6. Paying for the strong network only when it helps
 
@@ -186,7 +185,7 @@ aggregate", which keeps all 94.5% at $0.00226.
 ## 7. Replication on questions no network has seen
 
 The judge questions J001 to J100 had also been asked in earlier paid runs. `make replicate`
-asks forty new questions, F01 to F40 (`esp/eval/fresh.py`), drawn from the judge half with the
+asked forty new questions, F01 to F40 (`esp/eval/fresh.py`), drawn from the judge half with the
 same mix and never asked of any network, twice each at 10 documents, of three networks:
 
 - the designer's shape, all on `gpt-5.4-nano`;
@@ -195,8 +194,30 @@ same mix and never asked of any network, twice each at 10 documents, of three ne
   the structure from the stronger model.
 
 Every run now also records neuro-san's count of model calls, so this is the first result that
-can compare API calls as well as tokens. The results are added here and to
-[RESULTS.md](RESULTS.md) when the run is committed.
+compares API calls as well as tokens.
+
+![Accuracy, tokens, model calls and dollars per correct answer on the fresh questions](../results/figures/report-replication.png)
+
+| 40 fresh questions × 2 | `2cc4` | Control | Designer's shape |
+| --- | --- | --- | --- |
+| Accuracy | **90.0%** (72/80) | 77.5% (62/80) | 75.0% (60/80) |
+| Tokens per question | **3,342** | 4,493 | 5,773 |
+| Model calls per question | **5.62** | 7.39 | 7.47 |
+| Dollars per correct answer | $0.00309 | $0.00438 | **$0.00204** |
+
+- **The result replicates.** `2cc4` beat the designer's shape on 9 questions against 1,
+  p = 0.0215, with 42% fewer tokens and 25% fewer model calls.
+- **Structure, more than model.** The stronger model on all three specialists bought the
+  designer's shape 2.5 points at more than twice the cost. `2cc4` beat that control on 7
+  questions against 1 (p = 0.0703, short of 0.05 on 40 questions) for 29% less per correct
+  answer. That is consistent with the reading in section 5: one agent that keeps every fact it finds
+  counts better than specialists who each see part of the evidence.
+- **Cost, honestly.** Against the all-nano designer, `2cc4` still costs 81% more a question and
+  51% more a correct answer.
+
+The run spent $0.65 of a $1.05 cap. [RESULTS.md](RESULTS.md#replication-on-40-fresh-questions)
+has accuracy by kind of question, and `tests/test_replication.py` recomputes every figure here
+from `results/replication/fresh-2026-10/`.
 
 ## 8. Serving the winner
 
@@ -218,6 +239,8 @@ flowchart LR
 ## 9. What this does not show
 
 - **One task domain.** Every question comes from one generated world.
+- **Forty fresh questions.** The replication beats the designer's shape significantly, but
+  the edge over the model control needs more questions to reach p < 0.05.
 - **One generation of search** produced `2cc4`, and the paid search did not use the Predictor:
   every child was measured. Offline, the Predictor picks the best of three unseen networks 62%
   of the time against 33% by chance, level with picking the network with the most agents.
@@ -246,8 +269,8 @@ make replicate                     # the replication plan and its price; GO=1 sp
 | Predictor and search | `esp/surrogate/outcomes.py`, `esp/evolve/loop.py` |
 | Paid networks and the winner | `esp/evolve/paid.py`, `scripts/select_and_judge.py` |
 | Router | `esp/route.py` |
-| Paid-run logs | `results/headtohead/paid-2026-10/` |
-| Tests that recompute the figures | `tests/test_select_and_judge.py`, `tests/test_route.py`, `tests/test_paid.py` |
+| Paid-run logs | `results/headtohead/paid-2026-10/`, `results/replication/fresh-2026-10/` |
+| Tests that recompute the figures | `tests/test_select_and_judge.py`, `tests/test_route.py`, `tests/test_paid.py`, `tests/test_replication.py` |
 | neuro-san | [cognizant-ai-lab/neuro-san](https://github.com/cognizant-ai-lab/neuro-san) |
 | neuro-san-studio | [cognizant-ai-lab/neuro-san-studio](https://github.com/cognizant-ai-lab/neuro-san-studio) |
 | ESP | Francon et al., *Effective Reinforcement Learning through Evolutionary Surrogate-Assisted Prescription*, GECCO 2020, [arXiv:2002.05368](https://arxiv.org/abs/2002.05368) |

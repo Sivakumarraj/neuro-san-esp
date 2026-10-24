@@ -30,6 +30,9 @@ results/*
 !results/live/**
 !results/headtohead/
 !results/headtohead/**
+# The replication on the fresh questions (`make replicate`), kept as measured.
+!results/replication/
+!results/replication/**
 # The routing study over those runs, which `make route` recomputes.
 !results/routing/
 !results/routing/summary.json

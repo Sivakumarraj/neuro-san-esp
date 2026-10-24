@@ -20,7 +20,7 @@ REPORT = (ROOT / "docs" / "REPORT.md").read_text(encoding="utf-8")
 def test_every_chart_is_drawn_from_the_logs_and_linked(tmp_path):
     drawn = report_figures.ReportFigures(tmp_path).draw()
     assert [p.name for p in drawn] == ["report-headline.png", "report-by-kind.png",
-                                       "report-frontier.png"]
+                                       "report-frontier.png", "report-replication.png"]
     for path in drawn:
         assert path.stat().st_size > 10_000
         assert f"../results/figures/{path.name}" in REPORT
