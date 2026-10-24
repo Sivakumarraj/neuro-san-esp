@@ -250,7 +250,7 @@ def test_the_price_comes_from_what_committed_runs_cost():
 
 
 def test_the_readme_quotes_the_price_the_plan_prints():
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    readme = (ROOT / "docs" / "RESULTS.md").read_text(encoding="utf-8")
     plan = pool.Plan().describe()
     for model, phrase in (("claude-haiku-4-5", "$61 to $125"),
                           ("claude-sonnet-5", "$123 to $251"),

@@ -74,6 +74,11 @@ def _judge_plus() -> list[Task]:
     return JUDGE_PLUS
 
 
+def _fresh() -> list[Task]:
+    from esp.eval.fresh import FRESH
+    return FRESH
+
+
 def _judge_200() -> list[Task]:
     from esp.eval.judge_plus import JUDGE_200
     return JUDGE_200
@@ -84,7 +89,8 @@ def _judge_200() -> list[Task]:
 # judge questions plus a hundred of four newer kinds), which share no entity
 # (esp/eval/suites.py, esp/eval/judge_plus.py).
 NAMED = {BANK: _bank, "meridian-select": _select, "meridian-judge": _judge,
-         "meridian-judge-plus": _judge_plus, "meridian-judge-200": _judge_200}
+         "meridian-judge-plus": _judge_plus, "meridian-judge-200": _judge_200,
+         "meridian-fresh": _fresh}
 
 
 class SuiteError(ValueError):
@@ -103,6 +109,8 @@ class Report:
     seconds: float
     questions: dict[str, str] = field(default_factory=dict)
     expected: dict[str, str] = field(default_factory=dict)
+    # Model calls (API requests) the run made, as neuro-san counts them.
+    requests: int = 0
     # The search width and step cap it ran with: results at one setting are
     # never compared with results at another, so the record has to say which.
     settings: dict[str, int] = field(default_factory=run_settings)
@@ -129,7 +137,7 @@ class Report:
             "questions_asked": len(self.results), "accuracy": self.accuracy,
             "answered_accuracy": self.answered_accuracy, "unfinished": self.unfinished,
             "tokens": self.tokens, "cost": self.cost, "seconds": self.seconds,
-            "accounting": usage.ACCOUNTING, "settings": self.settings,
+            "requests": self.requests, "accounting": usage.ACCOUNTING, "settings": self.settings,
             "results": [{**asdict(r), "question": self.questions.get(r.task_id, ""),
                          "expected": self.expected.get(r.task_id, "")}
                         for r in self.results],
@@ -217,7 +225,7 @@ def measure(network: str, tasks: list[Task], suite: str = "custom",
     refuse_unmeasured(run.results, run.tokens, action="report it")
     return Report(network=str(network), suite=suite, results=run.results,
                   tokens=run.tokens, cost=run.cost, seconds=run.seconds,
-                  questions={t.task_id: t.question for t in tasks},
+                  requests=run.requests, questions={t.task_id: t.question for t in tasks},
                   expected={t.task_id: t.answer for t in tasks})
 
 
@@ -230,7 +238,8 @@ def render(report: Report) -> str:
         f"/{len(report.results)})   answered-only "
         + (f"{answered:.1%}" if answered is not None else "n/a")
         + f"   unfinished {report.unfinished}",
-        f"  tokens {report.tokens:,}   seconds {report.seconds:.0f}"
+        f"  tokens {report.tokens:,}   model calls {report.requests:,}   "
+        f"seconds {report.seconds:.0f}"
         + (f"   cost {report.cost:.4f}" if report.cost else ""),
         "",
     ]

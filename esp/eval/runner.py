@@ -53,6 +53,9 @@ class Evaluation:
     depth: int
     results: list[TaskResult] = field(default_factory=list)
     from_cache: bool = False
+    # Model calls (API requests) the run made, as neuro-san counts them. 0 in
+    # every record written before it was kept, which is all of the committed ones.
+    requests: int = 0
 
     def accuracy_by_hops(self) -> dict[int, float]:
         buckets: dict[int, list[bool]] = {}
@@ -177,6 +180,11 @@ def _total_tokens(accounting: dict) -> int:
     return int(_sum_once(accounting, ("total_tokens",)))
 
 
+def _requests(accounting: dict) -> int:
+    """Model calls the run made: neuro-san's successful_requests, counted once."""
+    return int(_sum_once(accounting, ("successful_requests",)))
+
+
 def _cost(accounting: dict) -> float:
     """Dollars the provider accounting reports for the run, counted once."""
     return round(_sum_once(accounting, ("total_cost", "cost")), 6)
@@ -276,6 +284,7 @@ class SuiteRun:
     tokens: int
     cost: float
     seconds: float
+    requests: int = 0
 
 
 def run_suite(hocon_path: str, tasks: list[Task], workers: int = MAX_WORKERS,
@@ -320,6 +329,7 @@ def run_suite(hocon_path: str, tasks: list[Task], workers: int = MAX_WORKERS,
         tokens=sum(_total_tokens(pair[1]) for pair in done),
         cost=round(sum(_cost(pair[1]) for pair in done), 6),
         seconds=round(elapsed, 2),
+        requests=sum(_requests(pair[1]) for pair in done),
     )
 
 
@@ -503,6 +513,7 @@ def evaluate(genome: Genome, tasks: list[Task] | None = None,
         agents=len(genome.reachable()),
         depth=genome.depth(),
         results=results,
+        requests=run.requests,
     )
     refuse_unmeasured(results, run.tokens)
 

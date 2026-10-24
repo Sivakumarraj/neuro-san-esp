@@ -1,4 +1,4 @@
-.PHONY: install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool headtohead experiment guide check-key smoke measure figures ablation probe baseline search holdout route offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
+.PHONY: replicate install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool headtohead experiment guide check-key smoke measure figures ablation probe baseline search holdout route offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -114,6 +114,27 @@ baseline:
 # The full loop: measure, train, search free, pay for the elite.
 search:
 	PYTHONPATH=$$PWD AGENT_TOOL_PATH=$$PWD python scripts/run_esp.py --generations 3 --elite 3 --out results
+
+# The replication the headline needs: on the forty fresh questions no network
+# has been asked (esp/eval/fresh.py), twice each, at 10 documents a search, the
+# designer's shape, 2cc4 with its Researcher promoted, and the designer's shape
+# with every specialist promoted -- the control that separates structure from
+# model. Plans and prices only; GO=1 spends, each network under its own cap
+# (about $0.70 in all at the headline's prices). Resumes from its logs.
+REPLICATE_OUT ?= results/replication/fresh-2026-10/1-fresh
+replicate:
+	@export ESP_SEARCH_RESULTS=10 ESP_PIN_MODELS=1 PYTHONPATH=$$PWD AGENT_TOOL_PATH=$$PWD; \
+	run() { python scripts/select_and_judge.py measure "$$@" --suite fresh --repeats 2 \
+	          --out $(REPLICATE_OUT) $(if $(GO),--go,); }; \
+	run designer --budget 0.25 & a=$$!; \
+	run 2cc4 --label evolved --promote Researcher --budget 0.35 & b=$$!; \
+	run designer --label designer-promoted --promote ContractSpecialist \
+	    --promote DepotSpecialist --promote IncidentSpecialist --budget 0.45 & c=$$!; \
+	status=0; for pid in $$a $$b $$c; do wait $$pid || status=1; done; \
+	if [ -n "$(GO)" ]; then python scripts/select_and_judge.py summary $$(dirname $(REPLICATE_OUT)) \
+	    --pair designer evolved --pair designer-promoted evolved \
+	    > $$(dirname $(REPLICATE_OUT))/summary.json && cat $$(dirname $(REPLICATE_OUT))/summary.json; fi; \
+	exit $$status
 
 # Select a winner on half the tasks, then judge it on the half it was not
 # selected on. Costs nothing: every evaluation recorded the outcome of each

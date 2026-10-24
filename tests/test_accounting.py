@@ -50,3 +50,32 @@ def test_a_history_without_a_version_is_halved_and_its_fitness_kept():
     history = {"records": [{"tokens": 385_280, "fitness": 0.7761}]}
     record = usage.history_in(history)["records"][0]
     assert record == {"tokens": 192_640, "fitness": 0.7761}
+
+
+# ------------------------------------------------------------- model calls
+
+def test_model_calls_are_counted_once_and_carried_through_a_run(monkeypatch):
+    """neuro-san reports successful_requests at the top of the front man's
+    structure and again per model, the same shape that once doubled tokens.
+    Each question here makes 3 calls, so 2 questions make 6, not 12."""
+    from esp.eval import runner
+    from esp.eval.tasks import TASKS
+
+    accounting = {"total_tokens": 900, "successful_requests": 3,
+                  "models": {"openai": {"gpt-5.4-nano": {"total_tokens": 600,
+                                                         "successful_requests": 2},
+                                        "gpt-5.4-mini": {"total_tokens": 300,
+                                                         "successful_requests": 1}}}}
+    assert runner._requests(accounting) == 3
+    monkeypatch.setattr(runner, "_ask", lambda *a: ("x", accounting, 0.01))
+    run = runner.run_suite("unused.hocon", TASKS[:2], workers=1)
+    assert (run.tokens, run.requests) == (1800, 6)
+
+
+def test_a_record_from_before_calls_were_counted_reads_as_zero():
+    from esp.eval.runner import evaluation_from_cache
+
+    raw = json.loads(next((ROOT / "tests" / "fixtures" / "cache").glob("*.json"))
+                     .read_text(encoding="utf-8"))
+    assert "requests" not in raw
+    assert evaluation_from_cache(raw).requests == 0

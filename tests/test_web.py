@@ -258,8 +258,9 @@ def test_the_header_names_the_best_measurement_on_disk():
     from esp.eval import measurements
 
     best = measurements.best()
+    _, _, record = serve.fitness_champion()
     if best is not None:
-        assert serve.RECORD.fitness >= best.fitness
+        assert record.fitness >= best.fitness
 
 
 def test_the_caveat_does_not_present_an_old_figure_as_current(client):
@@ -627,3 +628,52 @@ def test_an_oversized_body_is_refused_before_it_is_read(client, monkeypatch):
     monkeypatch.setattr(serve, "_ask", lambda *a: called.append(1) or ("x", {}, 1.0))
     response = client.post("/ask", json={"question": "q" * 10_000})
     assert response.status_code == 422 and not called
+
+
+# ------------------------------------------- the network it serves
+
+def test_the_page_serves_the_held_out_winner_by_default():
+    """The page used to serve the best network on the seventeen it was chosen
+    on, which tied the designer on held-out questions at 2.1 times the cost."""
+    from esp.evolve import paid
+
+    if serve.SERVE != "heldout":
+        pytest.skip("ESP_SERVE is set to something else here")
+    assert serve.NAME == paid.WINNER_NAME
+    assert serve.GENOME.genome_hash() == paid.WINNER_HASH
+
+
+def test_the_header_quotes_the_held_out_result_and_the_caveat_its_cost(client):
+    if serve.JUDGED is None:
+        pytest.skip("not serving the held-out winner")
+    text = client.get("/").text
+    assert "94.5% correct against 84.0%" in text
+    assert "94% more per question" in serve.caveat()
+    assert client.get("/health").json()["judged_held_out"] is True
+
+
+def test_the_width_is_set_when_the_server_starts_and_not_on_import(monkeypatch):
+    """Importing the page must not change the search for the rest of the
+    process; starting it must serve the width the winner was judged at."""
+    from esp.eval import corpus_tool
+    from esp.evolve import paid
+
+    if serve.JUDGED is None:
+        pytest.skip("not serving the held-out winner")
+    monkeypatch.delenv("ESP_SEARCH_RESULTS", raising=False)
+    monkeypatch.setattr(corpus_tool, "MAX_RESULTS", 3)
+    assert serve.serve_at_judged_width() == paid.WINNER_SEARCH_RESULTS
+    monkeypatch.setattr(corpus_tool, "MAX_RESULTS", 3)
+    monkeypatch.setenv("ESP_SEARCH_RESULTS", "3")
+    assert serve.serve_at_judged_width() == 3
+
+
+def test_the_answer_names_every_agents_model(client, monkeypatch):
+    """The promoted agent is not always the router: the winner promotes its
+    Researcher, and "router X, workers Y" named the wrong one."""
+    monkeypatch.setattr(serve, "_ask", lambda *a: ("x", {}, 1.0))
+    models = client.post("/ask", json={"question": "q"}).json()["models"]
+    expected = {name: agent.model or serve.SERVED.genome.default_model
+                for name, agent in serve.SERVED.genome.agents.items()
+                if name in serve.SERVED.genome.reachable()}
+    assert models == expected

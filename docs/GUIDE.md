@@ -169,9 +169,13 @@ counts survive a restart when `ESP_WEB_SPEND_FILE` is set, as the Docker images 
 network is never uploaded: it names Python classes to import.
 
 One process, no separate backend, no second repository. The page runs questions through the
-measured champion on neuro-san's direct session, the same code path the evaluator measures
-with. It changes one line, and says so: the benchmark tells the front man to reply with the
-bare value so it can be scored, and the page asks it instead to **explain its answer**. It
+served network on neuro-san's direct session, the same code path the evaluator measures with.
+By default that is the held-out winner, `2cc4` with its Researcher promoted, searching 10
+documents as it did when it was judged (`esp/evolve/paid.py`); `make smoke` serves the same.
+`ESP_SERVE=fitness` serves the best network on the 17 built-in questions instead, and an
+explicit `ESP_SEARCH_RESULTS` overrides the width. It changes one line, and says so: the
+benchmark tells the front man to reply with the bare value so it can be scored, and the page
+asks it instead to **explain its answer**. It
 gives the answer first, then every identifier it followed, what each document said, and any
 calculation written out. The topology, tools and models are the ones that earned the score.
 
@@ -230,10 +234,10 @@ poking it starts a paid evaluation.
 
 ## Serve the champion as an ordinary agent
 
-"Champion" here, on the web page and in the accelerator UI means rank 1 of the twelve
-networks measured on the 17 built-in questions. On held-out judge questions that network
-tied the designer at 2.1× the cost; the held-out result is in the README's headline and in
-[FINDINGS](FINDINGS.md#the-paid-runs).
+"Champion" here and in the accelerator UI means rank 1 of the twelve networks measured on the
+17 built-in questions, which is also what the web page serves under `ESP_SERVE=fitness`. On
+held-out judge questions that network tied the designer at 2.1× the cost; the held-out result
+is in the README's headline and in [FINDINGS](FINDINGS.md#the-paid-runs).
 
 ```bash
 python scripts/serve_champion.py   # writes registries/champion.hocon

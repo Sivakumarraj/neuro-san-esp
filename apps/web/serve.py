@@ -58,9 +58,10 @@ except ImportError:                 # the page cannot run without fastapi anyway
     Request = None
 
 from esp.config import key_name_for, key_problem  # noqa: E402
-from esp.eval import measurements  # noqa: E402
+from esp.eval import corpus_tool, measurements  # noqa: E402
 from esp.eval.runner import _ask, never_answered, write_network  # noqa: E402
 from esp.eval.tasks import TASKS, score  # noqa: E402
+from esp.evolve import paid  # noqa: E402
 from esp.genome.definition import Genome  # noqa: E402
 from esp.genome.seeds import SEEDS  # noqa: E402
 from esp.measure import BUILTIN, Candidate, SuiteError, catalog, pareto, parse_suite  # noqa: E402
@@ -75,6 +76,16 @@ from esp.serving import (  # noqa: E402
     unavailable,
 )
 from esp.surrogate.predictor import MIN_SAMPLES  # noqa: E402
+
+# Which network the page serves. "heldout", the default, is the network that won
+# on questions it was never chosen on (esp/evolve/paid.py). "fitness" is the best
+# on the built-in seventeen, across this deployment's own state and the committed
+# cache: what a deployment running its own search wants. The page served the
+# fitness choice alone until October 2026, and that network tied the designer on
+# held-out questions at 2.1 times the cost.
+SERVE = os.environ.get("ESP_SERVE", "heldout").strip().lower()
+if SERVE not in {"heldout", "fitness"}:
+    raise ValueError(f"ESP_SERVE={SERVE!r}: use heldout or fitness")
 
 # A visitor is not a benchmark run, and every question is paid for: a multi-hop
 # answer is ten or more model calls. A public deployment caps how many it will
@@ -275,6 +286,18 @@ def run_job(job: dict, chosen: list[Candidate], tasks: list, suite: str) -> None
 
 
 def champion():
+    """(name, genome, record, judged): the network this page serves.
+
+    With ESP_SERVE=heldout, the held-out winner and its stage 8 figures, and no
+    record: it was never measured on the built-in seventeen, so it has no
+    fitness to compare with theirs. Otherwise `fitness_champion()`.
+    """
+    if SERVE == "heldout":
+        return paid.WINNER_NAME, paid.winner(), None, paid.judged()
+    return (*fitness_champion(), None)
+
+
+def fitness_champion():
     """The measured best, or the designer-shaped seed when nothing is measured.
 
     Sources: this deployment's own `state/champion.json`, its service
@@ -331,7 +354,7 @@ def champion():
     return "designer_shaped", SEEDS["designer_shaped"](), None
 
 
-NAME, GENOME, RECORD = champion()
+NAME, GENOME, RECORD, JUDGED = champion()
 SERVED = presentable(GENOME)
 HOCON = str(write_network(SERVED.genome))
 # Every agent on the default model, for when a promoted model is busy or out of
@@ -399,6 +422,14 @@ def caveat() -> str:
     baselines directly beneath a header naming one as the best-measured
     topology. A caveat that contradicts the page above it is worse than none.
     """
+    if JUDGED is not None:
+        return ("its lead is not a pure structure result: its Researcher runs a dearer "
+                "model than any agent in the designer's shape, which was not measured "
+                "with its own specialists promoted; it costs "
+                f"{JUDGED.cost_change:.0%} more per question; and it is one measured "
+                "mutation of a hand-written seed, judged in one task domain, not a "
+                "network the Predictor chose. Stated in the repository rather than "
+                "left out.")
     parts: list[str] = []
     evolved = RECORD is not None and RECORD.origin.startswith("mut:")
     if not evolved:
@@ -434,7 +465,14 @@ def caveat() -> str:
 
 
 def page() -> str:
-    if RECORD is not None:
+    if JUDGED is not None:
+        sub = (f"<b>{NAME}</b> &mdash; the network that won on questions it was never "
+               f"chosen on: {JUDGED.accuracy:.1%} correct against "
+               f"{JUDGED.designer_accuracy:.1%} for the shape neuro-san's designer "
+               f"builds, over {JUDGED.question_runs} question-runs each, with "
+               f"{-JUDGED.token_change:.0%} fewer tokens a question "
+               f"(sign test p = {JUDGED.sign_test_p}).")
+    elif RECORD is not None:
         sub = (f"<b>{NAME}</b> &mdash; the best-measured topology: "
                f"{RECORD.accuracy:.0%} correct on {len(TASKS)} multi-hop questions, "
                f"{RECORD.tokens:,} tokens, {RECORD.agents} agents. "
@@ -536,7 +574,8 @@ def build_app():
     @app.get("/health")
     def health() -> dict:
         return {"ok": True, "champion": NAME,
-                "measured": RECORD is not None,
+                "measured": RECORD is not None or JUDGED is not None,
+                "judged_held_out": JUDGED is not None,
                 "asked": _asked["count"], "cap": MAX_QUESTIONS}
 
     @app.post("/ask")
@@ -589,7 +628,7 @@ def build_app():
             if retry and not never_answered(retry):
                 answer, seconds = retry, (seconds or 0) + (retry_seconds or 0)
                 router = SERVED.genome.default_model
-                fallback = (f"The measured router model was unavailable, so this "
+                fallback = (f"The measured stronger model was unavailable, so this "
                             f"answer ran with every agent on "
                             f"{SERVED.genome.default_model}. That variant has not "
                             f"been measured.")
@@ -619,6 +658,12 @@ def build_app():
             "provider": SERVED.provider,
             "router_model": router,
             "worker_model": SERVED.genome.default_model,
+            # Every agent's model, because the promoted agent is not always the
+            # router: the held-out winner promotes its Researcher.
+            "models": {name: SERVED.genome.default_model if fallback else
+                       (agent.model or SERVED.genome.default_model)
+                       for name, agent in sorted(SERVED.genome.agents.items())
+                       if name in SERVED.genome.reachable()},
             "fallback": fallback,
             "expected": expected,
             "correct": score(expected, answer) if expected else None,
@@ -697,6 +742,20 @@ def build_app():
     return app
 
 
+def serve_at_judged_width() -> int:
+    """Set the search width the served network was judged at, and return it.
+
+    The winner was judged with ten documents a search, and at three it is a
+    different system. An explicit ESP_SEARCH_RESULTS still wins. Set on the
+    module, which the search reads each time it runs (esp/eval/corpus_tool.py),
+    and only when the server starts: importing this file must not change the
+    width for anything else in the process, the test suite included.
+    """
+    if JUDGED is not None and "ESP_SEARCH_RESULTS" not in os.environ:
+        corpus_tool.MAX_RESULTS = paid.WINNER_SEARCH_RESULTS
+    return corpus_tool.MAX_RESULTS
+
+
 def main() -> int:
     # The key this deployment needs is the one for the provider it serves on,
     # which is the configured one -- not the one the champion was measured on.
@@ -710,8 +769,10 @@ def main() -> int:
               ".env; see .env.example.", file=sys.stderr)
         return 1
     import uvicorn
+    serve_at_judged_width()
     port = int(os.environ.get("PORT", "7860"))
-    print(f"champion={NAME} measured={RECORD is not None} "
+    print(f"champion={NAME} measured={RECORD is not None or JUDGED is not None} "
+          f"search_results={corpus_tool.MAX_RESULTS} "
           f"provider={SERVED.provider} retargeted={SERVED.retargeted} port={port}")
     # Never let uvicorn rewrite the client address from X-Forwarded-For: it
     # trusts the header from 127.0.0.1 by default, so behind a local proxy every

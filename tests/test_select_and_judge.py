@@ -16,7 +16,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "results" / "headtohead" / "paid-2026-10"
-README = (ROOT / "README.md").read_text(encoding="utf-8")
+# The README carries the headline and docs/RESULTS.md every stage behind it; a figure
+# quoted in either has to be the one the logs give.
+README = "\n".join((ROOT / name).read_text(encoding="utf-8")
+                   for name in ("README.md", "docs/RESULTS.md"))
 FINDINGS = (ROOT / "docs" / "FINDINGS.md").read_text(encoding="utf-8")
 
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -264,7 +267,7 @@ def test_flat_and_solo_are_called_seeds_not_search_results():
 
 
 def test_the_suites_are_the_ones_named():
-    assert [len(sj.suite_tasks(s)) for s in sj.SUITES] == [60, 100, 100]
+    assert [len(sj.suite_tasks(s)) for s in sj.SUITES] == [60, 100, 100, 40]
     assert sj.suite_tasks("judge-plus")[0].task_id == "P001"
 
 
@@ -282,6 +285,28 @@ def test_search_returns_three_documents_unless_told_otherwise(monkeypatch):
     finally:
         monkeypatch.delenv("ESP_SEARCH_RESULTS", raising=False)
         importlib.reload(corpus_tool)
+
+
+def test_the_search_width_is_read_when_the_search_runs(monkeypatch):
+    """The cache key and the search must agree on the width. The search used to
+    take its default when it was defined, so raising MAX_RESULTS in process
+    changed the key to 10 while every search still returned 3."""
+    from esp.eval import corpus_tool
+    from esp.eval.runner import run_settings
+
+    monkeypatch.setattr(corpus_tool, "MAX_RESULTS", 10)
+    assert len(corpus_tool.search("mis-picked pallet")) > 3
+    assert run_settings()["search_results"] == 10
+
+
+def test_model_calls_are_reported_only_when_every_chunk_counted_them():
+    """The committed logs predate the count, so their summary must not claim
+    zero calls; a run that counted them reports calls per question."""
+    row = {"label": "a", "genome_hash": "h", "tokens": 10, "cost": 0.1,
+           "results": [{"task_id": "J001", "correct": True, "infrastructure": False}] * 2}
+    assert "requests_per_question" not in sj.summarise([row])["a"]
+    counted = sj.summarise([{**row, "requests": 9}, {**row, "requests": 7}])["a"]
+    assert counted["requests_per_question"] == 4.0
 
 
 def test_one_label_never_pools_two_networks():

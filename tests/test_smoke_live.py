@@ -28,6 +28,8 @@ def offline(monkeypatch, tmp_path):
     monkeypatch.setattr(sys, "argv", ["smoke_live.py", "--questions", "2"])
     monkeypatch.setattr(smoke_live, "run_checks", lambda live: [])
     monkeypatch.setattr(smoke_live, "write_network", lambda genome: tmp_path / "n.hocon")
+    # main() sets the width the winner was judged at; put it back afterwards.
+    monkeypatch.setattr(smoke_live.corpus_tool, "MAX_RESULTS", smoke_live.corpus_tool.MAX_RESULTS)
 
 
 def test_an_outage_is_failed_not_wrong_and_the_run_fails(offline, monkeypatch, capsys):
@@ -45,3 +47,16 @@ def test_a_real_wrong_answer_is_still_wrong(offline, monkeypatch, capsys):
     assert smoke_live.main() == 0
     out = capsys.readouterr().out
     assert "[WRONG" in out and "[FAILED" not in out
+
+
+def test_smoke_serves_the_held_out_winner_at_its_width(offline, monkeypatch, capsys):
+    from esp.evolve import paid
+
+    monkeypatch.delenv("ESP_SERVE", raising=False)
+    monkeypatch.delenv("ESP_SEARCH_RESULTS", raising=False)
+    monkeypatch.setattr(smoke_live, "_ask", lambda *a: ("x", {}, 1.0))
+    monkeypatch.setattr(smoke_live, "_total_tokens", lambda accounting: 10)
+    smoke_live.main()
+    out = capsys.readouterr().out
+    assert f"champion {paid.WINNER_NAME} ({paid.WINNER_HASH})" in out
+    assert f"{paid.WINNER_SEARCH_RESULTS} documents a search" in out
