@@ -958,6 +958,126 @@ What this does not show:
   $0.25 (its select cost was $0.00126 a question). Nothing serves the router yet; it decides
   from logs.
 
+## Agreement between two runs: a flag, not a gate
+
+The router reads a question before it is answered. Cognizant AI Lab's 2026 work reads the
+answer instead. HASSUM (Knowlton, Guha and Miikkulainen, arXiv:2608.14707) samples a worker's
+reply several times, measures the semantic entropy of the samples, and has the orchestrator
+reprompt or escalate when they disagree in meaning. The ICML 2026 position paper "Agentic AI
+orchestration should be Bayes-consistent" (Papamarkou et al., arXiv:2605.00742) asks the
+control layer to hold beliefs about what each action will deliver and to choose by expected
+utility. `esp/uncertainty.py` puts both to neuro-san networks.
+
+It needs no new runs. Every judge question in stage 8 and every fresh question in the
+replication was asked twice of each network, at 10 documents a search, so each network
+already has two samples of every answer.
+
+- **Semantic entropy over two samples is one bit.** It is 0 when the two answers mean the
+  same and ln 2 when they do not. Two answers mean the same when either states the other's,
+  by the scorer's own `score`. On every committed pair that is plain string equality after
+  normalising, and a test holds it there, so the choice cannot move a figure.
+- **Semantic density is not computed.** It needs an embedding of each answer, and the answers
+  are mostly bare numbers. "116" and "136" are close in an embedding and far apart as answers.
+- **The gate** runs the cheap network twice, keeps its answer when the two agree, and asks the
+  strong network when they do not. The two networks are the routing study's pair, so it has the
+  router's bar to beat: the one-line rule.
+- **The flag** runs a network twice and marks its answer unsure when the two disagree.
+
+`make uncertainty` prints what was counted in the logs, what was computed from those counts,
+and what the logs cannot say, as three separate sections. `results/uncertainty/summary.json`
+records the SHA-256 of every log it read.
+
+### Observed: how often a network is right when its runs agree
+
+| | Network | Runs agree | Right if they agree | Right if not |
+| :-- | :-- | :-- | :-- | :-- |
+| Judge | Designer's shape, all nano | 82 of 100 | 96.3% | 27.8% |
+| Judge | `2cc4`, Researcher on mini | 90 of 100 | 100.0% | 45.0% |
+| Fresh | Designer's shape, all nano | 30 of 40 | 96.7% | 10.0% |
+| Fresh | `2cc4`, Researcher on mini | 35 of 40 | 97.1% | 40.0% |
+| Fresh | Designer's shape, specialists on mini | 31 of 40 | 93.5% | 22.2% |
+
+Where two runs agree they are both right or both wrong, so "right" is the share of runs right.
+`2cc4`'s two runs agreed on 90 judge questions and were right on 90 of 90. The flag holds on
+all three networks and both sets.
+
+| | Judge, 100 questions | | | Fresh, 40 questions | | |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| | Accuracy | $ per question | Sent up | Accuracy | $ per question | Sent up |
+| Designer's shape alone | 84.0% | $0.00135 | 0% | 75.0% | $0.00153 | 0% |
+| **One-line rule** | **94.5%** | **$0.00226** | 71% | **90.0%** | **$0.00241** | 70% |
+| Strong network alone | 94.5% | $0.00263 | 100% | 90.0% | $0.00278 | 100% |
+| **Gate** | 92.5% | $0.00318 | 18% | 88.8% | $0.00376 | 25% |
+| The rule's hard questions up, its easy ones through the gate | 94.5% | $0.00265 | 71% | 90.0% | $0.00287 | 70% |
+| The gate, if knowing agreement cost nothing | 92.5% | $0.00183 | 18% | 88.8% | $0.00223 | 25% |
+
+### Derived: what the counts say about the gate
+
+- **Disagreement picks the right questions.** Sending the same 18% up at random scores 85.9%;
+  the gate's choice scores 92.5%, and none of 10,000 random routings did as well
+  (p < 0.0001). On fresh, 78.8% at random against 88.8% (p = 0.0001). It picks better than
+  the router does: the router sent 40% up to reach 93.0%.
+- **It costs too much to find out.** A gate pays for two cheap runs on every question.
+  Whatever it then escalates, it costs less than the strong network alone only if the cheap
+  network costs less than (1 − d)/2 of it, where d is the share sent up: 0.41 on judge and
+  0.375 on fresh. The designer's shape costs 0.515 and 0.551 of `2cc4`.
+- **It is dominated on both sets.** The strong network alone and the rule are each at least
+  as often right for less money. A dominated policy is never the expected-utility choice,
+  whatever a right answer is worth.
+- **The rule already knows.** Every question the cheap network's runs disagreed on, 18 of 18
+  on judge and 10 of 10 on fresh, names two entities or asks across every record, so the rule
+  sends it up anyway. Passing the rule's easy questions through the gate catches nothing and
+  costs more.
+- **Even free, it does not reach the rule.** If agreement could be known for nothing, the gate
+  would cost $0.00183 and still score 92.5%. A cheaper probe of agreement would have to cost
+  at most 32% of a cheap run (12% on fresh) to cost no more than the rule, and would still be
+  less often right.
+
+### Beliefs fitted on judge, checked on fresh
+
+Each belief is a Beta(1, 1) prior updated on judge, one question at a time, by the share of
+its runs that were right. Nothing else is fitted, and nothing was tuned on fresh.
+
+| Belief | Fitted on judge | Observed on fresh | Fresh questions |
+| :-- | :-- | :-- | :-- |
+| Cheap network right, its runs agreeing | 95.2% | 96.7% | 30 |
+| Strong network right, the cheap runs agreeing | 97.6% | 98.3% | 30 |
+| Cheap network right, its runs disagreeing | 30.0% | 10.0% | 10 |
+| Strong network right, the cheap runs disagreeing | 72.5% | 65.0% | 10 |
+| The gate's accuracy | 89.5% | 88.8% | 40 |
+
+- **The agree side held; the disagree side was too hopeful.** On fresh the questions the cheap
+  runs disagreed on were harder than on judge, for both networks: 2 runs right in 20 for the
+  cheap one. The gate's accuracy, predicted from judge and fresh's own share of agreement, came
+  within a point.
+- **The decision after two runs is the gate's, at any sensible price.** With these beliefs,
+  sending a question up on disagreement raises expected utility when a right answer is worth
+  more than $0.0062, at the strong network's judge price. Sending it up when the runs agree
+  pays only above $0.1103. Between the two, the expected-utility rule is exactly the gate's
+  rule. What fails is the price of the second run, not the decision made with it.
+
+### Where agreement is wrong
+
+The cheap network agreed on a wrong answer on J004, J035 and J087 in judge and F11 in fresh.
+All four ask for a sum or a difference across records: two of them a penalty difference
+between two incidents, two the total hours late across every incident on a depot's contracts.
+The search is a deterministic coded tool, so a second run reads the same documents and makes
+the same mistake. HASSUM draws the same boundary: semantic uncertainty helps when failures come
+from ambiguity, and much less when they come from retrieval or logic.
+
+What this does not show:
+
+- **A cheaper probe.** Whether resampling one agent's reply, instead of the whole network,
+  keeps the signal. Nothing here resampled less than a whole run. With this pair that probe,
+  inside the network, is the only form of the gate that could pay, and it is what a neuro-san
+  uncertainty middleware would do.
+- **More than two samples.** Every question was asked exactly twice, so the entropy is one bit.
+  More samples would grade it and cost more: a gate of k runs costs at least k cheap runs.
+- **Fully unseen fitting questions.** The beliefs were fitted on judge, whose questions had been
+  asked in earlier paid runs and whose per-question winners were published. Nothing was tuned
+  there beyond counting, and the check is on fresh.
+- **Another question world.** Every question is Meridian's.
+
 ## What measurement changed
 
 Every item here was found by running the system, not by reasoning about it. Most of

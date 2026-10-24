@@ -108,6 +108,32 @@ select, and judges it once on judge. It runs on the committed logs, for $0.
   right answers and dollars are the outcomes. The prescription is a threshold, not a learned
   Prescriptor. [What it does not show](docs/FINDINGS.md#routing-each-question-to-a-network).
 
+## Is the network sure? Agreement between two runs
+
+HASSUM (Knowlton, Guha and Miikkulainen, 2026) samples an agent's reply several times and
+escalates when the samples disagree in meaning. Every judge and fresh question was asked twice
+of each network, so `make uncertainty` puts the same test to neuro-san networks from the
+committed logs, for $0. Its beliefs are fitted on judge and checked on fresh.
+
+| Designer's shape, all `gpt-5.4-nano` | Judge, 100 questions | Fresh, 40 questions |
+| --- | --- | --- |
+| Right when its two runs agree | **96.3%** (82 questions) | **96.7%** (30) |
+| Right when they disagree | 27.8% (18) | 10.0% (10) |
+| **Gate**: both runs, the strong network on disagreement | 92.5% at $0.00318 | 88.8% at $0.00376 |
+| The one-line rule | **94.5%** at **$0.00226** | **90.0%** at **$0.00241** |
+
+- **As a flag it works.** Disagreement marks the answers to check, on all three networks
+  that ran twice. `2cc4`'s two runs agreed on 90 judge questions, and it was right on all 90.
+- **As a gate it loses to the rule.** A gate pays for two cheap runs on every question, and
+  two runs of the designer's shape cost more than one of `2cc4`. It would pay only if the
+  cheap network cost less than 0.41 of the strong one; here it costs 0.515.
+- **The rule already knows.** Every question the two runs disagreed on, 18 of 18 on judge and
+  10 of 10 on fresh, is one the rule sends up anyway.
+- **What is left to test is a cheaper probe.** Resampling one agent's reply inside the
+  network, rather than the whole network, is what a neuro-san uncertainty middleware would
+  do. Nothing here measured it.
+  [The beliefs, the bounds and what this does not show](docs/FINDINGS.md#agreement-between-two-runs-a-flag-not-a-gate).
+
 ## How it works
 
 ```mermaid
@@ -170,6 +196,7 @@ pip install -e ".[dev]"
 make validate    # lint, docs, HOCON validator, the full suite, an offline search
 make offline     # phases B and C: breed and rank candidates, zero LLM calls
 make route       # the per-question router, fitted on select, judged on judge
+make uncertainty # whether two runs agree, as a gate and as a flag, from the committed logs
 make holdout     # select on half the questions, judge on the other half
 ```
 
@@ -251,6 +278,7 @@ the web page, the accelerator UI, and running the optimizer as a service.
 | `esp/service/` | The loop as an interruptible service, and the evaluator's tools |
 | `esp/measure.py` | Measure any neuro-san network on any question file |
 | `esp/route.py` | Route each question to the cheap or the strong network |
+| `esp/uncertainty.py` | Whether two runs agree, as a gate in front of the strong network and as a flag |
 | `esp/report/` | The PDFs and the figures |
 | `apps/web/` | The browser front end: ask the served network, measure networks |
 | `apps/optimizer/` | One optimizer wake, runnable by hand or from any scheduler |

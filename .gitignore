@@ -36,6 +36,9 @@ results/*
 # The routing study over those runs, which `make route` recomputes.
 !results/routing/
 !results/routing/summary.json
+# Whether two runs of each question agree, which `make uncertainty` recomputes.
+!results/uncertainty/
+!results/uncertainty/summary.json
 
 # The live cache is machine-local and quota-dependent. The committed
 # measurements live in tests/fixtures/cache instead, so CI can reproduce them.
