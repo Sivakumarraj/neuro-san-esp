@@ -1,0 +1,271 @@
+{
+  "networks": {
+    "judge": {
+      "cheap": [
+        "designer",
+        "0378ca26cd9fe977"
+      ],
+      "strong": [
+        "evolved",
+        "47322479eb9cba1e"
+      ]
+    },
+    "fresh": {
+      "cheap": [
+        "designer",
+        "0378ca26cd9fe977"
+      ],
+      "strong": [
+        "evolved",
+        "47322479eb9cba1e"
+      ],
+      "control": [
+        "designer-promoted",
+        "7e6b0ab6008c4b55"
+      ]
+    }
+  },
+  "calibration": {
+    "judge": {
+      "cheap": {
+        "questions": 100,
+        "agree": 82,
+        "agree_share": 0.82,
+        "right_if_agree": 0.9634,
+        "right_if_disagree": 0.2778
+      },
+      "strong": {
+        "questions": 100,
+        "agree": 90,
+        "agree_share": 0.9,
+        "right_if_agree": 1.0,
+        "right_if_disagree": 0.45
+      }
+    },
+    "fresh": {
+      "cheap": {
+        "questions": 40,
+        "agree": 30,
+        "agree_share": 0.75,
+        "right_if_agree": 0.9667,
+        "right_if_disagree": 0.1
+      },
+      "strong": {
+        "questions": 40,
+        "agree": 35,
+        "agree_share": 0.875,
+        "right_if_agree": 0.9714,
+        "right_if_disagree": 0.4
+      },
+      "control": {
+        "questions": 40,
+        "agree": 31,
+        "agree_share": 0.775,
+        "right_if_agree": 0.9355,
+        "right_if_disagree": 0.2222
+      }
+    }
+  },
+  "sets": {
+    "judge": {
+      "questions": 100,
+      "price_ratio": 0.515,
+      "break_even_ratio": 0.41,
+      "probe_budget": 0.32,
+      "policies": {
+        "cheap": {
+          "accuracy": 0.84,
+          "dollars": 0.001354,
+          "coverage": 1.0,
+          "share_to_strong": 0.0
+        },
+        "strong": {
+          "accuracy": 0.945,
+          "dollars": 0.002627,
+          "coverage": 1.0,
+          "share_to_strong": 1.0
+        },
+        "rule": {
+          "accuracy": 0.945,
+          "dollars": 0.002258,
+          "coverage": 1.0,
+          "share_to_strong": 0.71
+        },
+        "gate": {
+          "accuracy": 0.925,
+          "dollars": 0.003181,
+          "coverage": 1.0,
+          "share_to_strong": 0.18
+        },
+        "gate_if_free": {
+          "accuracy": 0.925,
+          "dollars": 0.001827,
+          "coverage": 1.0,
+          "share_to_strong": 0.18
+        },
+        "rule_then_gate": {
+          "accuracy": 0.945,
+          "dollars": 0.002651,
+          "coverage": 1.0,
+          "share_to_strong": 0.71
+        },
+        "flag_cheap": {
+          "accuracy": 0.9634,
+          "dollars": 0.002708,
+          "coverage": 0.82,
+          "share_to_strong": 0.0
+        },
+        "flag_strong": {
+          "accuracy": 1.0,
+          "dollars": 0.005254,
+          "coverage": 0.9,
+          "share_to_strong": 1.0
+        }
+      },
+      "gate_dominated_by": [
+        "rule",
+        "rule_then_gate",
+        "strong"
+      ],
+      "random_same_share": 0.859,
+      "p_against_random": 0.0,
+      "agreed_and_wrong": [
+        "J004",
+        "J035",
+        "J087"
+      ],
+      "disagreed": 18,
+      "disagreed_and_rule_sends_up": 18
+    },
+    "fresh": {
+      "questions": 40,
+      "price_ratio": 0.551,
+      "break_even_ratio": 0.375,
+      "probe_budget": 0.12,
+      "policies": {
+        "cheap": {
+          "accuracy": 0.75,
+          "dollars": 0.001534,
+          "coverage": 1.0,
+          "share_to_strong": 0.0
+        },
+        "strong": {
+          "accuracy": 0.9,
+          "dollars": 0.002782,
+          "coverage": 1.0,
+          "share_to_strong": 1.0
+        },
+        "rule": {
+          "accuracy": 0.9,
+          "dollars": 0.002407,
+          "coverage": 1.0,
+          "share_to_strong": 0.7
+        },
+        "gate": {
+          "accuracy": 0.8875,
+          "dollars": 0.003764,
+          "coverage": 1.0,
+          "share_to_strong": 0.25
+        },
+        "gate_if_free": {
+          "accuracy": 0.8875,
+          "dollars": 0.002229,
+          "coverage": 1.0,
+          "share_to_strong": 0.25
+        },
+        "rule_then_gate": {
+          "accuracy": 0.9,
+          "dollars": 0.002868,
+          "coverage": 1.0,
+          "share_to_strong": 0.7
+        },
+        "flag_cheap": {
+          "accuracy": 0.9667,
+          "dollars": 0.003068,
+          "coverage": 0.75,
+          "share_to_strong": 0.0
+        },
+        "flag_strong": {
+          "accuracy": 0.9714,
+          "dollars": 0.005563,
+          "coverage": 0.88,
+          "share_to_strong": 1.0
+        }
+      },
+      "gate_dominated_by": [
+        "rule",
+        "rule_then_gate",
+        "strong"
+      ],
+      "random_same_share": 0.7879,
+      "p_against_random": 0.0001,
+      "agreed_and_wrong": [
+        "F11"
+      ],
+      "disagreed": 10,
+      "disagreed_and_rule_sends_up": 10
+    }
+  },
+  "beliefs": {
+    "fitted_on_judge": {
+      "cheap_if_agree": {
+        "right": 79.0,
+        "questions": 82,
+        "mean": 0.9524
+      },
+      "strong_if_agree": {
+        "right": 81.0,
+        "questions": 82,
+        "mean": 0.9762
+      },
+      "cheap_if_disagree": {
+        "right": 5.0,
+        "questions": 18,
+        "mean": 0.3
+      },
+      "strong_if_disagree": {
+        "right": 13.5,
+        "questions": 18,
+        "mean": 0.725
+      }
+    },
+    "break_even_value": {
+      "agree": 0.1103,
+      "disagree": 0.0062
+    },
+    "held_out": {
+      "cheap_if_agree": {
+        "fitted_on_judge": 0.9524,
+        "observed_on_fresh": 0.9667,
+        "fresh_questions": 30
+      },
+      "strong_if_agree": {
+        "fitted_on_judge": 0.9762,
+        "observed_on_fresh": 0.9833,
+        "fresh_questions": 30
+      },
+      "cheap_if_disagree": {
+        "fitted_on_judge": 0.3,
+        "observed_on_fresh": 0.1,
+        "fresh_questions": 10
+      },
+      "strong_if_disagree": {
+        "fitted_on_judge": 0.725,
+        "observed_on_fresh": 0.65,
+        "fresh_questions": 10
+      },
+      "gate_accuracy": {
+        "fitted_on_judge": 0.8955,
+        "observed_on_fresh": 0.8875,
+        "fresh_questions": 40
+      }
+    }
+  },
+  "sources": {
+    "headtohead/paid-2026-10/8-judge-search10/designer.jsonl": "5a32801a1edee16d900ce9df5b1773a8a29f68f3dc5c7c8018c970ec5b25014a",
+    "headtohead/paid-2026-10/8-judge-search10/evolved.jsonl": "a68abcc8e2440ce563f79ca924820c29f18468114078b648ce306ed6d8599904",
+    "replication/fresh-2026-10/1-fresh/designer.jsonl": "60955f2364b916817ab567a9f8be47efa57d59169e8f5ca09dce06f17ac869f4",
+    "replication/fresh-2026-10/1-fresh/evolved.jsonl": "c64e4d464b2500543e0beb11d42f795cb082e53e9f97c453481e176223654526",
+    "replication/fresh-2026-10/1-fresh/designer-promoted.jsonl": "de67bef64def458403343ddbc44213d96366c5a565946085c4292e9484b1435d"
+  }
+}

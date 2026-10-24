@@ -1,4 +1,4 @@
-.PHONY: replicate install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool headtohead experiment guide check-key smoke measure figures ablation probe baseline search holdout route offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
+.PHONY: replicate install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool headtohead experiment guide check-key smoke measure figures ablation probe baseline search holdout route uncertainty offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -147,6 +147,12 @@ holdout:
 # logs in results/headtohead/paid-2026-10/.
 route:
 	PYTHONPATH=$$PWD python scripts/route_report.py
+
+# Is the network sure? Whether its two runs of each question agree, as a gate
+# in front of the strong network and as a flag on its own answers. Beliefs are
+# fitted on judge and checked on fresh. Costs nothing; reads the committed logs.
+uncertainty:
+	PYTHONPATH=$$PWD python scripts/uncertainty_report.py
 
 # Phase B and C only: train the Predictor on whatever real evaluations are
 # cached, then evolve against it. Zero provider calls, so this runs with no
