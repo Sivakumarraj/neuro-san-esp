@@ -145,3 +145,36 @@ def test_the_built_in_set_takes_a_count_like_every_named_set():
     name, tasks = m.load_suite("meridian:5")
     assert name == "meridian:5"
     assert [t.task_id for t in tasks] == [t.task_id for t in m.builtin_suite()[:5]]
+
+
+def test_help_names_every_named_set(capsys):
+    """`--help` listed four sets while six could be asked for; the fresh
+    questions, the replication's whole suite, were among those left out."""
+    with pytest.raises(SystemExit):
+        m.main(["--help"])
+    shown = " ".join(capsys.readouterr().out.split())
+    for name in [m.BUILTIN, *m.NAMED]:
+        assert name in shown, f"--help does not offer {name}"
+
+
+def test_a_model_whose_key_is_missing_is_named_before_anything_is_asked(
+        tmp_path, monkeypatch, capsys):
+    """A Gemini network measured with only an OpenAI key failed in every agent
+    and was refused with "check the API key" -- for a key that was fine."""
+    network = tmp_path / "net.hocon"
+    network.write_text('{\n    # "model_name": "claude-sonnet",\n'
+                       '    "llm_config": {"model_name": "gemini-3.5-flash-lite"},\n'
+                       '    "tools": [{"name": "A",\n'
+                       '               "llm_config": {"model_name": "gpt-5.4-mini"}}]\n}\n',
+                       encoding="utf-8")
+    suite = tmp_path / "q.jsonl"
+    suite.write_text(json.dumps({"question": "Which city is depot D08 in?",
+                                 "answer": "Eastgate"}), encoding="utf-8")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-" + "x" * 40)
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr(runner, "_ask", replying({"Which city is depot D08 in?": "Eastgate"}))
+
+    assert m.unkeyed_models(str(network)) == {"gemini-3.5-flash-lite": "GOOGLE_API_KEY"}
+    assert m.main([str(network), "--tasks", str(suite)]) == 0
+    assert "names gemini-3.5-flash-lite, which needs GOOGLE_API_KEY" in capsys.readouterr().err

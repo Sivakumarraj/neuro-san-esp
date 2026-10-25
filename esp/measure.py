@@ -39,10 +39,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from esp.config import key_name_for, provider_keys
 from esp.eval import accounting as usage
 from esp.eval.runner import MAX_WORKERS, TaskResult, refuse_unmeasured, run_settings, run_suite
 from esp.eval.tasks import TASKS, Task
@@ -210,6 +212,34 @@ def load_suite(path: str | Path | None) -> tuple[str, list[Task]]:
     return path.name, parse_suite(path.read_text(encoding="utf-8"))
 
 
+_MODEL_NAME = re.compile(r'"?model_name"?\s*[:=]\s*"([^"]+)"')
+
+
+def unkeyed_models(network: str) -> dict[str, str]:
+    """Models a network file names whose provider key is not set: {model: key}.
+
+    A network written for Gemini, measured on a machine holding only an OpenAI
+    key, failed inside every agent with neuro-san asking for
+    AZURE_OPENAI_ENDPOINT, and was then refused with "check the API key" -- for
+    a key that was fine. Read from the file's text rather than resolved, so a
+    model named only as a fallback is listed too: the caller warns, it does not
+    refuse.
+    """
+    path = Path(network)
+    if not path.is_file():
+        return {}
+    present = set(provider_keys())
+    found: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.lstrip().startswith(("#", "//")):
+            continue
+        for model in _MODEL_NAME.findall(line):
+            key = key_name_for(model)
+            if key and key not in present:
+                found[model] = key
+    return found
+
+
 def measure(network: str, tasks: list[Task], suite: str = "custom",
             workers: int = MAX_WORKERS, on_result=None) -> Report:
     """Put every question to one network and report what it did.
@@ -320,10 +350,12 @@ def main(argv: list[str] | None = None) -> int:
         prog="python -m esp.measure",
         description="Measure a neuro-san agent network on a set of questions.")
     parser.add_argument("network", help="a HOCON file, or a network name in the manifest")
+    # Listed from NAMED, so a set added there cannot be missing here: three of
+    # the six were, the fresh questions among them.
     parser.add_argument("--tasks", default=BUILTIN,
                         help="JSON Lines question file, or a named set: meridian (the "
-                             "built-in 17, default), meridian-bank, meridian-select, "
-                             "meridian-judge; NAME:N asks the first N")
+                             f"built-in 17, default), {', '.join(NAMED)}; NAME:N asks "
+                             "the first N")
     parser.add_argument("--tools", default=None,
                         help="directory holding the network's coded tools "
                              "(sets AGENT_TOOL_PATH)")
@@ -347,6 +379,9 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, SuiteError) as exc:
         print(f"cannot read the questions: {exc}", file=sys.stderr)
         return 2
+    for model, key in unkeyed_models(args.network).items():
+        print(f"note: {args.network} names {model}, which needs {key}, and {key} is "
+              "not set -- an agent on that model cannot answer", file=sys.stderr)
     print(f"measuring {args.network} on {len(tasks)} question(s) from {suite}...",
           file=sys.stderr)
     try:
