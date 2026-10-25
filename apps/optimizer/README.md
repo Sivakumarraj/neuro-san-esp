@@ -84,7 +84,7 @@ One wake, by hand or from any scheduler:
 ```bash
 export PYTHONPATH=$PWD AGENT_TOOL_PATH=$PWD
 export ESP_STATE=$PWD/state
-export GOOGLE_API_KEY=...
+export OPENAI_API_KEY=...   # or ANTHROPIC_API_KEY / GOOGLE_API_KEY
 
 python apps/optimizer/run_optimizer.py
 ```
@@ -133,7 +133,7 @@ python -m neuro_san.service.main_loop.server_main_loop
 | Code | Meaning |
 |---|---|
 | `0` | did something, **or correctly did nothing** |
-| `1` | could not run at all (no `GOOGLE_API_KEY`) |
+| `1` | refused to start: a preflight check failed, such as no key for the configured model |
 
 A declined lease exits `0`. A scheduler overlapping a wake that is still
 evaluating is normal operation:

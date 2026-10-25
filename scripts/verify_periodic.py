@@ -31,7 +31,7 @@ from pathlib import Path
 # its neighbours ran fine.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from esp.config import bootstrap
+from esp.config import bootstrap, key_name_for, provider_keys
 
 ROOT = Path(__file__).resolve().parent.parent
 WANTED_FIRES = int(os.environ.get("ESP_VERIFY_FIRES", "3"))
@@ -52,10 +52,28 @@ def _message(line: str) -> str:
     return found.group(1) if found else ""
 
 
+def missing_key() -> str:
+    """Why the server would start without the key its agents call with, or "".
+
+    This demanded GOOGLE_API_KEY whatever the configured model, so `make verify`
+    refused to start on a machine holding only an OpenAI or a Claude key -- the
+    mistake compose.yaml and the preflight had already been cured of. The key
+    asked for is the configured model's, as `make check-key` asks.
+    """
+    from esp.genome.definition import DEFAULT_MODEL  # reads the env bootstrap just set
+
+    wanted = key_name_for(DEFAULT_MODEL)
+    if wanted is None:
+        return "" if provider_keys() else "no provider key is set"
+    if wanted not in provider_keys():
+        return f"{DEFAULT_MODEL} needs {wanted}, which is not set"
+    return ""
+
+
 def main() -> int:
     bootstrap()
-    if not os.environ.get("GOOGLE_API_KEY"):
-        print("GOOGLE_API_KEY is not set", file=sys.stderr)
+    if problem := missing_key():
+        print(problem, file=sys.stderr)
         return 1
 
     log = ROOT / ".esp-verify.log"
