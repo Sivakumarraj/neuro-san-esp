@@ -1,0 +1,78 @@
+{
+  "judge": {
+    "cheap": {
+      "share": {
+        "questions": 8,
+        "of": 100,
+        "runs_right": 2,
+        "runs": 16,
+        "wrong_runs": 14,
+        "all_wrong_runs": 32
+      },
+      "kinds": {
+        "right": 2,
+        "rates only": 3,
+        "missed incidents": 0,
+        "wrong by 10x or more": 2,
+        "arithmetic": 9,
+        "not a number": 0
+      }
+    },
+    "strong": {
+      "share": {
+        "questions": 8,
+        "of": 100,
+        "runs_right": 9,
+        "runs": 16,
+        "wrong_runs": 7,
+        "all_wrong_runs": 11
+      },
+      "kinds": {
+        "right": 9,
+        "rates only": 0,
+        "missed incidents": 0,
+        "wrong by 10x or more": 0,
+        "arithmetic": 7,
+        "not a number": 0
+      }
+    }
+  },
+  "fresh": {
+    "cheap": {
+      "share": {
+        "questions": 8,
+        "of": 40,
+        "runs_right": 0,
+        "runs": 16,
+        "wrong_runs": 16,
+        "all_wrong_runs": 20
+      },
+      "kinds": {
+        "right": 0,
+        "rates only": 2,
+        "missed incidents": 0,
+        "wrong by 10x or more": 5,
+        "arithmetic": 9,
+        "not a number": 0
+      }
+    },
+    "strong": {
+      "share": {
+        "questions": 8,
+        "of": 40,
+        "runs_right": 9,
+        "runs": 16,
+        "wrong_runs": 7,
+        "all_wrong_runs": 8
+      },
+      "kinds": {
+        "right": 9,
+        "rates only": 0,
+        "missed incidents": 2,
+        "wrong by 10x or more": 1,
+        "arithmetic": 4,
+        "not a number": 0
+      }
+    }
+  }
+}

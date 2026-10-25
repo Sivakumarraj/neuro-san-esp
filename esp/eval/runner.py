@@ -120,7 +120,10 @@ def _session_factory():
     return _FACTORY
 
 
-def _ask(hocon_path: str, question: str) -> tuple[str, dict, float]:
+def ask_messages(hocon_path: str, question: str) -> tuple[list[dict], float]:
+    """Every message the network streams back for one question, from every
+    agent, in the order they arrived, and the seconds it took. MAXIMAL is what
+    makes the agents below the front man visible at all."""
     factory = _session_factory()
     session = factory.create_session(hocon_path)
     request = {
@@ -130,12 +133,23 @@ def _ask(hocon_path: str, question: str) -> tuple[str, dict, float]:
     }
 
     started = time.monotonic()
+    messages = [result["response"] for result in session.streaming_chat(request)
+                if result.get("response") is not None]
+    return messages, time.monotonic() - started
+
+
+def _ask(hocon_path: str, question: str) -> tuple[str, dict, float]:
+    messages, seconds = ask_messages(hocon_path, question)
+    answer, accounting = read_reply(messages)
+    return answer, accounting, seconds
+
+
+def read_reply(messages: list[dict]) -> tuple[str, dict]:
+    """The network's answer and the front man's token accounting, out of every
+    message it streamed. Messages from agents below the front man are read past."""
     answer = ""
     accounting: dict = {}
-    for result in session.streaming_chat(request):
-        message = result.get("response")
-        if message is None:
-            continue
+    for message in messages:
         kind = str(message.get("type", ""))
         text = message.get("text") or ""
         # 101/AGENT_FRAMEWORK carries the final answer; 4/AI is the front man's
@@ -148,7 +162,7 @@ def _ask(hocon_path: str, question: str) -> tuple[str, dict, float]:
             origin = message.get("origin") or []
             if structure and len(origin) <= 1:
                 accounting = structure
-    return answer, accounting, time.monotonic() - started
+    return answer, accounting
 
 
 def _sum_once(accounting: dict, keys: tuple[str, ...]) -> float:

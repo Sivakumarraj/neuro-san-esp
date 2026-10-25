@@ -1078,6 +1078,64 @@ What this does not show:
   there beyond counting, and the check is on fresh.
 - **Another question world.** Every question is Meridian's.
 
+## Inside a run: the penalty questions
+
+The uncertainty study left two questions that no committed log can answer: which agent gets a
+wrong answer wrong, and what one agent's reply costs beside the whole run's. Both start from
+the same place, because the errors are not spread evenly.
+
+**One kind of question holds most of the errors.** Sixteen of the 140 judge and fresh
+questions charge two or more incidents at their own contracts' penalty rates: a difference
+between two incidents' penalties, or a depot's total. For the designer's shape they
+hold 30 of its 52 wrong runs, and for `2cc4` 14 of its 19. `2cc4` is right on 18 of their 32 runs; the
+designer's shape on 2.
+
+| Multi-incident penalty questions | Right | Rates only | Missed incidents | Wrong by 10x or more | Arithmetic |
+| :-- | :-- | :-- | :-- | :-- | :-- |
+| Judge, designer's shape | 2 of 16 | 3 | 0 | 2 | 9 |
+| Judge, `2cc4` | 9 of 16 | 0 | 0 | 0 | 7 |
+| Fresh, designer's shape | 0 of 16 | 2 | 0 | 5 | 9 |
+| Fresh, `2cc4` | 9 of 16 | 0 | 2 | 1 | 4 |
+
+**What each wrong number is** (`esp/autopsy.py`, `make autopsy`, $0). The world is generated,
+so every incident's hours late and every contract's rate per hour are known, and a test
+recomputes all 16 answer keys from them. A wrong number is checked, in order, against:
+
+- **rates only**: the difference or sum of the contracts' rates, never multiplied by hours;
+- **missed incidents**: the sum of some incidents' penalties and not others, which is what a
+  search that never returned a document gives;
+- **wrong by 10x or more**, and otherwise **arithmetic**.
+
+At most 2 of 60 wrong runs are missed incidents, and that is an upper bound: a slip can land on
+a partial sum. Nearly every miss is arithmetic over numbers the network had. Both of the cheap
+network's confident misses on this kind, J004 and F11, answered twice the same way, are the
+difference of the two rates: 4375 − 3875 = 500 and 5000 − 1875 = 3125. It found both
+contracts and never multiplied by the hours. (J035 and J087, its other two confident misses,
+are hours-late totals, not penalties.)
+
+**What the logs cannot say, and the trace can.** Every measurement here reads a network from
+outside: its answer and one usage total. neuro-san's token counter reports more. When an agent
+below the front man finishes, it sends an AGENT message with the usage of its subtree, its own
+calls and those of every agent it called; the front man sends the request total last, with a
+per-model breakdown. The runner kept only that total. `esp/trace.py` keeps every message and
+takes the subtrees apart: an invocation's own usage is its subtree less the subtrees of the
+nearest invocations below it that reported. Coded tools call no model and report nothing. The
+parts add back to the request total, and an invocation whose own usage comes out negative is
+flagged rather than clipped.
+
+`make trace` asks the 16 penalty questions and two controls that both networks got right, of
+both networks, on stage 8's settings, and refuses if either network is not the genome stage 8
+measured. It is plan only unless `GO=1`, about $0.07 at stage 8's prices, and appends each
+question as it lands. It answers:
+
+- **Which agent produced the wrong number**, and from what it was handed: the Researcher's
+  documents, a specialist's summary, or the front man's sum.
+- **The front man's own share of a run's dollars.** Its last call writes the answer, so that
+  share bounds what resampling only its reply would cost. A gate in front of `2cc4` costs no
+  more than the one-line rule only if that probe costs at most 32% of a cheap run.
+
+Nothing here has been traced yet: the container this was built in had no provider key.
+
 ## What measurement changed
 
 Every item here was found by running the system, not by reasoning about it. Most of

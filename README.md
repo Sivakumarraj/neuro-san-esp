@@ -134,6 +134,26 @@ committed logs, for $0. Its beliefs are fitted on judge and checked on fresh.
   do. Nothing here measured it.
   [The beliefs, the bounds and what this does not show](docs/FINDINGS.md#agreement-between-two-runs-a-flag-not-a-gate).
 
+## Where the remaining errors are
+
+One kind of question, charging several incidents at their contracts' penalty rates, is 16 of
+the 140 judge and fresh questions. For the designer's shape it holds 30 of its 52 wrong runs,
+and for `2cc4` 14 of its 19. `make autopsy` checks every wrong number against the generated world's
+own hours and rates, for $0:
+
+- **Not retrieval.** At most 2 of 60 wrong penalty runs are the sum of some incidents and not
+  others, which is what a missed document gives. The rest are arithmetic over numbers the
+  network had.
+- **Both confident misses are one mistake.** J004 and F11, the answers the cheap network gave
+  twice, are the difference of the two contracts' hourly rates: it found both contracts and
+  never multiplied by the hours.
+
+`make trace` (plan only; `GO=1` is about $0.07) asks both networks those questions again and
+keeps every message every agent streams. neuro-san reports each agent's usage as it finishes,
+so the trace shows which agent produced a wrong number and how a run's dollars split between
+agents, which says what resampling only the front man's reply would cost.
+[How the trace attributes usage](docs/FINDINGS.md#inside-a-run-the-penalty-questions).
+
 ## How it works
 
 ```mermaid
@@ -279,6 +299,8 @@ the web page, the accelerator UI, and running the optimizer as a service.
 | `esp/measure.py` | Measure any neuro-san network on any question file |
 | `esp/route.py` | Route each question to the cheap or the strong network |
 | `esp/uncertainty.py` | Whether two runs agree, as a gate in front of the strong network and as a flag |
+| `esp/autopsy.py` | Every wrong penalty answer checked against the world's own hours and rates |
+| `esp/trace.py` | One run taken apart by agent: each agent's own usage and what it said |
 | `esp/report/` | The PDFs and the figures |
 | `apps/web/` | The browser front end: ask the served network, measure networks |
 | `apps/optimizer/` | One optimizer wake, runnable by hand or from any scheduler |

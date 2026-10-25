@@ -1,4 +1,4 @@
-.PHONY: replicate install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool headtohead experiment guide check-key smoke measure figures ablation probe baseline search holdout route uncertainty offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
+.PHONY: replicate install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool headtohead experiment guide check-key smoke measure figures ablation probe baseline search holdout route uncertainty autopsy trace offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -153,6 +153,18 @@ route:
 # fitted on judge and checked on fresh. Costs nothing; reads the committed logs.
 uncertainty:
 	PYTHONPATH=$$PWD python scripts/uncertainty_report.py
+
+# Why the networks miss the multi-incident penalty questions, most of both
+# networks' wrong answers: every wrong number checked against the world's own
+# hours and rates. Costs nothing; reads the committed logs.
+autopsy:
+	PYTHONPATH=$$PWD python scripts/autopsy_report.py
+
+# Inside a run: every agent's own tokens and dollars, and what each passed up,
+# for the penalty questions on both networks of the uncertainty study. Plan only
+# unless GO=1, about $0.07 at stage 8's prices; REPORT=1 reads results/trace/.
+trace:
+	PYTHONPATH=$$PWD AGENT_TOOL_PATH=$$PWD python scripts/trace_run.py $(if $(GO),--go,) $(if $(REPORT),--report,)
 
 # Phase B and C only: train the Predictor on whatever real evaluations are
 # cached, then evolve against it. Zero provider calls, so this runs with no

@@ -39,6 +39,11 @@ results/*
 # Whether two runs of each question agree, which `make uncertainty` recomputes.
 !results/uncertainty/
 !results/uncertainty/summary.json
+# The penalty autopsy (`make autopsy`), and traces of real runs (`make trace`).
+!results/autopsy/
+!results/autopsy/summary.json
+!results/trace/
+!results/trace/*.jsonl
 
 # The live cache is machine-local and quota-dependent. The committed
 # measurements live in tests/fixtures/cache instead, so CI can reproduce them.
