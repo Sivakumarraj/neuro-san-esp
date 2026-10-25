@@ -14,6 +14,8 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "results" / "replication" / "fresh-2026-10"
 STAGE = RUNS / "1-fresh"
@@ -67,6 +69,24 @@ def test_the_committed_summary_is_what_the_logs_say():
     committed = json.loads((RUNS / "summary.json").read_text(encoding="utf-8"))
     run = Replication()
     assert committed == {STAGE.name: {"networks": run.networks, "pairs": run.pairs}}
+
+
+def test_the_control_the_web_page_quotes_is_what_the_logs_say():
+    """apps/web reads the model control through paid.control(); it must be the
+    figures the logs give, not a second copy of them."""
+    run = Replication()
+    control = paid.control()
+    beat = run.pairs["designer-promoted vs evolved"]["better_on"]
+    assert control.questions == len(FRESH)
+    assert control.winner_better_on == len(beat["evolved"])
+    assert control.control_better_on == len(beat["designer-promoted"])
+    assert control.sign_test_p == run.pairs["designer-promoted vs evolved"]["sign_test_p"]
+    assert control.gain == pytest.approx(run.networks["designer-promoted"]["accuracy"]
+                                         - run.networks["designer"]["accuracy"])
+
+
+def test_the_control_is_none_where_the_replication_is_not_shipped(tmp_path):
+    assert paid.control(tmp_path / "summary.json") is None
 
 
 def test_the_run_is_the_one_described():

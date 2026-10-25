@@ -385,6 +385,7 @@ def fitness_champion():
 
 
 NAME, GENOME, RECORD, JUDGED = champion()
+CONTROL = paid.control() if JUDGED is not None else None
 SERVED = presentable(GENOME)
 HOCON = str(write_network(SERVED.genome))
 # Every agent on the default model, for when a promoted model is busy or out of
@@ -453,13 +454,24 @@ def caveat() -> str:
     topology. A caveat that contradicts the page above it is worse than none.
     """
     if JUDGED is not None:
-        return ("its lead is not a pure structure result: its Researcher runs a dearer "
-                "model than any agent in the designer's shape, which was not measured "
-                "with its own specialists promoted; it costs "
-                f"{JUDGED.cost_change:.0%} more per question; and it is one measured "
-                "mutation of a hand-written seed, judged in one task domain, not a "
-                "network the Predictor chose. Stated in the repository rather than "
-                "left out.")
+        # The control was a sentence saying it had not been run, and it went
+        # stale the day the replication ran it. Read from its summary instead.
+        model = ("Its Researcher runs a dearer model than any agent in the designer's "
+                 "shape. ")
+        if CONTROL is None:
+            model += ("The control that promotes the designer's specialists is in "
+                      "results/replication/, which this deployment does not carry. ")
+        else:
+            model += (f"On {CONTROL.questions} fresh questions, promoting every "
+                      f"specialist bought the designer's shape {100 * CONTROL.gain:.1f} "
+                      f"points of accuracy, and "
+                      f"{NAME} still beat that control on {CONTROL.winner_better_on} "
+                      f"questions against {CONTROL.control_better_on}, which is not "
+                      f"significant on so few (p = {CONTROL.sign_test_p}). ")
+        return (model + f"It costs {JUDGED.cost_change:.0%} more per question than "
+                "the designer's shape, and it is one measured mutation of a "
+                "hand-written seed, judged in one task domain, not a network the "
+                "Predictor chose. Stated in the repository rather than left out.")
     parts: list[str] = []
     evolved = RECORD is not None and RECORD.origin.startswith("mut:")
     if not evolved:

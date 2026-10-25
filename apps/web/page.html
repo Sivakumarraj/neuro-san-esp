@@ -30,6 +30,8 @@
  details{margin-top:12px} summary{cursor:pointer;color:var(--accent)}
  .qlist{display:grid;gap:6px;margin-top:8px}
  #answer{white-space:pre-wrap;line-height:1.65}
+ #answer code{font:14px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft);
+             padding:0 4px;border-radius:4px}
  .meta{font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--mute);margin-top:12px}
  .ok{color:var(--ok);font-weight:600} .bad{color:var(--bad);font-weight:600}
  .warn{background:var(--warn);border-color:var(--warnline);font-size:14px}
@@ -131,6 +133,22 @@ function show(which){
   }
   if(which==='measure' && !loaded) loadNets();
 }
+// The front man explains its answer in markdown, and set as text it read as
+// **3 incidents** and `depot-D05.txt`. Bold, code and headings become elements
+// built from text nodes, never innerHTML, so a reply still cannot put markup on
+// the page; everything else stays as written.
+function rich(node, text){
+  node.textContent='';
+  text.split('\n').forEach((line, i)=>{
+    if(i) node.appendChild(document.createTextNode('\n'));
+    const heading=line.match(/^#{1,6}\s+(.*)$/), holder=heading?node.appendChild(el('b')):node;
+    for(const part of (heading?heading[1]:line).split(/(\*\*[^*]+\*\*|`[^`]+`)/)){
+      if(/^\*\*[^*]+\*\*$/.test(part)) holder.appendChild(el('b',part.slice(2,-2)));
+      else if(/^`[^`]+`$/.test(part)) holder.appendChild(el('code',part.slice(1,-1)));
+      else if(part) holder.appendChild(document.createTextNode(part));
+    }
+  });
+}
 function pick(b){document.getElementById('q').value=b.dataset.q;ask()}
 // A request that never reaches the server throws a bare "TypeError: Failed to
 // fetch", which reads as a bad key. In a Codespace it is nearly always the page
@@ -159,7 +177,7 @@ async function ask(){
                                       body:JSON.stringify({question:q})});
     box.hidden=false; meta.textContent='';
     if(d.error){ans.textContent='Error: '+d.error;return}
-    ans.textContent=d.answer||'(the network returned no answer)';
+    rich(ans, d.answer||'(the network returned no answer)');
     meta.appendChild(el('div',`${d.agents} agents · ${d.seconds}s · ${d.provider}`
       +' · '+Object.entries(d.models||{}).map(([n,m])=>n+' '+m).join(', ')));
     if(d.fallback){meta.appendChild(el('div',d.fallback,'bad'))}

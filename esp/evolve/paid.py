@@ -23,6 +23,8 @@ from esp.genome.definition import Genome
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 PAID_RUNS = ROOT / "results" / "headtohead" / "paid-2026-10"
+# The replication on the forty fresh questions, with its model control.
+REPLICATION = ROOT / "results" / "replication" / "fresh-2026-10"
 
 # The children generated from flat in the committed paid search. The seed and
 # the operator list are what produced them; changing either produces others.
@@ -201,3 +203,44 @@ def judged(summary: Path = PAID_RUNS / "summary.json") -> Judged:
         designer_tokens_per_question=designer["tokens_per_question"],
         designer_cost_per_question=designer["reported_cost_per_question"],
         sign_test_p=stage["paired"]["sign_test_p"])
+
+
+@dataclass(frozen=True)
+class Control:
+    """The replication's model control: the designer's shape with every specialist
+    promoted, beside the all-cheap designer and the winner, on the fresh questions."""
+
+    questions: int
+    designer_correct: int
+    control_correct: int
+    question_runs: int
+    winner_better_on: int
+    control_better_on: int
+    sign_test_p: float
+
+    @property
+    def gain(self) -> float:
+        """What promoting every specialist bought the designer's shape, in accuracy."""
+        return (self.control_correct - self.designer_correct) / self.question_runs
+
+
+def control(summary: Path = REPLICATION / "summary.json") -> Control | None:
+    """The model control, read from the committed replication summary.
+
+    None when the summary is not in this deployment: the page then says the
+    control exists rather than quoting figures it cannot read.
+    """
+    from esp.eval.fresh import FRESH
+
+    if not summary.exists():
+        return None
+    stage = json.loads(summary.read_text(encoding="utf-8"))["1-fresh"]
+    networks = stage["networks"]
+    pair = stage["pairs"]["designer-promoted vs evolved"]
+    return Control(
+        questions=len(FRESH), designer_correct=networks["designer"]["correct"],
+        control_correct=networks["designer-promoted"]["correct"],
+        question_runs=networks["designer-promoted"]["question_runs"],
+        winner_better_on=len(pair["better_on"]["evolved"]),
+        control_better_on=len(pair["better_on"]["designer-promoted"]),
+        sign_test_p=pair["sign_test_p"])

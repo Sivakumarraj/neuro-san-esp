@@ -263,6 +263,33 @@ def test_the_header_names_the_best_measurement_on_disk():
         assert record.fitness >= best.fitness
 
 
+def test_the_caveat_quotes_the_model_control_the_replication_ran(client):
+    """The caveat said the designer's shape had not been measured with its
+    specialists promoted after the replication had measured exactly that, and
+    it opened in lower case under "What it is not." Read from the summary now."""
+    from esp.evolve import paid
+
+    if serve.JUDGED is None:
+        pytest.skip("not serving the held-out winner")
+    control = paid.control()
+    caveat = serve.caveat()
+    assert "not measured" not in caveat
+    assert caveat[0].isupper()
+    assert (f"on {control.winner_better_on} questions against "
+            f"{control.control_better_on}") in caveat
+    assert f"p = {control.sign_test_p}" in caveat
+    assert f"{100 * control.gain:.1f} points" in caveat
+
+
+def test_without_the_replication_the_caveat_says_where_the_control_is(client, monkeypatch):
+    if serve.JUDGED is None:
+        pytest.skip("not serving the held-out winner")
+    monkeypatch.setattr(serve, "CONTROL", None)
+    caveat = serve.caveat()
+    assert "results/replication/" in caveat
+    assert caveat.rstrip().endswith("rather than left out.")
+
+
 def test_the_caveat_does_not_present_an_old_figure_as_current(client):
     """The -0.333 was the surrogate at the first search, on nine samples. Said
     without that context it reads as the predictor's quality today."""
@@ -495,6 +522,51 @@ def test_the_pages_script_parses(client):
     done = subprocess.run([node, "-e", "new Function(require('fs').readFileSync(0,'utf8'))"],
                           input=script, capture_output=True, text=True, timeout=30)
     assert done.returncode == 0, done.stderr
+
+
+def test_an_explained_answer_is_formatted_and_markup_stays_text(client):
+    """The front man explains in markdown, and the page showed the asterisks and
+    backticks as written. The page's own `el` and `rich` run here against a
+    minimal DOM: bold, code and headings become elements, and a reply carrying
+    markup is still only text."""
+    import re
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+    script = client.get("/").text.split("<script>")[1].split("</script>")[0]
+    assert ".innerHTML" not in script
+    functions = (re.search(r"^function el\(.*?return e}", script, re.M | re.S).group(0) + "\n"
+                 + re.search(r"^function rich\(.*?^}", script, re.M | re.S).group(0))
+    harness = """
+class Text { constructor(t) { this.text = String(t); } get textContent() { return this.text; } }
+class Node {
+  constructor(tag) { this.tag = tag; this.children = []; }
+  set textContent(t) { this.children = t === '' ? [] : [new Text(t)]; }
+  get textContent() { return this.children.map(c => c.textContent).join(''); }
+  appendChild(c) { this.children.push(c); return c; }
+}
+const document = { createElement: t => new Node(t), createTextNode: t => new Text(t) };
+""" + functions + """
+const root = new Node('div');
+rich(root, process.argv[1]);
+console.log(JSON.stringify({text: root.textContent,
+  parts: root.children.map(c => [c.tag || 'text', c.textContent])}));
+"""
+    reply = ("There were **3 incidents**, in `incident-INC-4425.txt`.\n"
+             "## How\n<img src=x onerror=alert(1)>")
+    done = subprocess.run([node, "-e", harness, reply], capture_output=True, text=True,
+                          timeout=30)
+    assert done.returncode == 0, done.stderr
+    shown = json.loads(done.stdout)
+    assert shown["text"] == ("There were 3 incidents, in incident-INC-4425.txt.\n"
+                             "How\n<img src=x onerror=alert(1)>")
+    assert ["b", "3 incidents"] in shown["parts"]
+    assert ["code", "incident-INC-4425.txt"] in shown["parts"]
+    assert ["b", "How"] in shown["parts"]
+    assert ["text", "<img src=x onerror=alert(1)>"] in shown["parts"]
 
 
 def test_a_busy_router_falls_back_and_says_so(client, monkeypatch):
