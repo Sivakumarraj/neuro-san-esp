@@ -677,3 +677,56 @@ def test_the_answer_names_every_agents_model(client, monkeypatch):
                 for name, agent in serve.SERVED.genome.agents.items()
                 if name in serve.SERVED.genome.reachable()}
     assert models == expected
+
+
+def test_the_fallback_retry_is_charged_to_the_days_cap(client, monkeypatch):
+    """The retry is a second paid run of the network. Uncounted, a page whose
+    router was busy all day spent twice its cap."""
+    if serve.FALLBACK_HOCON is None:
+        pytest.skip("the served champion promotes no agent")
+    busy = "Error: Agent stopped due to exception 503 UNAVAILABLE"
+    monkeypatch.setattr(serve, "_ask", lambda hocon, q: (busy, {}, 1.0) if hocon == serve.HOCON
+                        else ("J. Vasquez", {}, 1.0))
+    assert client.post("/ask", json={"question": "who manages D08?"}).status_code == 200
+    assert serve._asked["count"] == 2
+
+    calls = []
+    monkeypatch.setattr(serve, "_ask", lambda hocon, q: calls.append(hocon) or (busy, {}, 1.0))
+    monkeypatch.setattr(serve, "_asked", {"count": serve.MAX_QUESTIONS - 1})
+    assert client.post("/ask", json={"question": "who manages D08?"}).status_code == 502
+    assert calls == [serve.HOCON], "the retry ran with no budget left for it"
+
+
+@pytest.mark.parametrize("saved", [
+    {"day": "TODAY", "asked": None, "measured": "many"},
+    [1, 2, 3],
+    "a string",
+])
+def test_a_damaged_spend_file_never_500s_the_page(client, monkeypatch, tmp_path, saved):
+    """int() on a null raised under the budget lock and the day's requests
+    answered 500."""
+    path = tmp_path / "spend.json"
+    if isinstance(saved, dict):
+        saved = {**saved, "day": serve._today()}
+    path.write_text(json.dumps(saved), encoding="utf-8")
+    monkeypatch.setattr(serve, "SPEND_FILE", str(path))
+    monkeypatch.setattr(serve, "_spend_day", {"day": None})
+    monkeypatch.setattr(serve, "_ask", lambda *a: ("J. Vasquez", {}, 1.0))
+    assert client.post("/ask", json={"question": "who manages D08?"}).status_code == 200
+
+
+def test_an_ipv6_visitor_shares_one_hourly_allowance_across_their_slash_64():
+    """Keyed on the full address, changing the low 64 bits bought a fresh share."""
+    assert serve._bucket("2001:db8:1:2::1") == serve._bucket("2001:db8:1:2:ffff::9")
+    assert serve._bucket("2001:db8:1:2::1") != serve._bucket("2001:db8:1:3::1")
+    assert serve._bucket("203.0.113.7") == "203.0.113.7"
+    assert serve._bucket("::ffff:203.0.113.7") == "203.0.113.7"
+    assert serve._bucket("testclient") == "testclient"
+
+
+def test_an_agent_failure_shown_to_a_visitor_hides_server_paths(client, monkeypatch):
+    reply = ("Agent stopped due to exception: FileNotFoundError "
+             "/app/.esp-networks/abc123.hocon")
+    monkeypatch.setattr(serve, "_ask", lambda *a: (reply, {}, 1.0))
+    body = client.post("/ask", json={"question": "who manages D08?"}).json()
+    assert "/app/.esp-networks" not in body["error"]

@@ -43,6 +43,7 @@ from esp.config import bootstrap  # noqa: E402
 bootstrap()
 
 import html  # noqa: E402
+import ipaddress  # noqa: E402
 import re  # noqa: E402
 import threading  # noqa: E402
 import traceback  # noqa: E402
@@ -192,9 +193,20 @@ def _roll_day() -> None:
             saved = json.loads(Path(SPEND_FILE).read_text(encoding="utf-8"))
         except (OSError, ValueError):
             return
-        if saved.get("day") == today:
-            _asked["count"] = int(saved.get("asked", 0))
-            _measured["count"] = int(saved.get("measured", 0))
+        if isinstance(saved, dict) and saved.get("day") == today:
+            # A field that is not a count is ignored, never fatal. int() on a
+            # null or a string raised under the budget lock, and every request
+            # that day answered 500.
+            _asked["count"] = _count(saved.get("asked"))
+            _measured["count"] = _count(saved.get("measured"))
+
+
+def _count(value) -> int:
+    """A saved count, or 0 when the file holds something else there."""
+    try:
+        return max(0, int(value))
+    except (TypeError, ValueError):
+        return 0
 
 
 def _save_spend() -> None:
@@ -218,8 +230,26 @@ def client_key(request) -> str:
     if TRUST_PROXY:
         forwarded = request.headers.get("x-forwarded-for", "")
         if forwarded.strip():
-            return forwarded.split(",")[-1].strip()
-    return request.client.host if request.client else "unknown"
+            return _bucket(forwarded.split(",")[-1].strip())
+    return _bucket(request.client.host) if request.client else "unknown"
+
+
+def _bucket(address: str) -> str:
+    """The share an address draws on: itself, or its /64 for IPv6.
+
+    One IPv6 subscriber is routed a whole /64 -- 2^64 addresses. Keyed on the
+    full address, a visitor took a fresh hourly share per question by changing
+    the low bits, and spent the day's cap alone.
+    """
+    try:
+        parsed = ipaddress.ip_address(address)
+    except ValueError:
+        return address
+    if parsed.version == 4:
+        return str(parsed)
+    if parsed.ipv4_mapped is not None:
+        return str(parsed.ipv4_mapped)
+    return str(ipaddress.ip_network(f"{parsed}/64", strict=False))
 
 
 def _over_client_limit(key: str) -> bool:
@@ -534,6 +564,21 @@ def failure_hint(reply: str) -> str:
     return "An agent failed before the network could answer."
 
 
+def _charge_retry() -> bool:
+    """Count the fallback retry against the day's cap, if the cap allows one.
+
+    The retry is a second paid run of the whole network. Uncounted, a page
+    whose router was busy all day spent up to twice ESP_WEB_MAX_QUESTIONS.
+    """
+    with _budget_lock:
+        _roll_day()
+        if _asked["count"] >= MAX_QUESTIONS:
+            return False
+        _asked["count"] += 1
+        _save_spend()
+        return True
+
+
 def build_app():
     from fastapi import FastAPI
     from fastapi.exceptions import RequestValidationError
@@ -620,7 +665,8 @@ def build_app():
         fallback = None
         router = (SERVED.genome.agents[SERVED.genome.top].model
                   or SERVED.genome.default_model)
-        if never_answered(answer) and unavailable(answer) and FALLBACK_HOCON:
+        if (never_answered(answer) and unavailable(answer) and FALLBACK_HOCON
+                and _charge_retry()):
             try:
                 retry, _, retry_seconds = _ask(FALLBACK_HOCON, question)
             except Exception:           # the original failure is the one to report
@@ -638,7 +684,8 @@ def build_app():
         # nonsense, under a 200 -- nothing on the page said to go and fix .env.
         if never_answered(answer):
             return JSONResponse(
-                {"error": f"{failure_hint(answer)} The provider said: {redact(answer)[:500]}"},
+                {"error": f"{failure_hint(answer)} The provider said: "
+                          f"{public_error(answer)[:500]}"},
                 status_code=502)
 
         # If it is one of the benchmark questions, grade it in front of the

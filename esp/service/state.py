@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import uuid
 
 try:
     import fcntl
@@ -28,7 +29,7 @@ except ImportError as missing:      # pragma: no cover - POSIX-only deployment
         "esp.service.state needs POSIX file locking (fcntl) to make the "
         "optimiser lease mutually exclusive") from missing
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -137,19 +138,31 @@ class ServiceState:
         provider has already reset. Both are the same mistake in different
         sizes -- presuming we know when somebody else's budget comes back.
         """
-        when = self.exhausted.get(_today(), {}).get(model)
-        if when is None:
-            return False
-        try:
-            marked = datetime.fromisoformat(when)
-        except ValueError:
-            return False        # unreadable record is not a reason to stay idle
-        return (_utcnow() - marked).total_seconds() < RETRY_EXHAUSTED_AFTER
+        for when in self._marks(model):
+            try:
+                marked = datetime.fromisoformat(when)
+            except ValueError:
+                continue        # unreadable record is not a reason to stay idle
+            if (_utcnow() - marked).total_seconds() < RETRY_EXHAUSTED_AFTER:
+                return True
+        return False
+
+    def _marks(self, model: str) -> list[str]:
+        """When this model was marked spent, today and yesterday.
+
+        Yesterday too, because the expiry is elapsed time and the filing key is
+        the calendar day. Read from today alone, a model marked at 23:50 UTC
+        was fresh again at 00:10, forty minutes into an hour's retirement.
+        """
+        yesterday = (_utcnow().date() - timedelta(days=1)).isoformat()
+        return [when for day in (_today(), yesterday)
+                if (when := self.exhausted.get(day, {}).get(model)) is not None]
 
     def exhausted_now(self) -> list[str]:
         """The models currently presumed spent, for a wake to report."""
-        return sorted(m for m in self.exhausted.get(_today(), {})
-                      if self.is_exhausted(m))
+        yesterday = (_utcnow().date() - timedelta(days=1)).isoformat()
+        named = {m for day in (_today(), yesterday) for m in self.exhausted.get(day, {})}
+        return sorted(m for m in named if self.is_exhausted(m))
 
     def usable(self, ladder: list[str]) -> list[str]:
         return [model for model in ladder if not self.is_exhausted(model)]
@@ -229,6 +242,26 @@ class Lease:
                  seconds: float = LEASE_SECONDS) -> None:
         self.path = (directory or STATE_DIR) / "lease.json"
         self.seconds = seconds
+        # What this holder wrote, so release() can tell its own lease from the
+        # one a later wake took after this one's expired.
+        self.token: str | None = None
+
+    def _locked(self):
+        """An exclusive POSIX lock on the guard file, for one critical section."""
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        guard = self.path.with_name(self.path.name + ".guard")
+        handle = os.open(guard, os.O_CREAT | os.O_RDWR, 0o644)
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX)
+        except BaseException:
+            os.close(handle)
+            raise
+        return handle
+
+    @staticmethod
+    def _unlock(handle: int) -> None:
+        fcntl.flock(handle, fcntl.LOCK_UN)
+        os.close(handle)
 
     def acquire(self, owner: str) -> bool:
         """Take the lease, or report that somebody else holds it.
@@ -244,12 +277,8 @@ class Lease:
         merely between threads. It does not coordinate across hosts; nothing in
         this deployment runs the optimiser on two.
         """
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        guard = self.path.with_name(self.path.name + ".guard")
-
-        handle = os.open(guard, os.O_CREAT | os.O_RDWR, 0o644)
+        handle = self._locked()
         try:
-            fcntl.flock(handle, fcntl.LOCK_EX)
             now = time.time()
             if self.path.exists():
                 try:
@@ -258,17 +287,38 @@ class Lease:
                     held = {}                   # corrupt lease is a free lease
                 if now - float(held.get("taken_at", 0)) < self.seconds:
                     return False
+            token = uuid.uuid4().hex
             self.path.write_text(
-                json.dumps({"owner": owner, "taken_at": now,
+                json.dumps({"owner": owner, "token": token, "taken_at": now,
                             "taken_at_iso": _utcnow().isoformat()}),
                 encoding="utf-8")
+            self.token = token
             return True
         finally:
-            fcntl.flock(handle, fcntl.LOCK_UN)
-            os.close(handle)
+            self._unlock(handle)
 
     def release(self) -> None:
-        self.path.unlink(missing_ok=True)
+        """Give the lease back, if it is still this holder's.
+
+        A wake can outlive its lease -- three candidates behind a rate limiter
+        can take longer than an hour -- and by then another wake may hold it.
+        Deleting the file unconditionally released *that* wake's lease, and a
+        third started beside it. Checked and removed under the same lock as
+        acquire, so the check cannot go stale before the unlink.
+        """
+        if self.token is None:
+            return
+        handle = self._locked()
+        try:
+            try:
+                held = json.loads(self.path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                held = {}
+            if held.get("token") == self.token:
+                self.path.unlink(missing_ok=True)
+        finally:
+            self.token = None
+            self._unlock(handle)
 
     def holder(self) -> dict[str, Any] | None:
         if not self.path.exists():

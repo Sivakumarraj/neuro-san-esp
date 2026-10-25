@@ -243,7 +243,10 @@ class Genome:
         ordered = [self.top, *sorted(n for n in live if n != self.top)]
         for name in ordered:
             agent = self.agents[name]
-            lines: list[str] = ["        {", f'            "name": "{name}",']
+            # Names are quoted as JSON, like every other string here. Pasted
+            # raw, a name holding a quote ended the string early and the rest
+            # of it was read as HOCON keys -- a "class" key among them.
+            lines: list[str] = ["        {", f'            "name": {json.dumps(name)},']
 
             lines.append('            "function": {')
             lines.append(f'                "description": {json.dumps(agent.description)},')
@@ -265,7 +268,7 @@ class Genome:
             if agent.can_search:
                 downstream = [*downstream, CORPUS_TOOL]
             if downstream:
-                rendered = ", ".join(f'"{t}"' for t in sorted(set(downstream)))
+                rendered = ", ".join(json.dumps(t) for t in sorted(set(downstream)))
                 lines.append(f'            "tools": [{rendered}],')
 
             if agent.model:

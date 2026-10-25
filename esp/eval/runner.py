@@ -24,7 +24,11 @@ from esp.eval.tasks import TASKS, Task, grade
 from esp.genome.definition import Genome
 
 CACHE_DIR = Path(os.environ.get("ESP_CACHE", ".esp-cache"))
-NETWORK_DIR = Path(os.environ.get("ESP_NETWORKS", ".esp-networks"))
+# Where rendered candidates are written. Not ESP_NETWORKS: that names the
+# directory an operator puts their own networks in, which the web page and the
+# evaluator list as measurable. Sharing the name wrote every rendered network
+# into that directory, and the catalog then listed each committed network twice.
+NETWORK_DIR = Path(os.environ.get("ESP_RENDERED_NETWORKS", ".esp-networks"))
 MAX_WORKERS = int(os.environ.get("ESP_WORKERS", "4"))
 
 
@@ -418,10 +422,22 @@ def refuse_unmeasured(results: list[TaskResult], tokens: int,
 
 
 
+def _write_atomically(path: Path, text: str) -> None:
+    """Write beside the target and move it into place.
+
+    A plain write truncates first. A process killed mid-write left a half
+    file, and a reader on another thread could open one being rewritten --
+    the web page renders the networks it measures while questions run.
+    """
+    scratch = path.with_name(f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+    scratch.write_text(text, encoding="utf-8")
+    scratch.replace(path)
+
+
 def write_network(genome: Genome) -> Path:
     NETWORK_DIR.mkdir(parents=True, exist_ok=True)
     path = NETWORK_DIR / f"{genome.genome_hash()}.hocon"
-    path.write_text(genome.to_hocon(), encoding="utf-8")
+    _write_atomically(path, genome.to_hocon())
     return path
 
 
@@ -496,9 +512,18 @@ def evaluate(genome: Genome, tasks: list[Task] | None = None,
     cache_path.parent.mkdir(parents=True, exist_ok=True)
 
     if use_cache and cache_path.exists():
-        evaluation = evaluation_from_cache(json.loads(cache_path.read_text()))
-        evaluation.from_cache = True
-        return evaluation
+        try:
+            evaluation = evaluation_from_cache(
+                json.loads(cache_path.read_text(encoding="utf-8")))
+        except (ValueError, KeyError, TypeError) as exc:
+            # A half-written or hand-damaged entry is a miss, not a crash. As a
+            # crash it stopped every later run at the same genome, and the only
+            # way out was to find and delete the file by hand.
+            print(f"ignoring unreadable cache entry {cache_path.name}: "
+                  f"{type(exc).__name__}", flush=True)
+        else:
+            evaluation.from_cache = True
+            return evaluation
 
     hocon_path = str(write_network(genome))
     run = run_suite(hocon_path, tasks)
@@ -526,5 +551,5 @@ def evaluate(genome: Genome, tasks: list[Task] | None = None,
     payload["genome"] = genome.canonical()
     payload["accounting"] = usage.ACCOUNTING
     payload["settings"] = run_settings()
-    cache_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    _write_atomically(cache_path, json.dumps(payload, indent=2))
     return evaluation

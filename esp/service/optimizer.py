@@ -304,7 +304,6 @@ def _exhausted_models(genome: Genome, message: str) -> list[str]:
 def wake(state: ServiceState | None = None, rng: random.Random | None = None,
          max_evaluations: int = MAX_PER_WAKE) -> WakeReport:
     """Run one cycle. Safe to call on a schedule; safe to be killed part-way."""
-    state = state if state is not None else ServiceState.load()
     rng = rng or random.Random()
 
     lease = Lease()
@@ -324,6 +323,11 @@ def wake(state: ServiceState | None = None, rng: random.Random | None = None,
                   f"it expires in {remaining / 60:.0f} min"))
 
     try:
+        # Read only once the lease is held. Read before it, a wake that waited
+        # out the previous holder worked from the population as it was before
+        # that holder's last save, and wrote that stale copy back over it --
+        # dropping candidates that had already been paid for.
+        state = state if state is not None else ServiceState.load()
         state.wakes += 1
         state.last_wake = datetime.now(UTC).isoformat()
 

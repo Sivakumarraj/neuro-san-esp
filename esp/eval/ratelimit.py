@@ -287,6 +287,20 @@ def _is_transient_server_error(exc: BaseException) -> bool:
     return any(marker in text for marker in _TRANSIENT_MARKERS)
 
 
+def _out_of_attempts(last: Exception | None) -> Exception:
+    """What a paced call raises when every attempt went on a key or model swap.
+
+    A daily-cap 429 swaps the key or the model and goes round again, and that
+    swap spends an attempt. With six or more keys in GOOGLE_API_KEYS, or keys
+    and ladder rungs that add up to six, the last attempt ended on a swap, the
+    loop ran out, and the call returned None. LangChain then failed on the
+    None with an AttributeError that names no quota, so the runner's quota
+    guard did not see it: the question was graded wrong and the run could be
+    cached. The provider's own 429 is raised instead, so the guard sees it.
+    """
+    return last if last is not None else RuntimeError("no attempt was made")
+
+
 def install(rpm: int = DEFAULT_RPM) -> bool:
     quieten_fixed_sampling_warning()
     """Patch the Google chat model. Idempotent; returns False if unavailable."""
@@ -305,6 +319,7 @@ def install(rpm: int = DEFAULT_RPM) -> bool:
 
         if is_async:
             async def limited(self, *args, **kwargs):
+                last: Exception | None = None
                 for attempt in range(MAX_RETRIES):
                     # Resolved every attempt: another worker may have retired
                     # this model since the last one.
@@ -317,6 +332,7 @@ def install(rpm: int = DEFAULT_RPM) -> bool:
                         _stats["calls"] += 1
                         return await original(self, *args, **kwargs)
                     except Exception as exc:
+                        last = exc
                         # A per-day cap never clears within a run. Sleeping on it
                         # burns the clock and every candidate afterwards scores
                         # zero, so swap models instead of waiting.
@@ -349,9 +365,10 @@ def install(rpm: int = DEFAULT_RPM) -> bool:
                         # Jittered backoff: synchronised retries from parallel
                         # workers would re-collide on the same second.
                         await asyncio.sleep(min(60.0, 2 ** attempt) + random.random())
-                return None
+                raise _out_of_attempts(last)
         else:
             def limited(self, *args, **kwargs):
+                last: Exception | None = None
                 for attempt in range(MAX_RETRIES):
                     model = failover.substitute(getattr(self, "model", "unknown"))
                     _apply_model(self, model)
@@ -360,6 +377,7 @@ def install(rpm: int = DEFAULT_RPM) -> bool:
                         _stats["calls"] += 1
                         return original(self, *args, **kwargs)
                     except Exception as exc:
+                        last = exc
                         if failover.is_daily_quota_error(exc):
                             current_key = getattr(self, "google_api_key", None)
                             current_key_str = ""
@@ -387,7 +405,7 @@ def install(rpm: int = DEFAULT_RPM) -> bool:
                             _stats["transient_retries"] = _stats.get(
                                 "transient_retries", 0) + 1
                         time.sleep(min(60.0, 2 ** attempt) + random.random())
-                return None
+                raise _out_of_attempts(last)
 
         setattr(ChatGoogleGenerativeAI, method_name, limited)
 

@@ -99,6 +99,7 @@ evaluating is normal operation, not a failure.
 | `ESP_OPTIMIZER_CRON` | `0 * * * *` | overrides the schedule in the manifest |
 | `ESP_LEASE_SECONDS` | `3600` | how long a wake may hold the lease before it is considered dead |
 | `ESP_CACHE` | `.esp-cache` | evaluations keyed by genome hash, so a topology is never paid for twice |
+| `ESP_RENDERED_NETWORKS` | `.esp-networks` | where candidates are rendered as HOCON; kept apart from `ESP_NETWORKS`, the operator's own networks |
 | `ESP_WORKERS` | `4` | task-level parallelism inside one candidate |
 | `ESP_MAX_EXECUTION_SECONDS` | `600` | per-agent budget; **must** cover queueing in the rate limiter, not just thinking |
 
