@@ -73,12 +73,16 @@ def search(query: str, max_results: int | None = None) -> list[dict[str, Any]]:
 class CorpusSearch(CodedTool):
     """Search the Meridian Logistics document store."""
 
+    # Documents a search returns. None follows MAX_RESULTS, the process-wide
+    # setting every measurement is made under.
+    width: int | None = None
+
     def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> Any:
         query = args.get("query") or args.get("search_terms") or ""
         if not query:
             return "Error: no 'query' provided."
 
-        results = search(str(query))
+        results = search(str(query), max_results=self.width)
         if not results:
             return "No documents matched that query."
 
@@ -90,3 +94,17 @@ class CorpusSearch(CodedTool):
             f"--- {item['document']} ---\n{item['content'].strip()}"
             for item in results
         )
+
+
+class JudgedWidthSearch(CorpusSearch):
+    """CorpusSearch at the width the held-out pair was judged at.
+
+    The studio serves every network from one neuro-san server, and MAX_RESULTS
+    is one setting for the whole process, so the twelve networks measured at 3
+    documents and the pair judged at 10 could not both be served as measured.
+    The width lives in the class, not in the call: neuro-san merges a HOCON
+    "args" block into the same dictionary the model fills, so a width read from
+    the arguments is one a model could widen for itself.
+    """
+
+    width = 10      # esp.evolve.paid.WINNER_SEARCH_RESULTS; a test holds them equal

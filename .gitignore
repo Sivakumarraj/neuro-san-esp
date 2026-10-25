@@ -68,6 +68,7 @@ registries/champion_manifest.hocon
 # thing that was measured.
 registries/studio_*.hocon
 registries/r[0-9][0-9]_*.hocon
+registries/h[0-9]_*.hocon
 
 # nsflow's own local database, created in the working directory the moment the
 # accelerator UI starts. One deployment's chat history and session rows, and

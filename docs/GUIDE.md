@@ -206,14 +206,22 @@ browser you already have; in Codespaces or on a remote box, forward port **4173*
 (Codespaces does it automatically and gives you a `*.app.github.dev` URL — the
 neuro-san server on 8080 stays internal, so 4173 is the only port to open).
 
-This is the comparison, not a demo. Every measured topology is rendered as its
-own servable agent and listed by the fitness it earned, so the same question can
-be put to the shape neuro-san's designer produces, to the hand-written
-alternatives, and to the network that beat them — and the answers, the routing
-and the agent count differ in front of you. Reading that off a table is not the
-same as watching two topologies answer.
+This is the comparison, not a demo. The held-out head-to-head comes first:
+`h1_heldout_2cc4`, the network in the README's headline, and `h2_heldout_designer`, the
+designer's shape exactly as it was judged against it. Both search 10 documents at a time, as
+when they were judged, while every other network keeps the 3 it was measured at; the width is
+fixed in the search class (`JudgedWidthSearch`), so a model cannot change it. Below them, every
+topology the Gemini search measured is listed by the fitness it earned on the 17 built-in
+questions, so the same question can be put to the designer's shape, to the hand-written
+alternatives, and to the networks the search bred, and the answers, the routing and the agent
+count differ in front of you. Reading that off a table is not the same as watching two
+topologies answer.
 
 ```text
+h1_heldout_2cc4
+  "The network that won on questions it was never chosen on: 94.5% correct
+   against 84.0% for the designer's shape, over 200 question-runs each (sign
+   test p = 0.0007), with 37% fewer tokens and 94% more dollars a question. ..."
 r01_evolved_reassign_model_3bf9c008
   "Rank 1 of 12 by measured fitness (+0.8941): evolved by the reassign_model
    operator. Scored 94.12% on 17 multi-hop questions using 179,800 tokens

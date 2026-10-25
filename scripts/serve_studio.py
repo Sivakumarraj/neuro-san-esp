@@ -39,6 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from esp.config import bootstrap
 from esp.eval import measurements
 from esp.eval.tasks import TASKS
+from esp.evolve import paid
 from esp.serving import SHOWCASE, display_question, presentable
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -52,6 +53,8 @@ REGISTRY = ROOT / "registries"
 # prefix all twelve networks read "studio..." and none could be told apart.
 PREFIX = "studio_"
 RANKED = re.compile(r"^r\d\d_")
+SEARCH_CLASS = '"class": "esp.eval.corpus_tool.CorpusSearch",'
+JUDGED_SEARCH_CLASS = '"class": "esp.eval.corpus_tool.JudgedWidthSearch",'
 
 
 def file_stem(name: str, rank: int) -> str:
@@ -107,34 +110,92 @@ def describe(record, rank: int, total: int) -> str:
             f"Genome {record.genome_hash}. Chosen by measurement, not guessing.")
 
 
-def write(records, include_optimizer: bool = True) -> tuple[list[Path], Path]:
+def render(genome, description: str) -> str:
+    """A measured genome as the HOCON the UI serves, its description beside it."""
+    served = presentable(genome)
+    metadata = {
+        "description": description + " " + served.note(genome.default_model),
+        # What nsflow offers as one-click prompts. Without it the UI shows
+        # only its own generic "What all can you help us with?", which this
+        # network -- built to answer questions about one invented company
+        # -- cannot usefully answer.
+        "sample_queries": [display_question(task) for task in SHOWCASE],
+    }
+    return served.genome.to_hocon().replace(
+        '"metadata": {"description": "ESP candidate network."},',
+        '"metadata": ' + json.dumps(metadata) + ",")
+
+
+def heldout_pair() -> list[tuple[str, str]]:
+    """The held-out head-to-head as it was judged: (file stem, HOCON).
+
+    The studio listed only the twelve networks ranked on the seventeen built-in
+    questions, so the network the README leads with, and the designer's shape
+    it beat, could not be opened in neuro-san's own UI at all. Both were judged
+    at 10 documents a search, which the search class carries (JudgedWidthSearch).
+    Empty when this checkout has no results/headtohead/: the descriptions quote
+    figures read from there.
+    """
+    try:
+        judged = paid.judged()
+    except FileNotFoundError:
+        return []
+    cheap, strong = paid.MEASURED_LADDER
+    width = (f" Every search returns {paid.WINNER_SEARCH_RESULTS} documents, as when "
+             "both were judged.")
+    winner = (f"The network that won on questions it was never chosen on: "
+              f"{judged.accuracy:.1%} correct against {judged.designer_accuracy:.1%} for "
+              f"the designer's shape, over {judged.question_runs} question-runs each (sign "
+              f"test p = {judged.sign_test_p}), with {-judged.token_change:.0%} fewer tokens "
+              f"and {judged.cost_change:.0%} more dollars a question. Its Researcher runs "
+              f"{strong}, its Coordinator {cheap}. Genome {paid.WINNER_HASH}." + width)
+    designer = (f"The shape neuro-san's agent_network_designer produces, every agent on "
+                f"{cheap}, as it was judged against {paid.WINNER_NAME}: "
+                f"{judged.designer_accuracy:.1%} over {judged.question_runs} question-runs. "
+                f"Genome {paid.DESIGNER_HASH}." + width)
+    # The stems lead with an h, so the pair sorts above the ranked twelve: it is
+    # the README's headline, and the ranks are fitness on the seventeen built-in
+    # questions, where the winner was never measured.
+    pair = []
+    for stem, genome, description in (
+            (f"h1_heldout_{paid.WINNER_NAME}", paid.winner(), winner),
+            ("h2_heldout_designer", paid.judged_designer(), designer)):
+        body = render(genome, description)
+        if SEARCH_CLASS not in body:
+            raise SystemExit(f"{stem} has no search tool to serve at its judged width")
+        pair.append((stem, body.replace(SEARCH_CLASS, JUDGED_SEARCH_CLASS)))
+    return pair
+
+
+def write(records, include_optimizer: bool = True,
+          heldout: bool = False) -> tuple[list[Path], Path]:
+    """Write one file per measured network, and the manifest that serves them.
+
+    `heldout` also writes the held-out pair (`heldout_pair`) and lists it first.
+    Only the measured networks' files are returned, in the order of `records`.
+    """
     REGISTRY.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
     entries: list[str] = []
 
     # Last run's files first: ranks move when the population changes, and a
     # stale file under an old rank would be a network nobody measured as that.
-    for stale in [*REGISTRY.glob("r[0-9][0-9]_*.hocon"), *REGISTRY.glob(f"{PREFIX}*.hocon")]:
+    for stale in [*REGISTRY.glob("r[0-9][0-9]_*.hocon"), *REGISTRY.glob("h[0-9]_*.hocon"),
+                  *REGISTRY.glob(f"{PREFIX}*.hocon")]:
         stale.unlink()
+
+    if heldout:
+        for stem, body in heldout_pair():
+            path = REGISTRY / f"{stem}.hocon"
+            path.write_text(body, encoding="utf-8")
+            entries.append(f'    "{path.name}": {{"serve": true, "public": true}},')
 
     names = agent_names(records)
     for rank, (record, name) in enumerate(zip(records, names, strict=True),
                                          start=1):
         path = REGISTRY / f"{file_stem(name, rank)}.hocon"
-        served = presentable(record.genome)
-        metadata = {
-            "description": (describe(record, rank, len(records)) + " "
-                            + served.note(record.genome.default_model)),
-            # What nsflow offers as one-click prompts. Without it the UI shows
-            # only its own generic "What all can you help us with?", which this
-            # network -- built to answer questions about one invented company
-            # -- cannot usefully answer.
-            "sample_queries": [display_question(task) for task in SHOWCASE],
-        }
-        body = served.genome.to_hocon().replace(
-            '"metadata": {"description": "ESP candidate network."},',
-            '"metadata": ' + json.dumps(metadata) + ",")
-        path.write_text(body, encoding="utf-8")
+        path.write_text(render(record.genome, describe(record, rank, len(records))),
+                        encoding="utf-8")
         written.append(path)
         entries.append(f'    "{path.name}": {{"serve": true, "public": true}},')
 
@@ -195,8 +256,16 @@ def main() -> int:
     if args.top:
         records = records[:args.top]
 
-    written, manifest = write(records, include_optimizer=not args.no_optimizer)
+    written, manifest = write(records, include_optimizer=not args.no_optimizer,
+                              heldout=True)
 
+    pair = sorted(REGISTRY.glob("h[0-9]_*.hocon"))
+    if pair:
+        print(f"The held-out head-to-head, at {paid.WINNER_SEARCH_RESULTS} documents a "
+              "search as judged:\n")
+        for path in pair:
+            print(f"      {path.stem}")
+        print()
     print(f"{len(written)} measured network(s) rendered into "
           f"{REGISTRY.relative_to(ROOT)}/:\n")
     for rank, (record, path) in enumerate(zip(records, written, strict=True),

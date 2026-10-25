@@ -63,6 +63,8 @@ WINNER_CHILD = "2cc4231b7d3fb81d"          # flat with Arithmetic removed, all o
 WINNER_PROMOTED = ("Researcher",)          # moved to the strong rung for stages 7 and 8
 WINNER_HASH = "47322479eb9cba1e"           # the genome hash in 8-judge-search10/evolved.jsonl
 WINNER_STAGE = "8-judge-search10"
+# The designer's shape it was judged against, every agent on the cheap rung.
+DESIGNER_HASH = "0378ca26cd9fe977"         # the genome hash in 8-judge-search10/designer.jsonl
 # Stage 8 ran with ESP_SEARCH_RESULTS=10. Served at 3 it is a different system.
 WINNER_SEARCH_RESULTS = 10
 
@@ -152,6 +154,20 @@ def winner() -> Genome:
         genome.agents[agent].model = MEASURED_LADDER[-1]
     if genome.genome_hash() != WINNER_HASH:
         raise RuntimeError(f"rebuilt {genome.genome_hash()}, measured {WINNER_HASH}")
+    return genome
+
+
+def judged_designer() -> Genome:
+    """The designer's shape exactly as stage 8 judged it against the winner.
+
+    Raises when the rebuilt hash is not the measured one, as `winner()` does.
+    """
+    from esp.genome.seeds import designer_shaped
+    from esp.serving import retarget
+
+    genome = retarget(designer_shaped(), *MEASURED_LADDER)
+    if genome.genome_hash() != DESIGNER_HASH:
+        raise RuntimeError(f"rebuilt {genome.genome_hash()}, measured {DESIGNER_HASH}")
     return genome
 
 

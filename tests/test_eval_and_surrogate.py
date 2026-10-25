@@ -502,6 +502,26 @@ def test_the_cache_never_answers_one_search_setting_with_another(monkeypatch, tm
     assert len({default, wider, shorter}) == 3
 
 
+def test_the_judged_width_search_returns_what_the_pair_was_judged_with(monkeypatch):
+    """The studio serves the held-out pair through JudgedWidthSearch beside
+    networks on the process-wide width. Its width is the judged one, and no
+    argument a model sends can change either class's width."""
+    from esp.eval import corpus_tool
+    from esp.evolve import paid
+
+    monkeypatch.setattr(corpus_tool, "MAX_RESULTS", 3)
+    wide, plain = corpus_tool.JudgedWidthSearch(), corpus_tool.CorpusSearch()
+    assert corpus_tool.JudgedWidthSearch.width == paid.WINNER_SEARCH_RESULTS
+
+    def documents(tool, **extra):
+        return tool.invoke({"query": "incident", **extra}, {}).count("\n--- ") + 1
+
+    assert documents(wide) == paid.WINNER_SEARCH_RESULTS
+    assert documents(plain) == 3
+    assert documents(wide, max_results=50) == paid.WINNER_SEARCH_RESULTS
+    assert documents(plain, max_results=50) == 3
+
+
 def test_a_cached_measurement_records_its_settings_and_reads_back(monkeypatch, tmp_path):
     from esp.genome.seeds import SEEDS
 

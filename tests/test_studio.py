@@ -125,6 +125,52 @@ def test_every_served_network_renders_as_a_real_neuro_san_network(
         assert f"{record.fitness:+.4f}" in description
 
 
+def test_the_held_out_pair_is_served_as_it_was_judged(tmp_path, monkeypatch, records):
+    """The studio listed only the twelve ranked on the built-in seventeen, so the
+    network the README leads with could not be opened in neuro-san's UI. The
+    pair is served first, at the width it was judged at, with the figures read
+    from the logs; the twelve keep the width they were measured at."""
+    pytest.importorskip("pyhocon")
+    from pyhocon import ConfigFactory
+
+    from esp.evolve import paid
+
+    monkeypatch.setattr(serve_studio, "REGISTRY", tmp_path)
+    written, manifest = serve_studio.write(records, heldout=True)
+    assert len(written) == len(records)
+
+    pair = sorted(tmp_path.glob("h[0-9]_*.hocon"))
+    assert [path.stem for path in pair] == [f"h1_heldout_{paid.WINNER_NAME}",
+                                            "h2_heldout_designer"]
+    entries = [line for line in manifest.read_text(encoding="utf-8").splitlines()
+               if '.hocon"' in line]
+    assert [path.name for path in pair] == [line.split('"')[1] for line in entries[:2]]
+
+    judged = paid.judged()
+    for path, genome_hash in zip(pair, (paid.WINNER_HASH, paid.DESIGNER_HASH), strict=True):
+        config = ConfigFactory.parse_file(str(path))
+        search = [tool for tool in config["tools"] if tool["name"] == "CorpusSearch"]
+        assert [tool["class"] for tool in search] == ["esp.eval.corpus_tool.JudgedWidthSearch"]
+        description = config["metadata"]["description"]
+        assert genome_hash in description
+        assert f"{judged.designer_accuracy:.1%}" in description
+    for path in written:
+        assert "JudgedWidthSearch" not in path.read_text(encoding="utf-8")
+
+
+def test_without_the_paid_runs_the_studio_serves_the_twelve(tmp_path, monkeypatch, records):
+    from esp.evolve import paid
+
+    def missing():
+        raise FileNotFoundError("no results/headtohead/ in this checkout")
+
+    monkeypatch.setattr(serve_studio, "REGISTRY", tmp_path)
+    monkeypatch.setattr(paid, "judged", missing)
+    written, _manifest = serve_studio.write(records, heldout=True)
+    assert len(written) == len(records)
+    assert not list(tmp_path.glob("h[0-9]_*.hocon"))
+
+
 def test_the_write_refuses_a_manifest_that_lost_a_network(
         tmp_path, monkeypatch, records):
     """The guard itself. If naming ever collapses again it must fail loudly
