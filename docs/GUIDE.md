@@ -165,8 +165,11 @@ progress, and marks the Pareto front. It also gives a question-by-question grid 
 download. Measuring is paid for, so a deployment caps the runs per UTC day
 (`ESP_WEB_MAX_MEASURE`) and runs one measurement at a time. Questions are capped per day
 (`ESP_WEB_MAX_QUESTIONS`) and per visitor per hour (`ESP_WEB_PER_CLIENT_HOURLY`), and the
-counts survive a restart when `ESP_WEB_SPEND_FILE` is set, as the Docker images do. A
-network is never uploaded: it names Python classes to import.
+counts survive a restart when `ESP_WEB_SPEND_FILE` is set, as the Docker images do. Set
+`ESP_WEB_TOKEN` to make a deployment private: every question and measurement then needs that
+bearer token, and the page asks for it once. Each response carries an `X-Request-ID` that
+also appears on the server's log line for it. A network is never uploaded: it names Python
+classes to import.
 
 One process, no separate backend, no second repository. The page runs questions through the
 served network on neuro-san's direct session, the same code path the evaluator measures with.

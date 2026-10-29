@@ -802,3 +802,35 @@ def test_an_agent_failure_shown_to_a_visitor_hides_server_paths(client, monkeypa
     monkeypatch.setattr(serve, "_ask", lambda *a: (reply, {}, 1.0))
     body = client.post("/ask", json={"question": "who manages D08?"}).json()
     assert "/app/.esp-networks" not in body["error"]
+
+
+def test_a_token_deployment_refuses_a_paid_request_without_it(client, monkeypatch):
+    """ESP_WEB_TOKEN makes a deployment private. A question without the token
+    must be refused before anything is spent, and the page itself stays free."""
+    monkeypatch.setattr(serve, "ACCESS_TOKEN", "s3cret-token")
+    monkeypatch.setattr(serve, "_ask", lambda *a: pytest.fail("spent without a token"))
+    assert client.post("/ask", json={"question": "who manages D08?"}).status_code == 401
+    wrong = {"Authorization": "Bearer guess"}
+    assert client.post("/ask", json={"question": "x"}, headers=wrong).status_code == 401
+    assert client.get("/").status_code == 200
+    assert serve._asked["count"] == 0
+
+
+def test_the_right_token_is_let_through(client, monkeypatch):
+    monkeypatch.setattr(serve, "ACCESS_TOKEN", "s3cret-token")
+    monkeypatch.setattr(serve, "_ask", lambda *a: ("J. Vasquez", {}, 1.0))
+    response = client.post("/ask", json={"question": "who manages D08?"},
+                           headers={"Authorization": "Bearer s3cret-token"})
+    assert response.status_code == 200, response.text
+
+
+def test_every_response_carries_a_request_id_that_is_logged(client, caplog):
+    """A visitor reporting a failure can quote the id, and the operator can find
+    the line. A caller's id is kept only when it is plain."""
+    with caplog.at_level("INFO", logger="esp.web"):
+        response = client.get("/health", headers={"X-Request-ID": "visitor-42"})
+        odd = client.get("/health", headers={"X-Request-ID": "bad id\nforged line"})
+    assert response.headers["X-Request-ID"] == "visitor-42"
+    assert odd.headers["X-Request-ID"] != "bad id\nforged line"
+    assert any("id=visitor-42" in r.getMessage() and "/health 200" in r.getMessage()
+               for r in caplog.records)

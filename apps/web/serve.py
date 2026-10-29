@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
 import json  # noqa: E402
+import logging  # noqa: E402
 
 from pydantic import BaseModel, Field  # noqa: E402
 
@@ -42,6 +43,7 @@ from esp.config import bootstrap  # noqa: E402
 # of rotating.
 bootstrap()
 
+import hmac  # noqa: E402
 import html  # noqa: E402
 import ipaddress  # noqa: E402
 import re  # noqa: E402
@@ -139,6 +141,25 @@ MAX_BODY_BYTES = 2 * MAX_SUITE_BYTES
 # must not frame it and click them through. Hugging Face Spaces shows an app in
 # an iframe on huggingface.co, which is why that origin is allowed by default.
 FRAME_ANCESTORS = os.environ.get("ESP_WEB_FRAME_ANCESTORS", "'self' https://huggingface.co")
+
+# When set, every paid request needs "Authorization: Bearer <token>". Unset, the
+# page stays open to anyone with the link and the daily caps are the only guard.
+ACCESS_TOKEN = os.environ.get("ESP_WEB_TOKEN", "")
+
+logger = logging.getLogger("esp.web")
+
+# A caller's own request id is kept only if it is short and plain, so it cannot
+# put anything odd in the log line it ends up on.
+_REQUEST_ID = re.compile(r"[A-Za-z0-9-]{1,64}")
+
+
+def authorized(header: str) -> bool:
+    """Whether a request carries the deployment's token. Constant time, so the
+    reply's timing says nothing about how much of a guess was right."""
+    if not ACCESS_TOKEN:
+        return True
+    scheme, _, token = header.partition(" ")
+    return scheme.lower() == "bearer" and hmac.compare_digest(token.encode(), ACCESS_TOKEN.encode())
 # Networks an operator adds by placing HOCON files here. Never uploaded: a
 # network names Python classes to import, so taking one from a visitor would be
 # taking code.
@@ -604,7 +625,22 @@ def build_app():
     @app.middleware("http")
     async def guard(request, call_next):
         """Refuse an unbounded or oversized body before it is read, and keep the
-        page out of other sites' frames."""
+        page out of other sites' frames. Each request gets an id, returned in
+        X-Request-ID and on its log line, so a visitor's report can be found."""
+        supplied = request.headers.get("x-request-id", "")
+        request_id = supplied if _REQUEST_ID.fullmatch(supplied) else uuid.uuid4().hex[:12]
+        started = time.monotonic()
+        response = await _guarded(request, call_next)
+        response.headers["X-Request-ID"] = request_id
+        logger.info("%s %s %s %.0fms id=%s", request.method, request.url.path,
+                    response.status_code, (time.monotonic() - started) * 1000, request_id)
+        return response
+
+    async def _guarded(request, call_next):
+        """The checks themselves, apart from the logging around them."""
+        if request.method == "POST" and not authorized(request.headers.get("authorization", "")):
+            return JSONResponse({"error": "this deployment needs an access token"},
+                                status_code=401)
         if request.method == "POST":
             length = request.headers.get("content-length", "")
             if not length.isdigit():
@@ -828,6 +864,7 @@ def main() -> int:
               ".env; see .env.example.", file=sys.stderr)
         return 1
     import uvicorn
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     serve_at_judged_width()
     port = int(os.environ.get("PORT", "7860"))
     print(f"champion={NAME} measured={RECORD is not None or JUDGED is not None} "
