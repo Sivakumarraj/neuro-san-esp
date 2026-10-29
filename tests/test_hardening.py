@@ -186,3 +186,30 @@ def test_an_agent_name_cannot_write_its_own_hocon_keys():
     assert [tool["name"] for tool in tools] == ["Boss", name]
     assert all("class" not in tool for tool in tools)
     assert tools[0]["tools"] == [name]
+
+
+def test_a_damaged_state_file_is_moved_aside_not_fatal(tmp_path):
+    """A truncated state.json raised on every later wake, so one bad write
+    ended the service. It is moved aside for recovery and the wake starts."""
+    from esp.service.state import ServiceState
+
+    (tmp_path / "state.json").write_text('{"generation": 3, "evaluated": [', encoding="utf-8")
+    state = ServiceState.load(tmp_path)
+    assert state.generation == 0
+    assert not (tmp_path / "state.json").exists()
+    assert len(list(tmp_path.glob("state.damaged-*.json"))) == 1
+
+
+def test_a_different_timeout_is_cached_apart(monkeypatch):
+    """A network measured with a short timeout gives up on questions it would
+    answer with a long one, so the two must not share a cache entry."""
+    from esp.eval import runner
+    from esp.genome import definition
+    from esp.genome.seeds import SEEDS
+
+    genome = SEEDS["designer_shaped"]()
+    default = runner.cache_path_for(genome)
+    monkeypatch.setattr(definition, "MAX_EXECUTION_SECONDS", 120)
+    short = runner.cache_path_for(genome)
+    assert short != default
+    assert "time120" in str(short.parent)

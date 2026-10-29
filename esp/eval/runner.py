@@ -516,15 +516,21 @@ def run_settings() -> dict[str, int]:
 
 # What every committed measurement ran with. These keep the flat layout; a run
 # under any other value gets a directory of its own.
-_KEYED_DEFAULTS = {"search_results": 3, "max_steps": 40}
+_KEYED_DEFAULTS = {"search_results": 3, "max_steps": 40, "max_execution_seconds": 600}
 
 
 def cache_path_for(genome: Genome, tasks: list[Task] | None = None) -> Path:
     key = suite_key(tasks)
     base = CACHE_DIR if key is None else CACHE_DIR / "suites" / key
     settings = run_settings()
-    if any(settings[name] != value for name, value in _KEYED_DEFAULTS.items()):
-        base = base / f"search{settings['search_results']}-steps{settings['max_steps']}"
+    if any(settings.get(name) != value for name, value in _KEYED_DEFAULTS.items()):
+        # The timeout joined the key after directories named only for search
+        # and steps existed, so it is added to the name only when it differs:
+        # those directories keep meaning what they did.
+        name = f"search{settings['search_results']}-steps{settings['max_steps']}"
+        if settings.get("max_execution_seconds") != _KEYED_DEFAULTS["max_execution_seconds"]:
+            name += f"-time{settings['max_execution_seconds']}"
+        base = base / name
     return base / f"{genome.genome_hash()}.json"
 
 

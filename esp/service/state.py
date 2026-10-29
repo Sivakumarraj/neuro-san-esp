@@ -15,6 +15,7 @@ is expected to be cut short by an exhausted quota rather than to finish.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 import uuid
@@ -32,6 +33,8 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 STATE_DIR = Path(os.environ.get("ESP_STATE", "state"))
 LEASE_SECONDS = float(os.environ.get("ESP_LEASE_SECONDS", "3600"))
@@ -196,11 +199,25 @@ class ServiceState:
     # ------------------------------------------------------------------- I/O
 
     @classmethod
-    def load(cls, directory: Path | None = None) -> ServiceState:
+    def load(cls, directory: Path | None = None, *, repair: bool = True) -> ServiceState:
+        """Read the saved state. With repair off an unreadable file raises, so a
+        read-only caller such as preflight can report it without moving it."""
         path = (directory or STATE_DIR) / "state.json"
         if not path.exists():
             return cls()
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            if not repair:
+                raise
+            # Moved aside, not deleted: the population may be worth recovering
+            # by hand. Raising instead stopped every later wake on the same
+            # file, so one bad write ended the service.
+            quarantine = path.with_name(f"state.damaged-{int(time.time())}.json")
+            path.replace(quarantine)
+            logger.error("state.json is unreadable (%s); moved to %s and starting empty",
+                         exc, quarantine.name)
+            return cls()
         raw["evaluated"] = [Evaluated(**e) for e in raw.get("evaluated", [])]
         # Older state recorded exhaustion as a bare list of model names, which
         # carried no time and so could only mean "not before tomorrow". Read it

@@ -177,7 +177,7 @@ def run_checks(root: Path | None = None, live: bool = False) -> list[Check]:
 
     configured = provider_for(DEFAULT_MODEL)
     try:
-        population = ServiceState.load(STATE_DIR).evaluated
+        population = ServiceState.load(STATE_DIR, repair=False).evaluated
     except (OSError, ValueError, TypeError) as exc:
         # Reported, not raised: a preflight that dies on the thing it exists to
         # check tells the reader less than the check would have.
