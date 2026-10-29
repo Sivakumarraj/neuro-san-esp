@@ -22,21 +22,27 @@ jobs:
       matrix:
         python-version: ["3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      # Pinned by commit: a tag can be moved to other code, a commit cannot.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-      - run: pip install -e ".[dev]" pyhocon
+      - run: pip install -e ".[dev]" pyhocon pip-audit==2.10.1
+      # The lock is what the images ship, so a known vulnerability in it fails
+      # the build instead of waiting for someone to run an audit by hand.
+      - run: pip-audit --requirement requirements.lock --no-deps --progress-spinner off
       # scripts/ is linted too: probe_models.py and offline_search.py are
       # entry points people actually run, not scratch files.
       - run: ruff check esp tests scripts apps
       # The docs carry every published figure, so they are linted like code,
       # with the linter and settings neuro-san-studio gates its own docs on.
       - run: pymarkdown --config .pymarkdownlint.yaml scan *.md docs/*.md
+      # neuro-san's own validator over the served registries, as make validate runs it.
+      - run: make hocon
       # No API key in CI: every test here is an offline property of the
       # genome, the scorer, the cache or the surrogate.
-      - run: python -m pytest tests -q --cov --cov-report=term
+      - run: python -m pytest tests -q --cov --cov-report=term --cov-fail-under=85
       # The offline half of ESP needs no key, no budget and no network, so CI
       # proves it still works on every push rather than taking it on trust. It
       # runs against the committed measurements in tests/fixtures/cache, so the
