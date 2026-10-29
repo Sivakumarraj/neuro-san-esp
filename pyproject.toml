@@ -41,7 +41,7 @@ dependencies = [
     "fastapi==0.141.1",
     "uvicorn==0.53.0",
     "reportlab==5.0.1",
-    "pillow==12.3.0",
+    "pillow==13.0.0",
     # ratelimit steers the Google client's API key at runtime by writing a
     # SecretStr onto its google_api_key field -- multi-key rotation depends on
     # it. langchain pulls pydantic transitively, but the ratelimit import is
