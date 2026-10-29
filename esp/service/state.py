@@ -100,6 +100,9 @@ class Evaluated:
     # source. Optional so that state written before this change still loads --
     # those records keep the old behaviour and say so.
     genome: dict | None = None
+    # Dollars the measurement cost. Optional for the same reason: state written
+    # before it was kept still loads, and selection falls back to tokens.
+    cost: float | None = None
 
 
 @dataclass

@@ -21,7 +21,7 @@ from datetime import UTC, datetime
 
 from esp.eval import failover
 from esp.eval.runner import QuotaExhausted, evaluate
-from esp.evolve.loop import fitness, non_dominated
+from esp.evolve.loop import fitness, non_dominated, spend_axis
 from esp.genome.definition import DEFAULT_MODEL, Genome
 from esp.genome.mutations import InvalidMutant, mutate
 from esp.genome.seeds import SEEDS
@@ -215,8 +215,9 @@ def _propose(state: ServiceState, population: list[Genome], rng: random.Random,
     # fitness. Same rule as the batch loop, for the same reason: a candidate
     # nothing dominates on all three objectives is a better parent than one
     # that happens to sit high under one weighting.
-    points = [(r.accuracy, float(r.tokens), float(r.agents))
-              for _, r in trainable]
+    spend = spend_axis([(r.accuracy, r.tokens, r.cost or 0.0) for _, r in trainable])
+    points = [(r.accuracy, cost, float(r.agents))
+              for (_, r), cost in zip(trainable, spend, strict=True)]
     # Best fitness first before the cut, as in the batch loop: insertion order
     # kept the oldest measurements as parents and could leave the best out.
     front = [trainable[i] for i in non_dominated(points)]
@@ -389,6 +390,7 @@ def wake(state: ServiceState | None = None, rng: random.Random | None = None,
                 generation=state.generation,
                 measured_at=datetime.now(UTC).isoformat(),
                 model=genome.default_model,
+                cost=evaluation.cost,
                 # Kept so the winner can actually be served later. Without it a
                 # candidate that beats every seed is a score with no network
                 # attached, which is the one outcome the whole search exists to

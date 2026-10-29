@@ -61,13 +61,15 @@ finished. A stricter gate changes which mutants a seed produces, so it would sto
 `scripts/select_and_judge.py` reproducing the committed stages. It is left for a versioned
 gate.
 
-**The Pareto front breeds.** Parents are chosen by non-dominated sorting on
-(accuracy up, tokens down, agents down), fittest first when the front is larger than the
+**The Pareto front breeds.** Parents are chosen by non-dominated sorting on (accuracy up,
+spend per correct answer down, agents down), fittest first when the front is larger than the
 elite, topped up with the best scalarised fitness when the front is smaller. The front used
 to be cut in the order networks were measured, so the seeds stayed parents and the best
-network could be left out. Selection used to take the top few by fitness alone while
-the front was computed, plotted in three documents and never consulted — multi-objective in
-the report and single-objective in the search.
+network could be left out. Spend is in dollars when every candidate has a price, and in
+tokens otherwise, because tokens alone counted a move onto a dearer model as a saving.
+Selection used to take the top few by fitness alone while the front was computed, plotted in
+three documents and never consulted — multi-objective in the report and single-objective in
+the search.
 
 ## Predictor, fitness, prescription — which is which
 

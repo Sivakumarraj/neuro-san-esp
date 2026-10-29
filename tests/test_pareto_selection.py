@@ -13,7 +13,7 @@ from __future__ import annotations
 import random
 
 from esp.eval import measurements
-from esp.evolve.loop import Evolution, non_dominated
+from esp.evolve.loop import Evolution, non_dominated, spend_axis
 from esp.genome.seeds import SEEDS
 from esp.service.optimizer import ELITE, _population, _propose
 from esp.surrogate.outcomes import Outcome
@@ -136,3 +136,26 @@ def test_the_service_elite_uses_the_same_rule():
     proposal = _propose(state, _population(state), random.Random(3), 3)
     assert proposal.candidates
     assert len(proposal.candidates) <= ELITE + 1
+
+
+def test_a_dearer_model_with_fewer_tokens_is_not_a_saving():
+    """The case tokens got wrong: same accuracy, a third of the tokens, four
+    times the dollars. On dollars per correct answer it is dominated."""
+    rows = [(0.8, 30_000, 0.10), (0.8, 10_000, 0.40)]
+    points = [(a, s, 3.0) for (a, _, _), s in zip(rows, spend_axis(rows), strict=True)]
+    assert non_dominated(points) == [0]
+
+
+def test_spend_is_per_correct_answer_not_per_run():
+    """Half the spend at a quarter of the accuracy costs more per answer."""
+    cheap, good = spend_axis([(0.2, 0, 0.05), (0.8, 0, 0.10)])
+    assert cheap > good
+
+
+def test_one_unpriced_row_puts_the_whole_comparison_on_tokens():
+    """Dollars and tokens are never compared with each other."""
+    assert spend_axis([(0.5, 1000, 0.2), (0.5, 3000, 0.0)]) == [2000.0, 6000.0]
+
+
+def test_a_network_that_answers_nothing_spends_without_limit():
+    assert spend_axis([(0.0, 1000, 0.1)]) == [float("inf")]

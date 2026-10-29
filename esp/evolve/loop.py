@@ -100,9 +100,26 @@ def fitness(evaluation: Evaluation) -> float:
     return scalarise(evaluation.accuracy, evaluation.tokens, evaluation.agents)
 
 
+def spend_axis(rows: list[tuple[float, int, float]]) -> list[float]:
+    """What each candidate spends per correct answer, from (accuracy, tokens,
+    dollars) rows, for the selection front's second objective.
+
+    Dollars when every row has them, tokens otherwise. Tokens alone rewarded a
+    move onto a dearer model: fewer tokens at several times the price read as
+    a saving, so the search bred networks that cost more. Per correct answer,
+    because a network that spends half as much and answers a quarter as often
+    is not cheaper. Accuracy stands in for the count right, which is fair
+    because every candidate in one comparison ran the same questions. Units are
+    never mixed: one row without a price puts the whole comparison on tokens.
+    """
+    priced = all(dollars > 0 for _, _, dollars in rows)
+    return [(dollars if priced else float(tokens)) / accuracy if accuracy > 0 else float("inf")
+            for accuracy, tokens, dollars in rows]
+
+
 def non_dominated(points: list[tuple[float, float, float]]) -> list[int]:
-    """Indices of the non-dominated points on (accuracy up, tokens down,
-    agents down).
+    """Indices of the non-dominated points on (accuracy up, spend down,
+    agents down). Spend is whatever the caller measures it in; see spend_axis.
 
     Selection used pure scalarised fitness while the Pareto front was computed,
     plotted in three documents, and never consulted. That is multi-objective in
@@ -133,6 +150,9 @@ class Record:
     depth: int
     seconds: float
     predicted: float | None = None
+    # Dollars, as the provider reported them. 0.0 in records written before
+    # it was kept, which spend_axis reads as "no price known".
+    cost: float = 0.0
 
 
 @dataclass
@@ -156,13 +176,14 @@ class History:
         return out
 
     def pareto(self) -> list[Record]:
-        """Non-dominated on (accuracy up, tokens down, agents down).
+        """Non-dominated on (accuracy up, spend per correct down, agents down).
 
         Shares `non_dominated` with the selection step, so the front the
         reports draw and the front the search breeds from cannot drift apart.
         """
-        points = [(r.accuracy, float(r.tokens), float(r.agents))
-                  for r in self.records]
+        spend = spend_axis([(r.accuracy, r.tokens, r.cost) for r in self.records])
+        points = [(r.accuracy, s, float(r.agents))
+                  for r, s in zip(self.records, spend, strict=True)]
         front = [self.records[i] for i in non_dominated(points)]
         seen: set[str] = set()
         unique = []
@@ -210,6 +231,7 @@ class Evolution:
         # so it is not stored as a target -- storing it as one is the mistake
         # this replaced.
         self.outcomes: dict[str, Outcome] = {}  # hash -> measured outcomes
+        self.dollars: dict[str, float] = {}  # hash -> what its measurement cost
 
     # ------------------------------------------------------------------ phases
 
@@ -226,6 +248,7 @@ class Evolution:
         self.scored[digest] = value
         self.outcomes[digest] = Outcome(accuracy=evaluation.accuracy,
                                         tokens=evaluation.tokens)
+        self.dollars[digest] = evaluation.cost
         if not evaluation.from_cache:
             self.history.real_evaluations += 1
 
@@ -235,6 +258,7 @@ class Evolution:
             tokens=evaluation.tokens, agents=evaluation.agents,
             depth=evaluation.depth, seconds=round(time.monotonic() - started, 1),
             predicted=None if predicted is None else round(predicted, 4),
+            cost=evaluation.cost,
         )
         self.history.records.append(record)
         cached = " (cached)" if evaluation.from_cache else ""
@@ -255,8 +279,10 @@ class Evolution:
         digests = list(self.scored)
         if not digests:
             return []
-        points = [(self.outcomes[h].accuracy, float(self.outcomes[h].tokens),
-                   float(len(self.pool[h].reachable()))) for h in digests]
+        spend = spend_axis([(self.outcomes[h].accuracy, self.outcomes[h].tokens,
+                             self.dollars.get(h, 0.0)) for h in digests])
+        points = [(self.outcomes[h].accuracy, cost, float(len(self.pool[h].reachable())))
+                  for h, cost in zip(digests, spend, strict=True)]
         # Best fitness first before the cut. Taken in insertion order, a front
         # larger than the elite kept the seeds, measured first, as parents
         # forever and could leave the best network out.

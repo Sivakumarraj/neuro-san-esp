@@ -111,8 +111,8 @@ flowchart LR
   thirteen structural features of a network (`esp/surrogate/outcomes.py`). An outcome whose
   Predictor does not beat its own permutation null is left out of the ranking; token cost
   currently does not.
-- **Parents are the Pareto front** on accuracy, tokens and agent count, not the top few by one
-  number.
+- **Parents are the Pareto front** on accuracy, spend per correct answer (dollars when known)
+  and agent count, not the top few by one number.
 
 There is no learned Prescriptor, which ESP proper has: prescription here is the mutation
 operators plus Pareto selection. In shape the search is nearer to LEAF, which evolves network
