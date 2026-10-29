@@ -225,7 +225,9 @@ class QuotaExhausted(OSError):
 # error path. Like a daily cap, it says nothing about the network.
 _ACCOUNT_MARKERS = ("environment variable must be correctly set", "credit balance is too low",
                     "Insufficient credits", "Incorrect API key provided")
-_QUOTA_MARKERS = ("RESOURCE_EXHAUSTED", "429", "quota", "exceeded your current quota",
+# A 429 is read as a stated status (`ratelimit.status_in`), not as the digits
+# anywhere: "429" inside a request id or a token count is not a quota.
+_QUOTA_MARKERS = ("RESOURCE_EXHAUSTED", "quota", "exceeded your current quota",
                   *_ACCOUNT_MARKERS)
 # Markers no answer about the Meridian corpus can contain by accident.
 _UNAMBIGUOUS_QUOTA_MARKERS = ("RESOURCE_EXHAUSTED", "exceeded your current quota",
@@ -244,10 +246,18 @@ def _is_quota_failure(result: TaskResult) -> bool:
     failure, which a resume then paid for again, every time."""
     if result.correct:
         return False
-    if any(marker in result.error for marker in _QUOTA_MARKERS):
+    if any(marker in result.error for marker in _QUOTA_MARKERS) or _states_429(result.error):
         return True
-    markers = _QUOTA_MARKERS if never_answered(result.answer) else _UNAMBIGUOUS_QUOTA_MARKERS
-    return any(marker in result.answer for marker in markers)
+    if never_answered(result.answer):
+        return (any(marker in result.answer for marker in _QUOTA_MARKERS)
+                or _states_429(result.answer))
+    return any(marker in result.answer for marker in _UNAMBIGUOUS_QUOTA_MARKERS)
+
+
+def _states_429(text: str) -> bool:
+    """Whether an error message states HTTP 429 as its status."""
+    from esp.eval.ratelimit import QUOTA_STATUS, status_in
+    return bool(text) and status_in(text) == QUOTA_STATUS
 
 
 # Failures that are the harness giving up, not the network answering wrongly.

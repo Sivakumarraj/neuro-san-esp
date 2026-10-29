@@ -134,3 +134,40 @@ def test_the_wrapper_asks_a_busy_model_again_and_keeps_the_answer(monkeypatch):
 
     monkeypatch.setattr(ChatGoogleGenerativeAI, "_esp_rate_limited", False,
                         raising=False)
+
+
+def test_digits_inside_a_message_are_not_a_status():
+    """Matched anywhere, "500" was found inside "65000", and a request that
+    can never succeed was asked five more times with backoff. A stated status
+    decides; a 400 is never transient whatever words follow it."""
+    from esp.eval.ratelimit import _is_quota_error, _is_transient_server_error
+
+    bad_request = Exception("400 INVALID_ARGUMENT: max_output_tokens must be <= 65000")
+    assert not _is_transient_server_error(bad_request)
+    assert not _is_quota_error(Exception("400 bad request, request id req_4290017"))
+
+
+def test_a_status_on_the_exception_wins_over_its_text():
+    """The SDKs carry the status as a field; the message is only a fallback."""
+    from esp.eval.ratelimit import _is_quota_error, _is_transient_server_error, status_of
+
+    class ProviderError(Exception):
+        def __init__(self, message: str, status_code: int):
+            super().__init__(message)
+            self.status_code = status_code
+
+    busy = ProviderError("Service Unavailable", 503)
+    assert status_of(busy) == 503 and _is_transient_server_error(busy)
+    limited = ProviderError("Too many requests", 429)
+    assert _is_quota_error(limited) and not _is_transient_server_error(limited)
+
+
+def test_a_status_after_an_exception_name_is_read():
+    """The runner stores errors as "ClientError: 429 ...", so the status sits
+    after the exception's name, not at the start of the text."""
+    from esp.eval.ratelimit import status_in
+
+    assert status_in("ClientError: 429 RESOURCE_EXHAUSTED") == 429
+    assert status_in("Error code: 529 - {'type': 'error'}") == 529
+    assert status_in("{'error': {'code': 503, 'status': 'UNAVAILABLE'}}") == 503
+    assert status_in("the network used 4290 tokens") is None

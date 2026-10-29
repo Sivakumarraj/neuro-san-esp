@@ -18,10 +18,12 @@ import contextlib
 import importlib
 import os
 import random
+import re
 import threading
 import time
 import warnings
 from collections import deque
+from dataclasses import dataclass
 
 from esp.eval import failover
 
@@ -175,8 +177,8 @@ class Bucket:
             sleep_for = self._try_take()
             if sleep_for == 0.0:
                 return
-            _stats["waits"] += 1
-            _stats["wait_seconds"] += sleep_for
+            _count("waits")
+            _count("wait_seconds", sleep_for)
             time.sleep(sleep_for)
 
     async def acquire_async(self) -> None:
@@ -194,8 +196,8 @@ class Bucket:
             sleep_for = self._try_take()
             if sleep_for == 0.0:
                 return
-            _stats["waits"] += 1
-            _stats["wait_seconds"] += sleep_for
+            _count("waits")
+            _count("wait_seconds", sleep_for)
             await asyncio.sleep(sleep_for)
 
 
@@ -243,48 +245,87 @@ def stats() -> dict:
     return dict(_stats)
 
 
+_stats_lock = threading.Lock()
+
+
+def _count(name: str, by: float = 1) -> None:
+    """Add to one of the run's counters.
+
+    Under a lock because the wrappers run on every worker thread at once, and
+    `+=` on a shared dict entry is a read and a write that two threads can
+    interleave, losing a count.
+    """
+    with _stats_lock:
+        _stats[name] = _stats.get(name, 0) + by
+
+# An HTTP status where a provider puts one in its message: at the start
+# ("429 RESOURCE_EXHAUSTED", "ClientError: 503 UNAVAILABLE"), after "Error
+# code:" (Anthropic and OpenAI), or as a JSON "code" field (Google). Anchored
+# on purpose. Matched anywhere, "500" was found inside "65000" and a request
+# that could never succeed was asked five more times.
+_STATUS_IN_TEXT = re.compile(
+    r"(?:^\s*(?:[\w.]+:\s*)?|error code:?\s*|status(?: code)?[:=]?\s*|['\"]code['\"]:\s*)"
+    r"(\d{3})\b", re.IGNORECASE)
+
+QUOTA_STATUS = 429
+# Busy or broken on the provider's side; 529 is Anthropic's way of saying 503.
+TRANSIENT_STATUSES = frozenset({500, 502, 503, 504, 529})
+
+# Words that mean the same as a status when no status is given.
+_QUOTA_WORDS = ("RESOURCE_EXHAUSTED", "ResourceExhausted", "Too Many Requests",
+                "exceeded your current quota")
+_TRANSIENT_WORDS = ("UNAVAILABLE", "INTERNAL", "DEADLINE_EXCEEDED", "overloaded")
+
+
+def status_in(text: str) -> int | None:
+    """The HTTP status a provider error message states, or None."""
+    match = _STATUS_IN_TEXT.search(text)
+    return int(match.group(1)) if match else None
+
+
+def status_of(exc: BaseException) -> int | None:
+    """The HTTP status a provider error carries, or None when it carries none.
+
+    The SDKs put it on the exception -- `status_code` on OpenAI and Anthropic
+    errors, `code` on google-genai's -- so that is read first, and the message
+    only when the exception has no such field.
+    """
+    for attribute in ("status_code", "code", "http_status"):
+        value = getattr(exc, attribute, None)
+        if isinstance(value, int) and 100 <= value <= 599:
+            return value
+    response = getattr(exc, "response", None)
+    value = getattr(response, "status_code", None)
+    if isinstance(value, int):
+        return value
+    return status_in(str(exc))
+
+
 def _is_quota_error(exc: BaseException) -> bool:
+    if status_of(exc) == QUOTA_STATUS:
+        return True
     text = str(exc)
-    return "RESOURCE_EXHAUSTED" in text or "429" in text
-
-
-# Transient faults on the provider's side: the model is busy or something broke
-# in their stack, and the response says so. Distinct from a quota error in
-# cause and identical in the only respect that matters here -- waiting fixes
-# it.
-_TRANSIENT_MARKERS = (
-    "503", "UNAVAILABLE",          # "currently experiencing high demand"
-    "500", "INTERNAL",             # their side fell over
-    "504", "DEADLINE_EXCEEDED",    # their gateway gave up, not our timeout
-    # Anthropic's way of saying 503. It was missing, so a busy Claude API was
-    # scored as a wrong answer on a paid key -- while the comment on
-    # `install_others` below claimed exactly this case was handled.
-    "529", "overloaded",
-)
+    return any(word in text for word in _QUOTA_WORDS)
 
 
 def _is_transient_server_error(exc: BaseException) -> bool:
     """Whether waiting and asking again is the right response.
 
     These were raised on the first attempt with no retry, because the retry
-    condition below asked only whether the error was a quota error. The
-    backoff loop was already sitting there; the one error class whose own
-    message says "please try again later" was the class excluded from it.
+    condition asked only whether the error was a quota error. In the committed
+    run the best network lost task T03 to a 500 INTERNAL and was recorded at
+    0.8824 when it had answered correctly everything it actually finished.
 
-    It costs measured accuracy, not just time. In the committed run the best
-    network lost task T03 to a 500 INTERNAL and was recorded at 0.8824 when it
-    had answered correctly everything it actually finished -- a whole task of
-    seventeen, five accuracy points, thrown away on provider weather that a
-    ten-second wait would have cleared.
-
-    Matched on the message because that is all the provider hands back through
-    langchain. Broad on purpose: a 503 misread as transient costs one retry,
-    and a transient fault misread as an answer costs a task.
+    A stated status decides: a 400 is never transient, whatever words follow
+    it. The words are read only when no status is given.
     """
-    text = str(exc)
     if _is_quota_error(exc):
-        return False        # quota is handled above this, and differently
-    return any(marker in text for marker in _TRANSIENT_MARKERS)
+        return False        # quota is handled separately, and differently
+    status = status_of(exc)
+    if status is not None:
+        return status in TRANSIENT_STATUSES
+    text = str(exc)
+    return any(word in text for word in _TRANSIENT_WORDS)
 
 
 def _out_of_attempts(last: Exception | None) -> Exception:
@@ -301,9 +342,116 @@ def _out_of_attempts(last: Exception | None) -> Exception:
     return last if last is not None else RuntimeError("no attempt was made")
 
 
+@dataclass(frozen=True)
+class Next:
+    """What a paced call does after one failed attempt."""
+
+    action: str                 # "raise", "again" (after a swap) or "wait"
+    seconds: float = 0.0
+
+
+def _backoff(exc: BaseException, attempt: int) -> Next:
+    """Wait and ask again, or give up: the policy every provider shares."""
+    transient = _is_transient_server_error(exc)
+    if (not _is_quota_error(exc) and not transient) or attempt == MAX_RETRIES - 1:
+        return Next("raise")
+    _count("retries")
+    if transient:
+        _count("transient_retries")
+    # Jittered: synchronised retries from parallel workers would re-collide on
+    # the same second.
+    return Next("wait", min(60.0, 2 ** attempt) + random.random())
+
+
+def _secret(client) -> str:
+    """The key a Google client is using, as a plain string."""
+    current = getattr(client, "google_api_key", None)
+    if current is None:
+        return ""
+    with contextlib.suppress(AttributeError, TypeError):
+        return current.get_secret_value()
+    return ""
+
+
+def _google_next(client, exc: BaseException, attempt: int, model: str) -> Next:
+    """The Google policy: a per-day cap swaps the key, then the model.
+
+    A per-day cap never clears within a run. Sleeping on it burns the clock and
+    every candidate afterwards scores zero, so the call moves to the next key
+    in GOOGLE_API_KEYS, then down the model ladder, instead of waiting.
+    Everything else is the shared backoff.
+    """
+    if not failover.is_daily_quota_error(exc):
+        return _backoff(exc, attempt)
+    key = _secret(client)
+    mark_key_exhausted(key, model)
+    nxt_key = next_key_for(model, key)
+    if nxt_key is not None and nxt_key != key:
+        _apply_key(client, nxt_key)
+        _count("key_swaps")
+        return Next("again")
+    nxt = failover.retire(model)
+    _count("model_swaps")
+    if nxt is None:
+        return Next("raise")
+    _apply_model(client, nxt)
+    return Next("again")
+
+
+def paced(original, bucket_name, decide, is_async: bool, rpm: int, before=None):
+    """Wrap one client method in pacing and the retry policy.
+
+    One body for the sync and the async path, so a fix lands once. The four
+    hand-written copies this replaced are how a missing `raise` survived in one
+    of them. `bucket_name(client)` picks the rate bucket, paced at `rpm` when
+    the model has no measured limit; `decide` is the retry policy; and
+    `before(client)` runs at the start of every attempt (Google uses it to apply
+    the current model from the failover ladder).
+    """
+    if is_async:
+        async def limited(self, *args, **kwargs):
+            last: Exception | None = None
+            for attempt in range(MAX_RETRIES):
+                if before is not None:
+                    before(self)
+                # Async all the way down: neither the pacing wait nor the
+                # backoff may block the event loop the agents run on.
+                await bucket_for(bucket_name(self), rpm).acquire_async()
+                try:
+                    _count("calls")
+                    return await original(self, *args, **kwargs)
+                except Exception as exc:
+                    last = exc
+                    step = decide(self, exc, attempt)
+                    if step.action == "raise":
+                        raise
+                    if step.action == "wait":
+                        await asyncio.sleep(step.seconds)
+            raise _out_of_attempts(last)
+    else:
+        def limited(self, *args, **kwargs):
+            last: Exception | None = None
+            for attempt in range(MAX_RETRIES):
+                if before is not None:
+                    before(self)
+                bucket_for(bucket_name(self), rpm).acquire()
+                try:
+                    _count("calls")
+                    return original(self, *args, **kwargs)
+                except Exception as exc:
+                    last = exc
+                    step = decide(self, exc, attempt)
+                    if step.action == "raise":
+                        raise
+                    if step.action == "wait":
+                        time.sleep(step.seconds)
+            raise _out_of_attempts(last)
+    return limited
+
+
 def install(rpm: int = DEFAULT_RPM) -> bool:
-    quieten_fixed_sampling_warning()
     """Patch the Google chat model. Idempotent; returns False if unavailable."""
+    quieten_fixed_sampling_warning()
     try:
         from langchain_google_genai import ChatGoogleGenerativeAI
     except ImportError:
@@ -312,110 +460,28 @@ def install(rpm: int = DEFAULT_RPM) -> bool:
     if getattr(ChatGoogleGenerativeAI, "_esp_rate_limited", False):
         return True
 
-    def wrap(method_name: str, is_async: bool):
+    def current_model(client) -> str:
+        # Resolved every attempt: another worker may have retired this model
+        # since the last one.
+        return failover.substitute(getattr(client, "model", "unknown"))
+
+    def before(client) -> None:
+        _apply_model(client, current_model(client))
+
+    def decide(client, exc: BaseException, attempt: int) -> Next:
+        return _google_next(client, exc, attempt, current_model(client))
+
+    for method_name, is_async in (("_generate", False), ("_agenerate", True)):
         original = getattr(ChatGoogleGenerativeAI, method_name, None)
         if original is None:
-            return
-
-        if is_async:
-            async def limited(self, *args, **kwargs):
-                last: Exception | None = None
-                for attempt in range(MAX_RETRIES):
-                    # Resolved every attempt: another worker may have retired
-                    # this model since the last one.
-                    model = failover.substitute(getattr(self, "model", "unknown"))
-                    _apply_model(self, model)
-                    # Async all the way down: neither the pacing wait nor the
-                    # backoff may block the event loop the agents run on.
-                    await bucket_for(model, rpm).acquire_async()
-                    try:
-                        _stats["calls"] += 1
-                        return await original(self, *args, **kwargs)
-                    except Exception as exc:
-                        last = exc
-                        # A per-day cap never clears within a run. Sleeping on it
-                        # burns the clock and every candidate afterwards scores
-                        # zero, so swap models instead of waiting.
-                        if failover.is_daily_quota_error(exc):
-                            current_key = getattr(self, "google_api_key", None)
-                            current_key_str = ""
-                            if current_key is not None:
-                                with contextlib.suppress(Exception):
-                                    current_key_str = current_key.get_secret_value()
-                            mark_key_exhausted(current_key_str, model)
-                            nxt_key = next_key_for(model, current_key_str)
-                            if nxt_key is not None and nxt_key != current_key_str:
-                                _apply_key(self, nxt_key)
-                                _stats["key_swaps"] = _stats.get("key_swaps", 0) + 1
-                                continue
-                            nxt = failover.retire(model)
-                            _stats["model_swaps"] += 1
-                            if nxt is None:
-                                raise
-                            _apply_model(self, nxt)
-                            continue
-                        transient = _is_transient_server_error(exc)
-                        if ((not _is_quota_error(exc) and not transient)
-                                or attempt == MAX_RETRIES - 1):
-                            raise
-                        _stats["retries"] += 1
-                        if transient:
-                            _stats["transient_retries"] = _stats.get(
-                                "transient_retries", 0) + 1
-                        # Jittered backoff: synchronised retries from parallel
-                        # workers would re-collide on the same second.
-                        await asyncio.sleep(min(60.0, 2 ** attempt) + random.random())
-                raise _out_of_attempts(last)
-        else:
-            def limited(self, *args, **kwargs):
-                last: Exception | None = None
-                for attempt in range(MAX_RETRIES):
-                    model = failover.substitute(getattr(self, "model", "unknown"))
-                    _apply_model(self, model)
-                    bucket_for(model, rpm).acquire()
-                    try:
-                        _stats["calls"] += 1
-                        return original(self, *args, **kwargs)
-                    except Exception as exc:
-                        last = exc
-                        if failover.is_daily_quota_error(exc):
-                            current_key = getattr(self, "google_api_key", None)
-                            current_key_str = ""
-                            if current_key is not None:
-                                with contextlib.suppress(Exception):
-                                    current_key_str = current_key.get_secret_value()
-                            mark_key_exhausted(current_key_str, model)
-                            nxt_key = next_key_for(model, current_key_str)
-                            if nxt_key is not None and nxt_key != current_key_str:
-                                _apply_key(self, nxt_key)
-                                _stats["key_swaps"] = _stats.get("key_swaps", 0) + 1
-                                continue
-                            nxt = failover.retire(model)
-                            _stats["model_swaps"] += 1
-                            if nxt is None:
-                                raise
-                            _apply_model(self, nxt)
-                            continue
-                        transient = _is_transient_server_error(exc)
-                        if ((not _is_quota_error(exc) and not transient)
-                                or attempt == MAX_RETRIES - 1):
-                            raise
-                        _stats["retries"] += 1
-                        if transient:
-                            _stats["transient_retries"] = _stats.get(
-                                "transient_retries", 0) + 1
-                        time.sleep(min(60.0, 2 ** attempt) + random.random())
-                raise _out_of_attempts(last)
-
-        setattr(ChatGoogleGenerativeAI, method_name, limited)
-
-    wrap("_generate", is_async=False)
-    wrap("_agenerate", is_async=True)
+            continue
+        setattr(ChatGoogleGenerativeAI, method_name,
+                paced(original, current_model, decide, is_async, rpm, before))
     ChatGoogleGenerativeAI._esp_rate_limited = True
     return True
 
 
-# The other providers this project can run on. Google keeps its own wrapper
+# The other providers this project can run on. Google keeps its own policy
 # above because the daily-cap failover, the model ladder and the key ring are
 # all free-tier Google concepts measured out of Google's own 429 payloads.
 # Anthropic and OpenAI are paid APIs with per-minute limits and no daily cap to
@@ -432,6 +498,20 @@ _OTHER_PROVIDERS = (
 )
 
 
+def _model_of(client) -> str:
+    """The model a paid-provider client calls.
+
+    Clients disagree about the attribute; both are read rather than assuming,
+    because pacing the wrong bucket name silently shares one rate limit
+    between every model.
+    """
+    for attribute in ("model", "model_name"):
+        value = getattr(client, attribute, None)
+        if value:
+            return str(value)
+    return "unknown"
+
+
 def install_others(rpm: int = DEFAULT_RPM) -> list[str]:
     """Pace Anthropic and OpenAI. Returns the client classes actually patched.
 
@@ -439,6 +519,9 @@ def install_others(rpm: int = DEFAULT_RPM) -> list[str]:
     need the Anthropic package installed to start.
     """
     patched: list[str] = []
+
+    def decide(_client, exc: BaseException, attempt: int) -> Next:
+        return _backoff(exc, attempt)
 
     for module_name, class_name in _OTHER_PROVIDERS:
         try:
@@ -449,64 +532,11 @@ def install_others(rpm: int = DEFAULT_RPM) -> list[str]:
         if getattr(client, "_esp_rate_limited", False):
             patched.append(class_name)
             continue
-
-        def wrap(target, method_name: str, is_async: bool):
-            original = getattr(target, method_name, None)
+        for method_name, is_async in (("_generate", False), ("_agenerate", True)):
+            original = getattr(client, method_name, None)
             if original is None:
-                return
-
-            def model_of(self) -> str:
-                # Clients disagree about the attribute; both are read rather
-                # than assuming, because pacing the wrong bucket name silently
-                # shares one rate limit between every model.
-                for attribute in ("model", "model_name"):
-                    value = getattr(self, attribute, None)
-                    if value:
-                        return str(value)
-                return "unknown"
-
-            if is_async:
-                async def limited(self, *args, **kwargs):
-                    for attempt in range(MAX_RETRIES):
-                        await bucket_for(model_of(self), rpm).acquire_async()
-                        try:
-                            _stats["calls"] += 1
-                            return await original(self, *args, **kwargs)
-                        except Exception as exc:
-                            transient = _is_transient_server_error(exc)
-                            if ((not _is_quota_error(exc) and not transient)
-                                    or attempt == MAX_RETRIES - 1):
-                                raise
-                            _stats["retries"] += 1
-                            if transient:
-                                _stats["transient_retries"] = _stats.get(
-                                    "transient_retries", 0) + 1
-                            await asyncio.sleep(
-                                min(60.0, 2 ** attempt) + random.random())
-                    return None
-            else:
-                def limited(self, *args, **kwargs):
-                    for attempt in range(MAX_RETRIES):
-                        bucket_for(model_of(self), rpm).acquire()
-                        try:
-                            _stats["calls"] += 1
-                            return original(self, *args, **kwargs)
-                        except Exception as exc:
-                            transient = _is_transient_server_error(exc)
-                            if ((not _is_quota_error(exc) and not transient)
-                                    or attempt == MAX_RETRIES - 1):
-                                raise
-                            _stats["retries"] += 1
-                            if transient:
-                                _stats["transient_retries"] = _stats.get(
-                                    "transient_retries", 0) + 1
-                            time.sleep(min(60.0, 2 ** attempt) + random.random())
-                    return None
-
-            setattr(target, method_name, limited)
-
-        wrap(client, "_generate", is_async=False)
-        wrap(client, "_agenerate", is_async=True)
+                continue
+            setattr(client, method_name, paced(original, _model_of, decide, is_async, rpm))
         client._esp_rate_limited = True
         patched.append(class_name)
 
