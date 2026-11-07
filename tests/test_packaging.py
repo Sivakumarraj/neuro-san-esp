@@ -101,8 +101,8 @@ def test_every_import_in_scripts_and_apps_is_declared():
         if not (ROOT / package).is_dir():
             continue
         for module, users in sorted(imported_modules(package).items()):
-            if module in ("esp", "serve_studio", "serve_champion",
-                          "sync_history", "holdout_report", "select_and_judge"):
+            if module in ("esp", "serve_studio", "serve_champion", "sync_history",
+                          "holdout_report", "select_and_judge", "same_model_report"):
                 continue        # this project's own modules
             distribution = DISTRIBUTION.get(module, module)
             if distribution is None:
