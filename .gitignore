@@ -50,6 +50,9 @@ results/*
 # The Researcher-routing test (docs/MODEL-ROUTER.md, `make model-router`), kept as measured.
 !results/router/
 !results/router/**
+# The all-four test (docs/ALL-FOUR.md, `make all-four`), kept as measured.
+!results/all-four/
+!results/all-four/**
 
 # The live cache is machine-local and quota-dependent. The committed
 # measurements live in tests/fixtures/cache instead, so CI can reproduce them.
