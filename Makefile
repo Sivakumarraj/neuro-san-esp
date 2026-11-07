@@ -1,4 +1,4 @@
-.PHONY: replicate install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool headtohead experiment guide check-key smoke measure figures ablation probe baseline search holdout route uncertainty autopsy trace offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
+.PHONY: replicate same-model same-model-run install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool headtohead experiment guide check-key smoke measure figures ablation probe baseline search holdout route uncertainty autopsy trace offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -141,6 +141,25 @@ replicate:
 	    --pair designer evolved --pair designer-promoted evolved \
 	    > $$(dirname $(REPLICATE_OUT))/summary.json && cat $$(dirname $(REPLICATE_OUT))/summary.json; fi; \
 	exit $$status
+
+# The same-model test fixed in docs/SAME-MODEL.md before it ran: 2cc4 against
+# the designer's shape with every agent of both on gpt-5.4-nano, so any gain is
+# the network's own. Reads the committed logs in results/structure/; costs
+# nothing. DIR=<folder holding judge/ or fresh/> reads your own run instead.
+same-model:
+	PYTHONPATH=$$PWD python scripts/same_model_report.py $(if $(DIR),--dir $(DIR),)
+
+# The run behind it, on the settings it was measured with: plans and prices
+# only; GO=1 spends, each network under a $0.40 cap. SUITE=fresh asks the 40
+# fresh questions. Writes to runs/same-model/ and resumes from its logs.
+SUITE ?= judge
+same-model-run:
+	@export $(MEASURED_MODELS) ESP_SEARCH_RESULTS=10 ESP_PIN_MODELS=1 PYTHONPATH=$$PWD AGENT_TOOL_PATH=$$PWD; \
+	out=runs/same-model/$(SUITE); \
+	run() { python scripts/select_and_judge.py measure "$$@" --suite $(SUITE) --repeats 2 \
+	          --out $$out --budget 0.40 $(if $(GO),--go,); }; \
+	run designer & a=$$!; run 2cc4 --label 2cc4-nano & b=$$!; \
+	status=0; for pid in $$a $$b; do wait $$pid || status=1; done; exit $$status
 
 # Select a winner on half the tasks, then judge it on the half it was not
 # selected on. Costs nothing: every evaluation recorded the outcome of each
