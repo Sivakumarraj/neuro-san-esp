@@ -96,6 +96,15 @@ MODEL_TIERS: list[str] = [
 ]
 
 CORPUS_TOOL = "CorpusSearch"
+CALCULATOR_TOOL = "Calculator"
+
+# What an agent given the calculator is told. Part of the network, like every
+# other instruction: a tool a model is not told to use is one it mostly ignores.
+CALCULATOR_INSTRUCTIONS = (
+    "Work out every sum, difference and product with Calculator: give it the whole "
+    "expression, for example 375 * 12 + 250 * 8, and report the number it returns. "
+    "Never do arithmetic in your head."
+)
 
 
 @dataclass
@@ -106,10 +115,11 @@ class Agent:
     tools: list[str] = field(default_factory=list)   # names of downstream agents
     model: str | None = None                          # None = inherit network default
     can_search: bool = False                          # gets the corpus tool
+    can_calculate: bool = False                       # gets the calculator tool
 
     def clone(self) -> Agent:
         return Agent(self.name, self.instructions, self.description,
-                     list(self.tools), self.model, self.can_search)
+                     list(self.tools), self.model, self.can_search, self.can_calculate)
 
 
 @dataclass
@@ -129,16 +139,8 @@ class Genome:
         return {
             "top": self.top,
             "default_model": self.default_model,
-            "agents": {
-                name: {
-                    "instructions": agent.instructions.strip(),
-                    "description": agent.description.strip(),
-                    "tools": sorted(agent.tools),
-                    "model": agent.model,
-                    "can_search": agent.can_search,
-                }
-                for name, agent in sorted(self.agents.items())
-            },
+            "agents": {name: _canonical_agent(agent)
+                       for name, agent in sorted(self.agents.items())},
         }
 
     @classmethod
@@ -166,11 +168,23 @@ class Genome:
                     tools=list(fields.get("tools") or []),
                     model=fields.get("model"),
                     can_search=bool(fields.get("can_search")),
+                    can_calculate=bool(fields.get("can_calculate")),
                 )
                 for name, fields in blob["agents"].items()
             },
             default_model=blob["default_model"],
         )
+
+    def with_calculator(self, name: str) -> Genome:
+        """A copy in which agent `name` has the calculator and is told to use it."""
+        if name not in self.agents:
+            raise KeyError(f"no agent {name!r}: {sorted(self.agents)}")
+        out = self.clone()
+        agent = out.agents[name]
+        agent.can_calculate = True
+        if CALCULATOR_INSTRUCTIONS not in agent.instructions:
+            agent.instructions = f"{agent.instructions.rstrip()}\n{CALCULATOR_INSTRUCTIONS}"
+        return out
 
     def genome_hash(self) -> str:
         blob = json.dumps(self.canonical(), sort_keys=True, separators=(",", ":"))
@@ -267,6 +281,8 @@ class Genome:
             downstream = [t for t in agent.tools if t in live]
             if agent.can_search:
                 downstream = [*downstream, CORPUS_TOOL]
+            if agent.can_calculate:
+                downstream = [*downstream, CALCULATOR_TOOL]
             if downstream:
                 rendered = ", ".join(json.dumps(t) for t in sorted(set(downstream)))
                 lines.append(f'            "tools": [{rendered}],')
@@ -280,6 +296,8 @@ class Genome:
 
         if any(self.agents[n].can_search for n in live):
             blocks.append(_CORPUS_TOOL_BLOCK)
+        if any(self.agents[n].can_calculate for n in live):
+            blocks.append(_CALCULATOR_TOOL_BLOCK)
 
         return (
             "{\n"
@@ -292,6 +310,41 @@ class Genome:
             + "\n    ]\n}\n"
         )
 
+
+def _canonical_agent(agent: Agent) -> dict[str, Any]:
+    """One agent's part of the canonical form.
+
+    `can_calculate` appears only when it is set. Every network measured before
+    the calculator existed has it unset, so its canonical form, and therefore its
+    hash and every cached measurement keyed on it, is unchanged.
+    """
+    entry: dict[str, Any] = {
+        "instructions": agent.instructions.strip(),
+        "description": agent.description.strip(),
+        "tools": sorted(agent.tools),
+        "model": agent.model,
+        "can_search": agent.can_search,
+    }
+    if agent.can_calculate:
+        entry["can_calculate"] = True
+    return entry
+
+
+_CALCULATOR_TOOL_BLOCK = """        {
+            "name": "Calculator",
+            "function": {
+                "description": "Work out arithmetic exactly and return the number. Give it the whole expression.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "expression": {"type": "string",
+                            "description": "Numbers joined by + - * / and parentheses, for example 375 * 12 + 250 * 8."}
+                    },
+                    "required": ["expression"]
+                },
+            },
+            "class": "esp.eval.calculator_tool.Calculator",
+        },"""
 
 _CORPUS_TOOL_BLOCK = """        {
             "name": "CorpusSearch",

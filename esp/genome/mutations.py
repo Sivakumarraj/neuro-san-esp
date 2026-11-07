@@ -211,6 +211,7 @@ def merge_agents(genome: Genome, rng: random.Random) -> Genome:
     keep, absorb = rng.sample(candidates, 2)
     keeper, absorbed = mutant.agents[keep], mutant.agents[absorb]
     keeper.can_search = keeper.can_search or absorbed.can_search
+    keeper.can_calculate = keeper.can_calculate or absorbed.can_calculate
     keeper.tools.extend(t for t in absorbed.tools
                         if t not in keeper.tools and t != keep)
     keeper.description = f"{keeper.description} Also: {absorbed.description}"

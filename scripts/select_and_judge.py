@@ -67,21 +67,39 @@ def suite_tasks(name: str) -> list:
     return {"select": SELECT, "judge": JUDGE, "judge-plus": JUDGE_PLUS, "fresh": FRESH}[name]
 
 
-def contender_for(name: str, label: str | None = None, promote: list[str] | None = None):
+def contender_for(name: str, label: str | None = None, promote: list[str] | None = None,
+                  models: list[str] | None = None, calculator: list[str] | None = None):
     """A named network on the configured provider, with any `promote`d agent
     moved to the top model rung after the move, so it lands on the provider's
-    stronger model whatever rung the committed genome had it on."""
+    stronger model whatever rung the committed genome had it on.
+
+    `models` assigns a model by name, as AGENT=MODEL, and `calculator` gives an
+    agent the calculator tool and tells it to use it. Both are applied last, so
+    nothing after them can move a model back to a rung."""
     from esp.evolve import headtohead as h2h
     from esp.genome.definition import MODEL_TIERS
     from esp.serving import measurable
 
     genome, origin = network(name)
     served = measurable(genome).genome
-    for agent in promote or []:
+
+    def agent_named(agent: str) -> str:
         if agent not in served.agents:
             raise SystemExit(f"{name} has no agent {agent!r}: {sorted(served.agents)}")
-        served.agents[agent].model = MODEL_TIERS[-1]
+        return agent
+
+    for agent in promote or []:
+        served.agents[agent_named(agent)].model = MODEL_TIERS[-1]
         origin += f", {agent} on {MODEL_TIERS[-1]}"
+    for assignment in models or []:
+        agent, _, model = assignment.partition("=")
+        if not model.strip():
+            raise SystemExit(f"--model takes AGENT=MODEL, not {assignment!r}")
+        served.agents[agent_named(agent.strip())].model = model.strip()
+        origin += f", {agent.strip()} on {model.strip()}"
+    for agent in calculator or []:
+        served = served.with_calculator(agent_named(agent))
+        origin += f", Calculator on {agent}"
     return h2h.Contender(label or name, served, origin)
 
 
@@ -229,6 +247,10 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("--suite", choices=SUITES, default="select")
     m.add_argument("--promote", action="append", default=[], metavar="AGENT",
                    help="run this agent on the top model rung; repeat for more")
+    m.add_argument("--model", action="append", default=[], metavar="AGENT=MODEL",
+                   help="run this agent on this model; repeat for more")
+    m.add_argument("--calculator", action="append", default=[], metavar="AGENT",
+                   help="give this agent the calculator tool; repeat for more")
     m.add_argument("--repeats", type=int, default=1)
     m.add_argument("--budget", type=float, default=0.40, help="hard cap in dollars")
     m.add_argument("--out", required=True)
@@ -276,7 +298,8 @@ def main(argv: list[str] | None = None) -> int:
 
     from esp.evolve import headtohead as h2h
 
-    contender = contender_for(args.network, args.label, args.promote)
+    contender = contender_for(args.network, args.label, args.promote, args.model,
+                              args.calculator)
     origin = contender.origin
     plan = h2h.Plan(suite_tasks(args.suite), args.repeats, args.budget, [contender])
     print(f"{contender.label}: {contender.genome_hash}  {origin}")

@@ -22,7 +22,7 @@ from esp.genome.mutations import check
 
 def _signature(agent: Agent) -> tuple:
     return (agent.instructions, agent.description, tuple(sorted(agent.tools)),
-            agent.model, agent.can_search)
+            agent.model, agent.can_search, agent.can_calculate)
 
 
 def copies(genome: Genome) -> list[str]:
