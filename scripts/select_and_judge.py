@@ -171,6 +171,42 @@ def paired(rows: list[dict], a: str, b: str) -> dict:
     return {"better_on": better, "sign_test_p": round(p, 4)}
 
 
+RESULTS = ROOT / "results"
+# The models every paid stage ran on, as the settings that reproduce them.
+MEASURED_SETTINGS = ("ESP_PROVIDER=openai ESP_DEFAULT_MODEL=gpt-5.4-nano "
+                     "ESP_MODEL_TIERS=gpt-5.4-nano,gpt-5.4-mini")
+
+
+def measured_hashes(root: Path = RESULTS) -> set[str]:
+    """Every genome a committed log under results/ measured.
+
+    A network is named here by what it is (designer, 2cc4), and its genome follows
+    the configured models. With only an OpenAI key set, the provider's default
+    ladder is gpt-5.4-mini and gpt-5.5, so `measure designer` built a network no
+    committed run had measured, under the label of one that had, at four times
+    the price, and only the dollar cap stopped it.
+    """
+    found: set[str] = set()
+    for path in root.rglob("*.jsonl"):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            try:
+                found.add(json.loads(line).get("genome_hash") or "")
+            except (json.JSONDecodeError, AttributeError):
+                continue
+    found.discard("")
+    return found
+
+
+def unmeasured(contender) -> str:
+    """Why this network is not one the committed logs measured, or "" when it is."""
+    if contender.genome_hash in measured_hashes():
+        return ""
+    models = ", ".join(f"{agent} {model}" for agent, model in contender.models().items())
+    return (f"{contender.label} {contender.genome_hash} ({models}) is not a network any "
+            f"committed log measured. To repeat a committed run, set {MEASURED_SETTINGS}; "
+            "to measure this network anyway, pass --new-network.")
+
+
 def load_rows(directory: Path) -> list[dict]:
     """Every chunk under a directory; a subdirectory per independent run."""
     from esp.evolve.headtohead import read_rows
@@ -197,6 +233,8 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("--budget", type=float, default=0.40, help="hard cap in dollars")
     m.add_argument("--out", required=True)
     m.add_argument("--go", action="store_true", help="spend: ask the provider")
+    m.add_argument("--new-network", action="store_true",
+                   help="spend on a network no committed log measured")
     s = sub.add_parser("summary")
     s.add_argument("directory")
     s.add_argument("--pair", nargs=2, action="append", default=[], metavar=("A", "B"),
@@ -243,6 +281,12 @@ def main(argv: list[str] | None = None) -> int:
     plan = h2h.Plan(suite_tasks(args.suite), args.repeats, args.budget, [contender])
     print(f"{contender.label}: {contender.genome_hash}  {origin}")
     print(plan.describe())
+    why_new = unmeasured(contender)
+    if why_new:
+        print(f"\n{why_new}")
+        if args.go and not args.new_network:
+            print("refused: nothing spent.")
+            return 1
     if not args.go:
         print("\nplan only: nothing spent. --go measures.")
         return 0

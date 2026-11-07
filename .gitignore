@@ -101,3 +101,7 @@ build/
 results/rehearsal/*
 !results/rehearsal/totals.json
 !results/rehearsal/compare.json
+
+# Your own paid runs (make same-model-run, the reproduce steps in docs/RESULTS.md).
+# The committed ones live under results/.
+runs/

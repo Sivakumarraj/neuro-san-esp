@@ -323,3 +323,32 @@ def test_one_label_never_pools_two_networks():
     with pytest.raises(ValueError, match="several networks"):
         sj.paired(rows, "evolved", "designer")
 
+
+def test_measuring_a_network_no_committed_log_measured_is_refused_before_spending(monkeypatch):
+    """`make replicate` with only an OpenAI key set built the designer's shape on
+    gpt-5.4-mini under the committed label; the dollar cap was all that stopped it."""
+    from esp.evolve import headtohead as h2h
+    from esp.genome.seeds import designer_shaped
+
+    genome = designer_shaped()
+    for agent in genome.agents.values():
+        agent.model = "gpt-5.4-mini"
+    contender = h2h.Contender("designer", genome, "seed:designer_shaped")
+    assert contender.genome_hash not in sj.measured_hashes()
+    monkeypatch.setattr(sj, "contender_for", lambda *a, **k: contender)
+
+    def spend(*_args, **_kwargs):
+        raise AssertionError("refused runs spend nothing")
+
+    monkeypatch.setattr(h2h, "run", spend)
+    # main() sets this default for the process; the monkeypatch puts it back.
+    monkeypatch.setenv("ESP_PIN_MODELS", "1")
+    argv = ["measure", "designer", "--suite", "fresh", "--out", "unused", "--go"]
+    assert sj.main(argv) == 1
+    assert "gpt-5.4-mini" in sj.unmeasured(contender)
+
+
+def test_every_network_the_paid_runs_name_was_measured():
+    measured = sj.measured_hashes()
+    for genome_hash in ("0378ca26cd9fe977", "2cc4231b7d3fb81d", "47322479eb9cba1e"):
+        assert genome_hash in measured

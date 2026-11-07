@@ -121,9 +121,15 @@ search:
 # with every specialist promoted -- the control that separates structure from
 # model. Plans and prices only; GO=1 spends, each network under its own cap
 # (about $0.70 in all at the headline's prices). Resumes from its logs.
+#
+# The models are pinned to the ones the committed runs used. With only an
+# OpenAI key set, the provider's default ladder is gpt-5.4-mini and gpt-5.5,
+# which built networks no committed run measured, under the committed labels.
+MEASURED_MODELS = ESP_PROVIDER=openai ESP_DEFAULT_MODEL=gpt-5.4-nano \
+	ESP_MODEL_TIERS=gpt-5.4-nano,gpt-5.4-mini
 REPLICATE_OUT ?= results/replication/fresh-2026-10/1-fresh
 replicate:
-	@export ESP_SEARCH_RESULTS=10 ESP_PIN_MODELS=1 PYTHONPATH=$$PWD AGENT_TOOL_PATH=$$PWD; \
+	@export $(MEASURED_MODELS) ESP_SEARCH_RESULTS=10 ESP_PIN_MODELS=1 PYTHONPATH=$$PWD AGENT_TOOL_PATH=$$PWD; \
 	run() { python scripts/select_and_judge.py measure "$$@" --suite fresh --repeats 2 \
 	          --out $(REPLICATE_OUT) $(if $(GO),--go,); }; \
 	run designer --budget 0.25 & a=$$!; \
