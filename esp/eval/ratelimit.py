@@ -271,6 +271,23 @@ QUOTA_STATUS = 429
 # Busy or broken on the provider's side; 529 is Anthropic's way of saying 503.
 TRANSIENT_STATUSES = frozenset({500, 502, 503, 504, 529})
 
+# An account that cannot pay, or a key that is refused. No wait clears either,
+# so such an error is raised at once rather than retried as a rate limit, and the
+# runner reports it as an account failure. OpenAI words an empty prepaid balance
+# "You have no credits remaining", with the code insufficient_quota, and sends it
+# as a 429: retried as a rate limit, a run that had spent its balance backed off
+# six times a call, then reported every unanswered question as a timeout.
+ACCOUNT_WORDS = ("credit balance is too low", "Insufficient credits",
+                 "Incorrect API key provided", "You have no credits remaining",
+                 "insufficient_quota")
+
+
+def is_account_failure(error: BaseException | str) -> bool:
+    """Whether an error says the account or key, not the moment, is the problem."""
+    text = str(error)
+    return any(word in text for word in ACCOUNT_WORDS)
+
+
 # Words that mean the same as a status when no status is given.
 _QUOTA_WORDS = ("RESOURCE_EXHAUSTED", "ResourceExhausted", "Too Many Requests",
                 "exceeded your current quota")
@@ -352,6 +369,8 @@ class Next:
 
 def _backoff(exc: BaseException, attempt: int) -> Next:
     """Wait and ask again, or give up: the policy every provider shares."""
+    if is_account_failure(exc):
+        return Next("raise")
     transient = _is_transient_server_error(exc)
     if (not _is_quota_error(exc) and not transient) or attempt == MAX_RETRIES - 1:
         return Next("raise")

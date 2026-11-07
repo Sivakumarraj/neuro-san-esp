@@ -18,6 +18,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from esp.eval import accounting as usage
+from esp.eval.ratelimit import ACCOUNT_WORDS
 from esp.eval.ratelimit import install as install_rate_limit
 from esp.eval.ratelimit import install_others as install_other_rate_limits
 from esp.eval.tasks import TASKS, Task, grade
@@ -223,8 +224,7 @@ class QuotaExhausted(OSError):
 # balance that ran out part-way through a run read as a wrong answer to every
 # question after it, and the run was cached. The raw provider phrases cover the
 # error path. Like a daily cap, it says nothing about the network.
-_ACCOUNT_MARKERS = ("environment variable must be correctly set", "credit balance is too low",
-                    "Insufficient credits", "Incorrect API key provided")
+_ACCOUNT_MARKERS = ("environment variable must be correctly set", *ACCOUNT_WORDS)
 # A 429 is read as a stated status (`ratelimit.status_in`), not as the digits
 # anywhere: "429" inside a request id or a token count is not a quota.
 _QUOTA_MARKERS = ("RESOURCE_EXHAUSTED", "quota", "exceeded your current quota",
@@ -403,6 +403,24 @@ def refuse_unmeasured(results: list[TaskResult], tokens: int,
                if action == "cache" else ".")
         )
 
+    # Checked before the all-gave-up guard below: an empty balance fails every
+    # task with a reply neuro-san marks as an agent failure, which that guard
+    # would report as timeouts when the account is what ran out.
+    # Quota exhaustion is not a property of the topology. A daily cap does not
+    # fail every task at once -- it starts failing them part-way through a
+    # candidate, so the all-errored check above does not catch it. What lands
+    # instead is a plausible-looking partial score that gets cached forever and
+    # tells the search a good network is mediocre. Refuse the whole evaluation
+    # rather than record a number the environment produced.
+    starved = [r for r in results if _is_quota_failure(r)]
+    if starved:
+        raise QuotaExhausted(
+            f"{len(starved)} of {len(results)} tasks hit a provider quota or an "
+            f"account failure (key or credit) -- "
+            f"refusing to {action} a score the environment caused, not the topology. "
+            f"First: {starved[0].error[:200]}"
+        )
+
     # Every task gave up before answering. Not one wrong answer among them --
     # seventeen timeouts, or seventeen blown recursion caps, which is what a
     # live run against neuro-san 0.7.4 produces when langgraph's limit of 40 is
@@ -429,20 +447,6 @@ def refuse_unmeasured(results: list[TaskResult], tokens: int,
             f"{(results[0].answer or results[0].error)[:200]}"
         )
 
-    # Quota exhaustion is not a property of the topology. A daily cap does not
-    # fail every task at once -- it starts failing them part-way through a
-    # candidate, so the all-errored check above does not catch it. What lands
-    # instead is a plausible-looking partial score that gets cached forever and
-    # tells the search a good network is mediocre. Refuse the whole evaluation
-    # rather than record a number the environment produced.
-    starved = [r for r in results if _is_quota_failure(r)]
-    if starved:
-        raise QuotaExhausted(
-            f"{len(starved)} of {len(results)} tasks hit a provider quota or an "
-            f"account failure (key or credit) -- "
-            f"refusing to {action} a score the environment caused, not the topology. "
-            f"First: {starved[0].error[:200]}"
-        )
 
 
 
