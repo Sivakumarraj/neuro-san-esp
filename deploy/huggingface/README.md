@@ -45,7 +45,7 @@ you.
   `gpt-5.4-nano`, answered 94.5% of 100 judge questions asked twice, against 84.0% for the
   designer's shape on `gpt-5.4-nano` (sign test p = 0.0007), with every search returning 10
   documents. On 40 fresh questions it answered 90.0% against 75.0% (p = 0.0215).
-  The [README](https://github.com/Sivakumarraj/neuro-san-esp#headline-result) has every figure
+  The [README](https://github.com/Sivakumarraj/neuro-san-esp#the-most-accurate-network) has every figure
   and the logs they come from.
 - **Not a pure structure result.** Its one document-reading agent runs a model 3.7× dearer per
   token. Promoting every specialist in the designer's shape bought it 2.5 points on the fresh

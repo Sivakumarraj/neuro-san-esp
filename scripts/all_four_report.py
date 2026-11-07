@@ -52,6 +52,17 @@ def main(argv: list[str] | None = None) -> int:
         for name, result in study["sets"].items():
             show(name, result, all_four.BASELINE, winner,
                  models=all_four.DESCRIBED[winner], titles=("designer", winner))
+            short = result["missing_runs"][all_four.BASELINE]
+            if short:
+                worst = result["worst_case"]
+                acc = worst["accuracy"]
+                print(f"  the designer is {short} runs short of the plan; against the most "
+                      f"favourable outcome for it (all {short} right, at no tokens and no "
+                      f"cost): accuracy {worst['networks'][all_four.BASELINE]['accuracy']:.1%}, "
+                      f"p = {acc['p']}; tokens p = {worst['tokens']['p']:.2g}; dollars "
+                      f"p = {worst['dollars']['p']:.2g}")
+                verdict = "YES" if result["holds_whatever_is_missing"] else "NO"
+                print(f"  all five hold whatever the missing runs say: {verdict}")
         for name in study["incomplete"]:
             print(f"\n{name}: not complete yet")
     if args.write:

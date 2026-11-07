@@ -67,12 +67,302 @@
     ],
     "winner": "c3"
   },
-  "sets": {},
+  "sets": {
+    "judge": {
+      "networks": {
+        "designer": {
+          "genome_hash": "0378ca26cd9fe977",
+          "agents": 4,
+          "question_runs": 188,
+          "correct": 151,
+          "unfinished": 0,
+          "accuracy": 0.8032,
+          "tokens_per_question": 5458,
+          "dollars_per_question": 0.001401,
+          "dollars_per_correct": 0.001745,
+          "token_fitness": 0.7757,
+          "dollar_fitness": 0.7917
+        },
+        "c3": {
+          "genome_hash": "f4e9e494442f9888",
+          "agents": 2,
+          "question_runs": 200,
+          "correct": 187,
+          "unfinished": 0,
+          "accuracy": 0.935,
+          "tokens_per_question": 3344,
+          "dollars_per_question": 0.000724,
+          "dollars_per_correct": 0.000774,
+          "token_fitness": 0.9192,
+          "dollar_fitness": 0.9292
+        }
+      },
+      "accuracy": {
+        "questions": 100,
+        "candidate_better_on": [
+          "J004",
+          "J005",
+          "J011",
+          "J013",
+          "J021",
+          "J027",
+          "J035",
+          "J039",
+          "J042",
+          "J046",
+          "J047",
+          "J048",
+          "J055",
+          "J056",
+          "J068",
+          "J073",
+          "J078",
+          "J079",
+          "J087",
+          "J091",
+          "J094",
+          "J098",
+          "J100"
+        ],
+        "baseline_better_on": [
+          "J072",
+          "J081",
+          "J088"
+        ],
+        "p": 0.0001,
+        "points": 14.5,
+        "ci95_points": [
+          8.0,
+          21.0
+        ]
+      },
+      "tokens": {
+        "chunks": 25,
+        "candidate_lower_in": 23,
+        "baseline_lower_in": 2,
+        "p": 8.3e-07,
+        "change": -0.3713
+      },
+      "dollars": {
+        "chunks": 25,
+        "candidate_lower_in": 25,
+        "baseline_lower_in": 0,
+        "p": 6e-08,
+        "change": -0.4714
+      },
+      "holds": {
+        "accuracy": true,
+        "tokens": true,
+        "dollars": true,
+        "agents": true,
+        "fitness": true
+      },
+      "all_hold": true,
+      "missing_runs": {
+        "designer": 12
+      },
+      "worst_case": {
+        "networks": {
+          "designer": {
+            "genome_hash": "0378ca26cd9fe977",
+            "agents": 4,
+            "question_runs": 200,
+            "correct": 163,
+            "unfinished": 0,
+            "accuracy": 0.815,
+            "tokens_per_question": 5130,
+            "dollars_per_question": 0.001317,
+            "dollars_per_correct": 0.001616,
+            "token_fitness": 0.7887,
+            "dollar_fitness": 0.8037
+          },
+          "c3": {
+            "genome_hash": "f4e9e494442f9888",
+            "agents": 2,
+            "question_runs": 200,
+            "correct": 187,
+            "unfinished": 0,
+            "accuracy": 0.935,
+            "tokens_per_question": 3344,
+            "dollars_per_question": 0.000724,
+            "dollars_per_correct": 0.000774,
+            "token_fitness": 0.9192,
+            "dollar_fitness": 0.9292
+          }
+        },
+        "accuracy": {
+          "questions": 100,
+          "candidate_better_on": [
+            "J004",
+            "J005",
+            "J011",
+            "J013",
+            "J021",
+            "J027",
+            "J035",
+            "J039",
+            "J042",
+            "J046",
+            "J047",
+            "J048",
+            "J055",
+            "J056",
+            "J068",
+            "J073",
+            "J078",
+            "J079",
+            "J087",
+            "J091",
+            "J094",
+            "J100"
+          ],
+          "baseline_better_on": [
+            "J072",
+            "J081",
+            "J088",
+            "J097"
+          ],
+          "p": 0.0005,
+          "points": 12.0,
+          "ci95_points": [
+            6.0,
+            18.5
+          ]
+        },
+        "tokens": {
+          "chunks": 25,
+          "candidate_lower_in": 21,
+          "baseline_lower_in": 4,
+          "p": 5.4e-05,
+          "change": -0.3482
+        },
+        "dollars": {
+          "chunks": 25,
+          "candidate_lower_in": 22,
+          "baseline_lower_in": 3,
+          "p": 2e-06,
+          "change": -0.4505
+        },
+        "holds": {
+          "accuracy": true,
+          "tokens": true,
+          "dollars": true,
+          "agents": true,
+          "fitness": true
+        },
+        "all_hold": true
+      },
+      "holds_whatever_is_missing": true
+    },
+    "fresh": {
+      "networks": {
+        "designer": {
+          "genome_hash": "0378ca26cd9fe977",
+          "agents": 4,
+          "question_runs": 80,
+          "correct": 60,
+          "unfinished": 0,
+          "accuracy": 0.75,
+          "tokens_per_question": 5796,
+          "dollars_per_question": 0.001513,
+          "dollars_per_correct": 0.002018,
+          "token_fitness": 0.7214,
+          "dollar_fitness": 0.7383
+        },
+        "c3": {
+          "genome_hash": "f4e9e494442f9888",
+          "agents": 2,
+          "question_runs": 80,
+          "correct": 71,
+          "unfinished": 0,
+          "accuracy": 0.8875,
+          "tokens_per_question": 4184,
+          "dollars_per_question": 0.000889,
+          "dollars_per_correct": 0.001002,
+          "token_fitness": 0.8688,
+          "dollar_fitness": 0.8814
+        }
+      },
+      "accuracy": {
+        "questions": 40,
+        "candidate_better_on": [
+          "F04",
+          "F11",
+          "F12",
+          "F18",
+          "F21",
+          "F25",
+          "F38",
+          "F39",
+          "F40"
+        ],
+        "baseline_better_on": [
+          "F14",
+          "F29",
+          "F30",
+          "F32"
+        ],
+        "p": 0.2668,
+        "points": 13.8,
+        "ci95_points": [
+          1.2,
+          27.5
+        ]
+      },
+      "tokens": {
+        "chunks": 10,
+        "candidate_lower_in": 9,
+        "baseline_lower_in": 1,
+        "p": 0.013672,
+        "change": -0.278
+      },
+      "dollars": {
+        "chunks": 10,
+        "candidate_lower_in": 10,
+        "baseline_lower_in": 0,
+        "p": 0.001953,
+        "change": -0.4126
+      },
+      "holds": {
+        "accuracy": false,
+        "tokens": true,
+        "dollars": true,
+        "agents": true,
+        "fitness": true
+      },
+      "all_hold": false,
+      "missing_runs": {
+        "designer": 0
+      }
+    }
+  },
   "incomplete": [],
   "logs": {
     "results/all-four/select-2026-11/c1.jsonl": "45661d22e6c92716da90b8f9e807332d574458970b9d886db89ba67231bffb15",
     "results/all-four/select-2026-11/c2.jsonl": "06e495fe5a43f13d4cb750ab2491685cee2c37b297c9f697a38a90ca7ec11c66",
     "results/all-four/select-2026-11/c3.jsonl": "54dd99796feec7548c9c2b151cde34ae6d23295265bf2be7d31e102d4d305509",
-    "results/all-four/select-2026-11/designer.jsonl": "10686d1aee5e9b553960d348c4fc2f7139facb3bafa52d41cf006ae80c0ea9ac"
+    "results/all-four/select-2026-11/designer.jsonl": "10686d1aee5e9b553960d348c4fc2f7139facb3bafa52d41cf006ae80c0ea9ac",
+    "results/all-four/judge-2026-11/designer.jsonl": "672bc8ab6c907b4e5d2334e33d16c01977a0f0976a396c3d0242c906c11f5bbd",
+    "results/all-four/judge-2026-11/c3.jsonl": "030a194e0f649266664f50064b6f2606cc29d0a9bf19fac219be9b74d996c282",
+    "results/all-four/fresh-2026-11/designer.jsonl": "31b6d725d0782789525a7dab12e5164601494f684e4e6fa563df92c2c99b54b2",
+    "results/all-four/fresh-2026-11/c3.jsonl": "e3c3b5c4c368a3821e8aaab14bd2260633e4cd5e6068d668f7e834f17d60b66e",
+    "results/structure/judge-nano-2026-11/2cc4-nano.jsonl": "e3d692115aed0d1f4ac1208e41253982d1116367d579b2f8456852896d4c54ed"
+  },
+  "wrong_answers_on_judge": {
+    "2cc4 on nano, no calculator": {
+      "near miss": 20,
+      "wrong count": 11,
+      "other": 5
+    },
+    "c3": {
+      "near miss": 2,
+      "wrong count": 5,
+      "other": 6
+    },
+    "designer": {
+      "near miss": 14,
+      "wrong count": 14,
+      "other": 9
+    }
   }
 }

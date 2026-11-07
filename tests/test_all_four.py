@@ -79,3 +79,88 @@ def test_a_log_of_another_network_is_refused(tmp_path):
 def test_the_networks_the_plan_names_are_the_ones_read():
     for genome_hash in all_four.HASHES.values():
         assert genome_hash in PLAN
+
+
+SUMMARY = ROOT / "results" / "all-four" / "summary.json"
+PUBLISHED = ("\n".join((ROOT / name).read_text(encoding="utf-8")
+                       for name in ("README.md", "docs/RESULTS.md"))
+             .replace("\N{MINUS SIGN}", "-").replace("**", ""))
+
+
+def test_the_committed_summary_is_what_the_logs_say():
+    assert all_four.analyse() == json.loads(SUMMARY.read_text(encoding="utf-8"))
+
+
+def test_the_winner_is_the_one_the_rule_picks_and_the_pages_name():
+    study = json.loads(SUMMARY.read_text(encoding="utf-8"))
+    select = study["select"]
+    assert select["complete"] and select["winner"] == "c3"
+    for label, network in select["networks"].items():
+        assert f"{network['accuracy']:.1%}" in PUBLISHED, label
+        assert f"{network['tokens_per_question']:,}" in PUBLISHED, label
+        assert f"${network['dollars_per_question']:.6f}" in PUBLISHED, label
+
+
+def test_every_held_out_figure_quoted_is_the_one_the_logs_give():
+    study = json.loads(SUMMARY.read_text(encoding="utf-8"))
+    assert set(study["sets"]) == {"judge", "fresh"} and not study["incomplete"]
+    for result in study["sets"].values():
+        for network in result["networks"].values():
+            runs = f"{network['correct']}/{network['question_runs']}"
+            for quoted in (f"{network['accuracy']:.1%} ({runs})",
+                           f"{network['tokens_per_question']:,}",
+                           f"${network['dollars_per_question']:.5f}",
+                           f"{network['token_fitness']:+.4f}",
+                           f"{network['dollar_fitness']:+.4f}"):
+                assert quoted in PUBLISHED, quoted
+        accuracy = result["accuracy"]
+        low, high = accuracy["ci95_points"]
+        for quoted in (f"p = {accuracy['p']}", f"{low:+.1f} to {high:+.1f}",
+                       f"{len(accuracy['candidate_better_on'])} questions against "
+                       f"{len(accuracy['baseline_better_on'])}"):
+            assert quoted in PUBLISHED, quoted
+        for key in ("tokens", "dollars"):
+            assert f"p = {result[key]['p']:.2g}" in PUBLISHED, (key, result[key]["p"])
+            assert f"{result[key]['change']:.1%}" in PUBLISHED, (key, result[key]["change"])
+
+
+def _flat(text: str) -> str:
+    """One line per page, so a check does not depend on where a paragraph wraps."""
+    return " ".join(text.replace("`", "").split())
+
+
+def test_the_missing_runs_cannot_change_the_verdict_and_the_pages_say_so():
+    judge = json.loads(SUMMARY.read_text(encoding="utf-8"))["sets"]["judge"]
+    assert judge["all_hold"] and judge["holds_whatever_is_missing"]
+    assert judge["missing_runs"] == {"designer": 12}
+    worst = judge["worst_case"]
+    flat = _flat(PUBLISHED)
+    assert f"reaches {worst['networks']['designer']['accuracy']:.1%}" in flat
+    assert f"accuracy p = {worst['accuracy']['p']}" in flat
+    assert (f"tokens p = {worst['tokens']['p']:.2g}, "
+            f"dollars p = {worst['dollars']['p']:.2g}") in flat
+
+
+def test_the_wrong_answers_quoted_are_the_ones_the_logs_hold():
+    kinds = json.loads(SUMMARY.read_text(encoding="utf-8"))["wrong_answers_on_judge"]
+    nano, c3, base = kinds["2cc4 on nano, no calculator"], kinds["c3"], kinds["designer"]
+    flat = _flat(PUBLISHED)
+    for quoted in (f"{sum(nano.values())} wrong judge runs that morning, {nano['near miss']} "
+                   f"were near misses and {nano['wrong count']} wrong counts",
+                   f"of c3's {sum(c3.values())}, {c3['near miss']} and {c3['wrong count']}",
+                   f"{sum(base.values())} that afternoon, {base['near miss']} and "
+                   f"{base['wrong count']}",
+                   f"fell from {nano['near miss']} runs on 2cc4 on nano to {c3['near miss']}"):
+        assert quoted in flat, quoted
+
+
+@pytest.mark.parametrize("question, expected, reply, kind", [
+    ("Adding up every incident on contracts serviced by depot D06, how many hours late is that "
+     "in total? Answer with the number only.", "126", "116", "near miss"),
+    ("How many incidents affected contracts serviced by depot D05?", "5", "3", "wrong count"),
+    ("What is the combined annual value of every contract serviced by depot D13?", "2924000", "2",
+     "other"),
+    ("Who is the depot manager of depot D08?", "J. Vasquez", "R. Delacroix", "other"),
+])
+def test_a_wrong_reply_is_sorted_by_what_could_fix_it(question, expected, reply, kind):
+    assert all_four.kind_of_miss(question, expected, reply) == kind

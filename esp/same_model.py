@@ -192,7 +192,10 @@ def chunk_test(baseline: Network, candidate: Network, which: int) -> dict:
     b = np.array([per_question(candidate, c) for c in shared])
     p = float(wilcoxon(b, a, alternative="two-sided").pvalue) if len(shared) else 1.0
     return {"chunks": len(shared), "candidate_lower_in": int((b < a).sum()),
-            "baseline_lower_in": int((a < b).sum()), "p": round(p, 6),
+            "baseline_lower_in": int((a < b).sum()),
+            # Six decimals, or two significant figures below that: a network lower in
+            # every chunk has an exact p near 6e-08, which six decimals would print as 0.
+            "p": round(p, 6) if p >= 1e-6 else float(f"{p:.2g}"),
             "change": round(float(b.sum() / a.sum() - 1), 4) if a.sum() else 0.0}
 
 

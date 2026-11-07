@@ -6,6 +6,65 @@ Every figure on this page is recomputed from the committed logs by a test
 cannot drift from the runs it describes. [FINDINGS.md](FINDINGS.md) has the failure analysis,
 and [DESIGN.md](DESIGN.md) how each part works.
 
+## Better on all four at once
+
+The third test, [ALL-FOUR.md](ALL-FOUR.md), pushed before any of its networks ran. Three
+candidates were tried on select beside the designer's shape at the same hour, and the one
+the plan's rule chose was judged on judge and fresh against the same five pass marks as the
+two earlier tests. It passes all five on judge.
+
+| Select, 60 questions once each, 7 November | Accuracy | Tokens per question | Cost per question |
+| --- | --- | --- | --- |
+| Designer's shape, all `gpt-5.4-nano` | 75.0% | 5,681 | $0.001474 |
+| c1: `2cc4` on nano, Calculator on the Coordinator | 91.7% | 5,776 | $0.001455 |
+| c2: `2cc4`, Researcher on `gpt-4o-mini` | 90.0% | 2,828 | $0.000627 |
+| c3: `2cc4`, Researcher on `gpt-4o-mini`, Calculator on the Coordinator | **93.3%** | 4,055 | $0.000854 |
+
+c1 used more tokens than the designer's shape, so only c2 and c3 were eligible, and c3, the
+more accurate, was judged. That choice was committed before c3 met a judge or fresh question.
+
+| Judge, 100 questions × 2 (the test) | c3 | Designer's shape |
+| --- | --- | --- |
+| Accuracy | **93.5%** (187/200) | 80.3% (151/188) |
+| Tokens per question | **3,344** | 5,458 |
+| Cost per question | **$0.00072** | $0.00140 |
+| Cost per correct answer | **$0.00077** | $0.00175 |
+| Agents | **2** | 4 |
+| Token fitness | **+0.9192** | +0.7757 |
+| Dollar fitness | **+0.9292** | +0.7917 |
+
+| Fresh, 40 questions × 2 (the replication) | c3 | Designer's shape |
+| --- | --- | --- |
+| Accuracy | **88.8%** (71/80) | 75.0% (60/80) |
+| Tokens per question | **4,184** | 5,796 |
+| Cost per question | **$0.00089** | $0.00151 |
+| Agents | **2** | 4 |
+| Token fitness | **+0.8688** | +0.7214 |
+| Dollar fitness | **+0.8814** | +0.7383 |
+
+- **Judge: all five hold.** Accuracy +14.5 points with a 95% interval of +8.0 to +21.0, right
+  more often on 23 questions against 3, sign test p = 0.0001. Tokens −37.1%, lower in 23 of
+  25 chunks (Wilcoxon p = 8.3e-07). Dollars −47.1%, lower in all 25 (p = 6e-08).
+- **The missing runs.** The key ran out of credit with 12 of the designer's 200 judge runs
+  left, its second pass over J089 to J100, so its figures above are over 188 runs. Filled in
+  as favourably to it as possible, all 12 right at no tokens and no cost, the designer
+  reaches 81.5% and the verdict stands: accuracy p = 0.0005, tokens p = 5.4e-05, dollars
+  p = 2e-06. `esp/all_four.py` computes both and the summary records both.
+- **Fresh: cost and tokens hold, accuracy is not significant on 40 questions.** +13.8 points
+  (95% interval +1.2 to +27.5), right more often on 9 questions against 4, p = 0.2668. Tokens
+  −27.8% (p = 0.014), dollars −41.3%, lower in all 10 chunks (p = 0.002).
+- **What changed in the wrong answers.** A near miss is a wrong number within ten times of the
+  truth on a question that computes one, which is what a calculator can fix. Of the all-nano
+  `2cc4`'s 36 wrong judge runs that morning, 20 were near misses and 11 wrong counts; of c3's
+  13, 2 and 5; of the designer's shape's 37 that afternoon, 14 and 14. The fall in wrong counts
+  is no calculator's doing and may be the `gpt-4o-mini` Researcher's.
+- **The designer's shape moved between runs.** It scored 168/200 on judge in the morning and
+  151/188 in the afternoon at the same settings. Only the same-hour pair is compared, as the
+  plan fixed.
+
+`make all-four` recomputes every figure here from `results/all-four/`, and
+`tests/test_all_four.py` holds this page and the README to them.
+
 ## The held-out head-to-head
 
 On questions it was never chosen on, a **two-agent network, with the stronger model on

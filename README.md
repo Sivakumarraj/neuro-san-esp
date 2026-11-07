@@ -26,7 +26,45 @@ There is no learned Prescriptor here, so this is not ESP in the paper's full sen
 is seven mutation operators plus Pareto-front selection. In shape it is nearer to **LEAF**
 (*Evolutionary Neural AutoML for Deep Learning*, GECCO 2019), with agents where LEAF had layers.
 
-## Headline result
+## Headline: better on all four at once
+
+On the 100 judge questions it was never chosen on, asked twice at the same hour, `2cc4` with
+its Researcher on `gpt-4o-mini` and a calculator on its Coordinator beat the designer's shape on
+accuracy, tokens, cost and agents together, and so on fitness. The test and its five pass
+marks were [pushed before it ran](docs/ALL-FOUR.md).
+
+| 100 judge questions × 2, search returns 10 documents | `2cc4`, Researcher on `gpt-4o-mini`, Calculator | Designer's shape, all `gpt-5.4-nano` |
+| --- | --- | --- |
+| Accuracy | **93.5%** (187/200) | 80.3% (151/188) |
+| Tokens per question | **3,344** (−37.1%) | 5,458 |
+| Cost per question | **$0.00072** (−47.1%) | $0.00140 |
+| Cost per correct answer | **$0.00077** | $0.00175 |
+| Agents | **2** | 4 |
+| Fitness, tokens / dollars | **+0.9192 / +0.9292** | +0.7757 / +0.7917 |
+
+- **All five pass marks hold.** Right more often on 23 questions against 3: sign test
+  p = 0.0001, +14.5 points with a 95% interval of +8.0 to +21.0. Fewer tokens in 23 of the 25
+  four-question chunks (Wilcoxon p = 8.3e-07) and fewer dollars in all 25 (p = 6e-08).
+- **Twelve of the designer's runs are missing, and they cannot change the verdict.** The key
+  ran out of credit with 12 of the designer's 200 runs left, its second pass over J089 to
+  J100. Counting all 12 as right and free of tokens and cost, the designer reaches 81.5% and
+  every pass mark still holds (accuracy p = 0.0005).
+- **Chosen on select, not on judge.** Three candidates answered the 60 select questions beside
+  the designer's shape; this was the most accurate of those that were also leaner and cheaper
+  there, at 93.3% against 75.0%. The calculator idea came from the wrong answers on judge and
+  fresh, and [the plan](docs/ALL-FOUR.md) says so.
+- **The two changes are not separated.** On select the calculator alone took `2cc4` to 91.7%
+  and the `gpt-4o-mini` Researcher alone to 90.0%; only the pair was judged. Its near misses on
+  judge, wrong numbers within ten times of the truth, fell from 20 runs on `2cc4` on nano to 2.
+- **Fresh agrees on cost and leans the same way on accuracy.** On F01 to F40 the same afternoon
+  it scored 88.8% against 75.0% with 27.8% fewer tokens (p = 0.014) and 41.3% less cost
+  (p = 0.002); 9 questions against 4 is not significant on 40 questions (p = 0.2668).
+
+`make all-four` recomputes all of it from the committed logs in `results/all-four/` for $0.
+[docs/RESULTS.md](docs/RESULTS.md#better-on-all-four-at-once) has the select step and both
+question sets.
+
+## The most accurate network
 
 On 100 questions it was never chosen on, asked twice, the network the search produced beat a
 hand-written network in the shape neuro-san's designer builds:
@@ -339,7 +377,9 @@ the web page, the accelerator UI, and running the optimizer as a service.
 - **Shape is not the whole network.** Two children with the same shape scored 54 and 48 of 60
   on select because their instructions differ, and the Predictor sees only shape.
 - **Few models measured.** The search ran on `gemini-3.1-flash-lite` and the head-to-heads on
-  `gpt-5.4-nano`, with `gpt-5.4-mini` only on the agents that read documents.
+  `gpt-5.4-nano`, with `gpt-5.4-mini` or `gpt-4o-mini` only on the agents that read documents.
+- **One question world for the calculator too.** Its gain is on Meridian's totals and penalty
+  sums; on questions with less arithmetic it would have less to fix.
 - **Model calls are counted only in the replication.** Runs record neuro-san's count of model
   calls beside tokens, but every run before the replication predates that.
 - **40 fresh questions.** The replication beats the designer's shape significantly, but its
@@ -358,6 +398,8 @@ the web page, the accelerator UI, and running the optimizer as a service.
 | `esp/service/` | The loop as an interruptible service, and the evaluator's tools |
 | `esp/measure.py` | Measure any neuro-san network on any question file |
 | `esp/route.py` | Route each question to the cheap or the strong network |
+| `esp/all_four.py` | The all-four test of docs/ALL-FOUR.md: the choice on select, then the held-out verdict |
+| `esp/eval/calculator_tool.py` | The calculator CodedTool: arithmetic parsed, never evaluated |
 | `esp/same_model.py` | The same-model test of docs/SAME-MODEL.md, checked against its plan |
 | `esp/uncertainty.py` | Whether two runs agree, as a gate in front of the strong network and as a flag |
 | `esp/autopsy.py` | Every wrong penalty answer checked against the world's own hours and rates |

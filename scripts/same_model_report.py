@@ -37,7 +37,7 @@ def show(name: str, result: dict, baseline: str = same_model.BASELINE,
          titles: tuple[str, str] = ("designer", "2cc4")) -> None:
     base = result["networks"][baseline]
     cand = result["networks"][candidate]
-    print(f"\n{name}: {base['question_runs'] // 2} questions x 2, {models}, "
+    print(f"\n{name}: {cand['question_runs'] // 2} questions x 2, {models}, "
           f"{same_model.SEARCH_RESULTS} documents a search")
     print(f"  {'':24}{titles[0]:>12}{titles[1]:>12}")
     for title, key, shape in ROWS:
