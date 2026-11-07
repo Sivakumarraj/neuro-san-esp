@@ -44,9 +44,10 @@ hand-written network in the shape neuro-san's designer builds:
 - **Fewer tokens, more dollars.** It uses 37% fewer tokens, but its one document-reading agent
   runs a model 3.7× dearer per token, so each question costs 94% more. If cost matters more
   than the last few points of accuracy, use the router below.
-- **The stronger model does not explain it.** This run did not separate structure from model.
-  The replication below did: the designer's shape with every specialist on `gpt-5.4-mini`
-  gained only 2.5 points over the all-nano one, and `2cc4` still beat it.
+- **It needs the stronger model on its Researcher.** With every agent of both networks on
+  `gpt-5.4-nano`, `2cc4` scored 82.0% on these questions against 84.0%, a difference no test can
+  tell from noise (p = 0.5034). Its two-agent shape makes it cheaper; the Researcher's model makes
+  it more accurate. [Same model, half the agents](#same-model-half-the-agents) has that test.
 - **It was chosen on different questions.** Every decision was made on the 60 `meridian-select`
   questions. The judge questions come from the other half of the generated company.
 - **Where `2cc4` came from.** It is the hand-written `flat_pair` seed with its Arithmetic agent
@@ -79,13 +80,46 @@ shape with **every** specialist promoted to `gpt-5.4-mini`.
 - **The stronger model alone does not explain the gain.** Promoting all three specialists bought the designer's
   shape 2.5 points and more than doubled its cost. `2cc4` beat that control on 7 questions
   against 1 with 26% fewer tokens, 24% fewer model calls and 29% less per correct answer. On
-  40 questions that gap is not significant at 0.05 (p = 0.0703).
+  40 questions that gap is not significant at 0.05 (p = 0.0703). Nor does the shape alone
+  explain it: [with the model held equal](#same-model-half-the-agents), neither set shows
+  `2cc4` significantly more accurate.
 - **The all-nano designer is still the cheapest.** `2cc4` costs 81% more a question and 51%
   more a correct answer. The trade is the same as in the headline: 15 points of accuracy for
   about $0.0012 a question.
 - **The run cost $0.65** on the dollar cap's cautious count. Every chunk is committed in
   `results/replication/fresh-2026-10/`, and `tests/test_replication.py` recomputes each figure
   here from those logs. [Accuracy by kind of question](docs/RESULTS.md#replication-on-40-fresh-questions).
+
+## Same model, half the agents
+
+Is the two-agent shape better in itself? [docs/SAME-MODEL.md](docs/SAME-MODEL.md) fixed the test
+and five pass marks and was pushed before the run: `2cc4` against the designer's shape with every
+agent of both on `gpt-5.4-nano`, the 100 judge questions twice, both networks at the same hour.
+
+| 100 judge questions × 2, every agent `gpt-5.4-nano`, 10 documents a search | `2cc4`, two agents | Designer's shape, four agents |
+| --- | --- | --- |
+| Accuracy | 82.0% (164/200) | **84.0%** (168/200) |
+| Tokens per question | **4,596** (−14.6%) | 5,385 |
+| Cost per question | **$0.00119** (−14.6%) | $0.00139 |
+| Cost per correct answer | **$0.00145** | $0.00166 |
+| Agents | **2** | 4 |
+
+- **Cheaper, significantly.** Fewer tokens in 17 of the 25 four-question chunks (Wilcoxon
+  p = 0.027) and fewer dollars in 18 (p = 0.0087).
+- **Not more accurate, so the test fails.** Right more often on 8 questions against 12: sign
+  test p = 0.5034, −2.0 points with a 95% interval of −7.5 to +3.5. The pass mark was a gain at
+  p < 0.05. Fitness fails with it, because accuracy dominates the formula.
+- **The fresh questions lean the other way, no more significantly.** On F01 to F40, the same day
+  at the same settings, `2cc4` scored 80.0% against 70.0% (p = 0.2101) at about the same cost.
+- **What it means.** The shape cuts tokens and cost by about 15% at no measurable loss of
+  accuracy, and the headline's accuracy needs the stronger model on the Researcher. No network
+  here is better than the designer's shape on accuracy, tokens and cost at once.
+- **The measurement held.** The designer's shape scored 168/200 on judge, exactly what it scored
+  in October, and `2cc4` with its Researcher promoted scored 87.5% on the fresh questions
+  against 90.0% then.
+
+`make same-model` recomputes this from the committed logs in `results/structure/` for $0;
+[docs/RESULTS.md](docs/RESULTS.md#same-model-half-the-agents) has both question sets.
 
 ## Routing each question: most of the accuracy for less money
 
@@ -302,6 +336,7 @@ the web page, the accelerator UI, and running the optimizer as a service.
 | `esp/service/` | The loop as an interruptible service, and the evaluator's tools |
 | `esp/measure.py` | Measure any neuro-san network on any question file |
 | `esp/route.py` | Route each question to the cheap or the strong network |
+| `esp/same_model.py` | The same-model test of docs/SAME-MODEL.md, checked against its plan |
 | `esp/uncertainty.py` | Whether two runs agree, as a gate in front of the strong network and as a flag |
 | `esp/autopsy.py` | Every wrong penalty answer checked against the world's own hours and rates |
 | `esp/trace.py` | One run taken apart by agent: each agent's own usage and what it said |

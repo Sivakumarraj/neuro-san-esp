@@ -1,0 +1,178 @@
+{
+  "plan": "docs/SAME-MODEL.md",
+  "alpha": 0.05,
+  "suites": {
+    "judge": {
+      "networks": {
+        "designer": {
+          "genome_hash": "0378ca26cd9fe977",
+          "agents": 4,
+          "question_runs": 200,
+          "correct": 168,
+          "unfinished": 0,
+          "accuracy": 0.84,
+          "tokens_per_question": 5385,
+          "dollars_per_question": 0.001393,
+          "dollars_per_correct": 0.001658,
+          "token_fitness": 0.8128,
+          "dollar_fitness": 0.8285
+        },
+        "2cc4-nano": {
+          "genome_hash": "2cc4231b7d3fb81d",
+          "agents": 2,
+          "question_runs": 200,
+          "correct": 164,
+          "unfinished": 0,
+          "accuracy": 0.82,
+          "tokens_per_question": 4596,
+          "dollars_per_question": 0.001189,
+          "dollars_per_correct": 0.00145,
+          "token_fitness": 0.7999,
+          "dollar_fitness": 0.8134
+        }
+      },
+      "accuracy": {
+        "questions": 100,
+        "candidate_better_on": [
+          "J021",
+          "J039",
+          "J046",
+          "J068",
+          "J075",
+          "J076",
+          "J078",
+          "J088"
+        ],
+        "baseline_better_on": [
+          "J009",
+          "J028",
+          "J035",
+          "J048",
+          "J067",
+          "J084",
+          "J087",
+          "J090",
+          "J091",
+          "J092",
+          "J094",
+          "J098"
+        ],
+        "p": 0.5034,
+        "points": -2.0,
+        "ci95_points": [
+          -7.5,
+          3.5
+        ]
+      },
+      "tokens": {
+        "chunks": 25,
+        "candidate_lower_in": 17,
+        "baseline_lower_in": 8,
+        "p": 0.027479,
+        "change": -0.1465
+      },
+      "dollars": {
+        "chunks": 25,
+        "candidate_lower_in": 18,
+        "baseline_lower_in": 7,
+        "p": 0.008702,
+        "change": -0.1462
+      },
+      "holds": {
+        "accuracy": false,
+        "tokens": true,
+        "dollars": true,
+        "agents": true,
+        "fitness": false
+      },
+      "all_hold": false
+    },
+    "fresh": {
+      "networks": {
+        "designer": {
+          "genome_hash": "0378ca26cd9fe977",
+          "agents": 4,
+          "question_runs": 80,
+          "correct": 56,
+          "unfinished": 0,
+          "accuracy": 0.7,
+          "tokens_per_question": 5700,
+          "dollars_per_question": 0.001483,
+          "dollars_per_correct": 0.002118,
+          "token_fitness": 0.6717,
+          "dollar_fitness": 0.6884
+        },
+        "2cc4-nano": {
+          "genome_hash": "2cc4231b7d3fb81d",
+          "agents": 2,
+          "question_runs": 80,
+          "correct": 64,
+          "unfinished": 0,
+          "accuracy": 0.8,
+          "tokens_per_question": 5560,
+          "dollars_per_question": 0.001419,
+          "dollars_per_correct": 0.001774,
+          "token_fitness": 0.7766,
+          "dollar_fitness": 0.7929
+        }
+      },
+      "accuracy": {
+        "questions": 40,
+        "candidate_better_on": [
+          "F04",
+          "F10",
+          "F11",
+          "F18",
+          "F20",
+          "F21",
+          "F25",
+          "F26",
+          "F28",
+          "F37",
+          "F40"
+        ],
+        "baseline_better_on": [
+          "F06",
+          "F14",
+          "F27",
+          "F30",
+          "F38"
+        ],
+        "p": 0.2101,
+        "points": 10.0,
+        "ci95_points": [
+          -3.8,
+          23.8
+        ]
+      },
+      "tokens": {
+        "chunks": 10,
+        "candidate_lower_in": 5,
+        "baseline_lower_in": 5,
+        "p": 0.921875,
+        "change": -0.0246
+      },
+      "dollars": {
+        "chunks": 10,
+        "candidate_lower_in": 5,
+        "baseline_lower_in": 5,
+        "p": 0.845703,
+        "change": -0.0426
+      },
+      "holds": {
+        "accuracy": false,
+        "tokens": false,
+        "dollars": false,
+        "agents": true,
+        "fitness": true
+      },
+      "all_hold": false
+    }
+  },
+  "logs": {
+    "results/structure/judge-nano-2026-11/designer.jsonl": "8c0ace5f25eb4c35f63256c6d70d2a69881a47dd734182f1b16168fc91c8eadf",
+    "results/structure/judge-nano-2026-11/2cc4-nano.jsonl": "e3d692115aed0d1f4ac1208e41253982d1116367d579b2f8456852896d4c54ed",
+    "results/structure/fresh-nano-2026-11/designer.jsonl": "98b4677799d5f6b167b3342594b49b31b88bdd3206624c4c4d3bface5dfb6c50",
+    "results/structure/fresh-nano-2026-11/2cc4-nano.jsonl": "bc0bb108b9feccd3f86a6cdfb35bf2de814972675c1a27b212c7b97a0b48f386"
+  }
+}

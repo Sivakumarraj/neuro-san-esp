@@ -44,6 +44,9 @@ results/*
 !results/autopsy/summary.json
 !results/trace/
 !results/trace/*.jsonl
+# The same-model test (docs/SAME-MODEL.md, `make same-model`), kept as measured.
+!results/structure/
+!results/structure/**
 
 # The live cache is machine-local and quota-dependent. The committed
 # measurements live in tests/fixtures/cache instead, so CI can reproduce them.

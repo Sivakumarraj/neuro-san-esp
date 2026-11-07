@@ -13,9 +13,11 @@ from pathlib import Path
 import pytest
 
 from esp import same_model
+from esp.eval import accounting
 from esp.eval.accounting import ACCOUNTING
 
 ROOT = Path(__file__).resolve().parent.parent
+RESULTS_DIR = ROOT / "results" / "structure"
 PLAN = (ROOT / "docs" / "SAME-MODEL.md").read_text(encoding="utf-8")
 
 
@@ -119,3 +121,60 @@ def test_the_networks_and_settings_are_the_ones_the_plan_names():
     assert f"ESP_SEARCH_RESULTS={same_model.SEARCH_RESULTS}" in PLAN
     assert "p < 0.05" in PLAN and same_model.ALPHA == 0.05
 
+
+
+SUMMARY = ROOT / "results" / "structure" / "summary.json"
+# Both pages quote the study, with typographic minus signs and bold for the better figure.
+PUBLISHED = ("\n".join((ROOT / name).read_text(encoding="utf-8")
+                       for name in ("README.md", "docs/RESULTS.md"))
+             .replace("\N{MINUS SIGN}", "-").replace("**", ""))
+
+
+def test_the_committed_summary_is_what_the_logs_say():
+    assert same_model.analyse() == json.loads(SUMMARY.read_text(encoding="utf-8"))
+
+
+def test_the_test_failed_on_accuracy_and_the_pages_say_so():
+    """Cheaper and smaller, not more accurate: the README may not call 2cc4 better
+    than the designer's shape on every axis while the logs say this."""
+    judge = json.loads(SUMMARY.read_text(encoding="utf-8"))["suites"]["judge"]
+    assert judge["holds"] == {"accuracy": False, "tokens": True, "dollars": True,
+                              "agents": True, "fitness": False}
+    assert not judge["all_hold"]
+    assert "so the test fails" in PUBLISHED and "It does not pass." in PUBLISHED
+
+
+def test_every_figure_quoted_is_the_one_the_logs_give():
+    study = json.loads(SUMMARY.read_text(encoding="utf-8"))
+    for result in study["suites"].values():
+        for network in result["networks"].values():
+            runs = f"{network['correct']}/{network['question_runs']}"
+            for quoted in (f"{network['accuracy']:.1%} ({runs})",
+                           f"{network['tokens_per_question']:,}",
+                           f"${network['dollars_per_question']:.5f}",
+                           f"${network['dollars_per_correct']:.5f}",
+                           f"{network['token_fitness']:+.4f}",
+                           f"{network['dollar_fitness']:+.4f}"):
+                assert quoted in PUBLISHED, quoted
+        accuracy = result["accuracy"]
+        low, high = accuracy["ci95_points"]
+        for quoted in (f"p = {accuracy['p']}", f"{accuracy['points']:+.1f} points",
+                       f"{low:+.1f} to {high:+.1f}",
+                       f"{len(accuracy['candidate_better_on'])} questions against "
+                       f"{len(accuracy['baseline_better_on'])}"):
+            assert quoted in PUBLISHED, quoted
+        for key in ("tokens", "dollars"):
+            test = result[key]
+            assert f"p = {test['p']:.2g}" in PUBLISHED, (key, test["p"])
+            assert f"{test['change']:.1%}" in PUBLISHED, (key, test["change"])
+
+
+def test_the_headline_network_rerun_beside_the_test_is_quoted_as_measured():
+    rows = [accounting.normalised(json.loads(line)) for line in
+            (RESULTS_DIR / "fresh-nano-2026-11" / "evolved.jsonl").read_text(
+                encoding="utf-8").splitlines() if line.strip()]
+    runs = [result for row in rows for result in row["results"]]
+    right = sum(result["correct"] for result in runs)
+    tokens = round(sum(row["tokens"] for row in rows) / len(runs))
+    assert {row["genome_hash"] for row in rows} == {"47322479eb9cba1e"}
+    assert f"scored {right}/{len(runs)} at {tokens:,} tokens a question" in PUBLISHED

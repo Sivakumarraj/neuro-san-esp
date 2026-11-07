@@ -99,6 +99,57 @@ own dollar cap, and every one of the 240 question-runs finished.
 Every chunk is committed in `results/replication/fresh-2026-10/1-fresh/`, with
 `summary.json` beside it, and `tests/test_replication.py` recomputes this section from them.
 
+## Same model, half the agents
+
+The test [SAME-MODEL.md](SAME-MODEL.md) fixed, and pushed, before the run: `2cc4` (genome
+`2cc4231b7d3fb81d`) against the designer's shape (`0378ca26cd9fe977`), every agent of both on
+`gpt-5.4-nano`, 10 documents a search, each question twice, both networks at the same hour on
+7 November 2026. It passes only if `2cc4` is more accurate, uses fewer tokens, costs less, has
+fewer agents and scores a higher fitness. It does not pass.
+
+| Judge, 100 questions × 2 (the test) | `2cc4` | Designer's shape |
+| --- | --- | --- |
+| Accuracy | 82.0% (164/200) | **84.0%** (168/200) |
+| Tokens per question | **4,596** | 5,385 |
+| Cost per question | **$0.00119** | $0.00139 |
+| Cost per correct answer | **$0.00145** | $0.00166 |
+| Agents | **2** | 4 |
+| Token fitness | +0.7999 | **+0.8128** |
+| Dollar fitness | +0.8134 | **+0.8285** |
+
+| Fresh, 40 questions × 2 (the replication) | `2cc4` | Designer's shape |
+| --- | --- | --- |
+| Accuracy | **80.0%** (64/80) | 70.0% (56/80) |
+| Tokens per question | **5,560** | 5,700 |
+| Cost per question | **$0.00142** | $0.00148 |
+| Cost per correct answer | **$0.00177** | $0.00212 |
+| Agents | **2** | 4 |
+| Token fitness | **+0.7766** | +0.6717 |
+| Dollar fitness | **+0.7929** | +0.6884 |
+
+- **Judge: cheaper, not more accurate.** Tokens −14.6%, lower in 17 of 25 chunks (Wilcoxon
+  p = 0.027); dollars −14.6%, lower in 18 (p = 0.0087). Accuracy −2.0 points with a 95%
+  interval of −7.5 to +3.5: right more often on 8 questions against 12, sign test p = 0.5034.
+  Accuracy and fitness fail; tokens, cost and agents pass.
+- **Fresh: more accurate, not cheaper, neither significantly.** Accuracy +10.0 points (95%
+  interval −3.8 to +23.8; 11 questions against 5, p = 0.2101); tokens −2.5% (p = 0.92) and
+  dollars −4.3% (p = 0.85). Fresh was the replication, run beside the test and partly seen
+  while the plan was written, so it cannot rescue the test.
+- **So the shape is a saving, not a gain.** With the model held equal, two agents answer about
+  as well as four for about 15% less on judge. The headline's accuracy comes with the stronger
+  model on the Researcher.
+- **The same networks, a fortnight apart.** The designer's shape scored 168/200 on judge on
+  7 November and 168/200 in October; on fresh it scored 56/80 against 60/80. `2cc4` with its
+  Researcher promoted, run on fresh the same day (`results/structure/fresh-nano-2026-11/evolved.jsonl`),
+  scored 70/80 at 3,148 tokens a question against 72/80 at 3,342 in October.
+- **Cost** is neuro-san's own count at list prices, as everywhere on this page. Tokens and
+  dollars are tested over the four-question chunks, each chunk's two repeats averaged, because
+  the provider reports usage per chunk and not per question.
+
+`make same-model` recomputes both tables and every test from the logs in `results/structure/`,
+`tests/test_same_model.py` holds this page to them, and `make same-model-run GO=1` repeats the
+run (about $0.60 for the pair on judge).
+
 ## Reproducing the head-to-head
 
 Put your key in `.env` (gitignored):
