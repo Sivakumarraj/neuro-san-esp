@@ -95,6 +95,14 @@ class CorpusSearch(CodedTool):
             for item in results
         )
 
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> Any:
+        """What neuro-san calls first. Without it, neuro-san 0.7.5 falls back to
+        `invoke` in a thread and writes a "port to async_invoke()" notice into the
+        agent stream on every search, two of every 22 messages in one question.
+        A search is microseconds of work over 124 documents, so it runs here, on
+        the event loop, which also keeps the `corpus_calls` count on one thread."""
+        return self.invoke(args, sly_data)
+
 
 class JudgedWidthSearch(CorpusSearch):
     """CorpusSearch at the width the held-out pair was judged at.

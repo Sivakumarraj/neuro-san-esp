@@ -9,6 +9,7 @@ reach anything that deletes or sends.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Any
 
@@ -20,6 +21,12 @@ from esp.service.state import ServiceState
 
 class RunWake(CodedTool):
     """Run one wake and return what happened, as JSON the front agent can read."""
+
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
+        """What neuro-san calls first. The work blocks for minutes, so it runs
+        in a thread, where neuro-san's fallback put it, without the fallback's
+        notice in the agent stream."""
+        return await asyncio.to_thread(self.invoke, args, sly_data)
 
     def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
         state = ServiceState.load()

@@ -19,6 +19,7 @@ registries/evaluator.hocon forbid it to state any figure they did not return.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import threading
@@ -69,6 +70,12 @@ def resolve(wanted: list[str]) -> tuple[list[Candidate], list[str]]:
 class ListNetworks(CodedTool):
     """The networks that can be measured, with what each scored when measured."""
 
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
+        """What neuro-san calls first. The first call renders every network in
+        the catalog from disk, so it runs in a thread, where neuro-san's fallback
+        put it, without the fallback's notice in the agent stream."""
+        return await asyncio.to_thread(self.invoke, args, sly_data)
+
     def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
         return json.dumps({
             "networks": [c.public() for c in networks()],
@@ -79,6 +86,12 @@ class ListNetworks(CodedTool):
 
 class MeasureNetworks(CodedTool):
     """Put the same questions to up to four networks and compare them."""
+
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
+        """What neuro-san calls first. The work blocks for minutes, so it runs
+        in a thread, where neuro-san's fallback put it, without the fallback's
+        notice in the agent stream."""
+        return await asyncio.to_thread(self.invoke, args, sly_data)
 
     def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
         wanted = args.get("networks") or []

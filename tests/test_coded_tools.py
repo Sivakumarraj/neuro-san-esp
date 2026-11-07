@@ -111,3 +111,32 @@ def test_the_agent_cannot_choose_what_to_evaluate():
     source = inspect.getsource(coded_tools.RunWake.invoke)
     body = source.split("\n", 1)[1]
     assert "args[" not in body and "args.get" not in body
+
+
+@pytest.mark.parametrize("tool", ["esp.eval.corpus_tool.CorpusSearch",
+                                  "esp.eval.corpus_tool.JudgedWidthSearch",
+                                  "esp.service.coded_tools.RunWake",
+                                  "esp.service.measure_tools.ListNetworks",
+                                  "esp.service.measure_tools.MeasureNetworks"])
+def test_every_tool_has_its_own_async_invoke(tool):
+    """neuro-san calls async_invoke first. A tool without one falls back to invoke
+    in a thread, and neuro-san writes a notice into the agent stream on every call."""
+    import importlib
+
+    from neuro_san.interfaces.coded_tool import CodedTool
+
+    module, name = tool.rsplit(".", 1)
+    cls = getattr(importlib.import_module(module), name)
+    assert cls.async_invoke is not CodedTool.async_invoke
+
+
+def test_a_search_answers_the_same_by_either_call():
+    import asyncio
+
+    from esp.eval.corpus_tool import CorpusSearch
+
+    query = {"query": "contract C-2105 penalty"}
+    sync_board, async_board = {}, {}
+    assert (asyncio.run(CorpusSearch().async_invoke(query, async_board))
+            == CorpusSearch().invoke(query, sync_board))
+    assert async_board == sync_board == {"corpus_calls": 1}
