@@ -31,23 +31,28 @@ ROWS = (("accuracy", "accuracy", "{:.1%}"),
         ("dollar fitness", "dollar_fitness", "{:+.4f}"))
 
 
-def show(name: str, result: dict) -> None:
-    base = result["networks"][same_model.BASELINE]
-    cand = result["networks"][same_model.CANDIDATE]
-    print(f"\n{name}: {base['question_runs'] // 2} questions x 2, every agent on "
-          f"{same_model.MODEL}, {same_model.SEARCH_RESULTS} documents a search")
-    print(f"  {'':24}{'designer':>12}{'2cc4':>12}")
+def show(name: str, result: dict, baseline: str = same_model.BASELINE,
+         candidate: str = same_model.CANDIDATE,
+         models: str = f"every agent on {same_model.MODEL}",
+         titles: tuple[str, str] = ("designer", "2cc4")) -> None:
+    base = result["networks"][baseline]
+    cand = result["networks"][candidate]
+    print(f"\n{name}: {base['question_runs'] // 2} questions x 2, {models}, "
+          f"{same_model.SEARCH_RESULTS} documents a search")
+    print(f"  {'':24}{titles[0]:>12}{titles[1]:>12}")
     for title, key, shape in ROWS:
         print(f"  {title:24}{shape.format(base[key]):>12}{shape.format(cand[key]):>12}")
     acc = result["accuracy"]
     low, high = acc["ci95_points"]
-    print(f"  accuracy: 2cc4 right more often on {len(acc['candidate_better_on'])} questions, "
-          f"the designer on {len(acc['baseline_better_on'])}; sign test p = {acc['p']}; "
+    better, worse = len(acc["candidate_better_on"]), len(acc["baseline_better_on"])
+    print(f"  accuracy: {titles[1]} right more often on {better} questions, "
+          f"the designer on {worse}; sign test p = {acc['p']}; "
           f"{acc['points']:+.1f} points, 95% interval {low:+.1f} to {high:+.1f}")
     for key in ("tokens", "dollars"):
         test = result[key]
-        print(f"  {key}: {test['change']:+.1%} for 2cc4, lower in {test['candidate_lower_in']} "
-              f"of {test['chunks']} chunks; Wilcoxon p = {test['p']:.2g}")
+        print(f"  {key}: {test['change']:+.1%} for {titles[1]}, lower in "
+              f"{test['candidate_lower_in']} of {test['chunks']} chunks; "
+              f"Wilcoxon p = {test['p']:.2g}")
     print("  " + ", ".join(f"{criterion} {'holds' if ok else 'FAILS'}"
                            for criterion, ok in result["holds"].items()))
     print(f"  all five hold: {'YES' if result['all_hold'] else 'NO'}")

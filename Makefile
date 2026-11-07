@@ -1,4 +1,4 @@
-.PHONY: replicate same-model same-model-run model-router install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool headtohead experiment guide check-key smoke measure figures ablation probe baseline search holdout route uncertainty autopsy trace offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
+.PHONY: replicate same-model same-model-run model-router all-four install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool headtohead experiment guide check-key smoke measure figures ablation probe baseline search holdout route uncertainty autopsy trace offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -166,6 +166,12 @@ same-model-run:
 # on judge and fresh from the committed logs; costs nothing.
 model-router:
 	PYTHONPATH=$$PWD python scripts/model_router_report.py
+
+# The third test, docs/ALL-FOUR.md: three candidates screened on select beside
+# the designer's shape, the winner judged on judge and fresh against the same
+# five pass marks. Reads the committed logs in results/all-four/; costs nothing.
+all-four:
+	PYTHONPATH=$$PWD python scripts/all_four_report.py
 
 # Select a winner on half the tasks, then judge it on the half it was not
 # selected on. Costs nothing: every evaluation recorded the outcome of each

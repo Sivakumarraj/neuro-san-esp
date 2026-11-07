@@ -108,24 +108,32 @@ class Network:
                 "dollar_fitness": round(self.dollar_fitness, 4)}
 
 
-def read(path: Path) -> Network:
-    """A log written by `scripts/select_and_judge.py measure`, checked against the plan."""
+def read(path: Path, hashes: dict[str, str] | None = None,
+         model: str | None = MODEL) -> Network:
+    """A log written by `scripts/select_and_judge.py measure`, checked against the plan.
+
+    `hashes` names the genome each label must have run as (this test's by default);
+    `model`, when given, is the one model every agent must have run on. A later test
+    whose networks mix models passes None and relies on the genome, which names
+    every agent's model, to say what ran.
+    """
     from esp.evolve.headtohead import read_rows
 
+    plan = HASHES if hashes is None else hashes
     rows = [accounting.normalised(row) for row in read_rows(path)]
     if not rows:
         raise ValueError(f"{path}: no rows")
     label = rows[0]["label"]
-    hashes = {row["genome_hash"] for row in rows}
-    if hashes != {HASHES.get(label)}:
-        raise ValueError(f"{path}: {label} ran as {sorted(hashes)}, the plan names "
-                         f"{HASHES.get(label)}")
+    ran = {row["genome_hash"] for row in rows}
+    if ran != {plan.get(label)}:
+        raise ValueError(f"{path}: {label} ran as {sorted(ran)}, the plan names "
+                         f"{plan.get(label)}")
     for row in rows:
         models = set(row["models"].values())
-        settings = row.get("settings", {})
-        if models != {MODEL} or settings.get("search_results") != SEARCH_RESULTS:
+        width = row.get("settings", {}).get("search_results")
+        if (model is not None and models != {model}) or width != SEARCH_RESULTS:
             raise ValueError(f"{path}: chunk {row['chunk']} ran on {sorted(models)} at "
-                             f"{settings.get('search_results')} documents, not {MODEL} at "
+                             f"{width} documents, not {model or 'the plan'} at "
                              f"{SEARCH_RESULTS}")
     network = Network(label, rows[0]["genome_hash"], agents=len(rows[0]["models"]))
     for row in rows:
@@ -205,7 +213,8 @@ def verdict(baseline: Network, candidate: Network) -> dict:
         "fitness": (candidate.token_fitness > baseline.token_fitness
                     and candidate.dollar_fitness > baseline.dollar_fitness),
     }
-    return {"networks": {BASELINE: baseline.as_dict(), CANDIDATE: candidate.as_dict()},
+    return {"networks": {baseline.label: baseline.as_dict(),
+                         candidate.label: candidate.as_dict()},
             "accuracy": accuracy, "tokens": tokens, "dollars": dollars,
             "holds": holds, "all_hold": all(holds.values())}
 
