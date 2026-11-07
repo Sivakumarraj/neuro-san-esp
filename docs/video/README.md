@@ -44,9 +44,10 @@ npx playwright install chromium
 node render.js all 3
 ```
 
-`out/neuro-san-esp-4k.mp4` and `out/neuro-san-esp-1080p.mp4` are the results. Chromium draws WebGL in software
-(SwiftShader), so no GPU is needed and every machine renders the same frames, slowly: about two seconds a frame
-for each worker, so the film's 6,510 frames take a little over an hour with three workers on four cores.
+`out/neuro-san-esp-4k.mp4` (about 215 MB: H.264 at 8 Mbit/s, AAC normalised to −16 LUFS) and
+`out/neuro-san-esp-1080p.mp4` (about 54 MB) are the results. Chromium draws WebGL in software (SwiftShader), so no
+GPU is needed and every machine renders the same frames, slowly: about 2.2 seconds a frame for each worker. The
+film's 6,510 frames took 76 minutes with three workers on four cores.
 
 To look at single frames first:
 
