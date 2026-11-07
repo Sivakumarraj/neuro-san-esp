@@ -28,8 +28,8 @@ is seven mutation operators plus Pareto-front selection. In shape it is nearer t
 
 ## Headline result
 
-On 100 questions it was never chosen on, asked twice, the network the search produced beat the
-network neuro-san's designer builds:
+On 100 questions it was never chosen on, asked twice, the network the search produced beat a
+hand-written network in the shape neuro-san's designer builds:
 
 | 100 judge questions × 2 repeats, search returns 10 documents | `2cc4`, Researcher on `gpt-5.4-mini` | Designer's shape, all `gpt-5.4-nano` |
 | --- | --- | --- |
@@ -269,6 +269,10 @@ the web page, the accelerator UI, and running the optimizer as a service.
 
 - **One task domain.** Every question comes from the same generated world, so what is measured
   is stability across questions, not transfer to a new domain.
+- **The baseline is the designer's shape, not its output.** `designer_shaped` is written by hand
+  to the designer's rules (one coordinator, a specialist per kind of record). The networks
+  neuro-san-studio's designer generates also carry its AAOSA instructions, which this one does
+  not. A network the designer itself generated for these questions has not been measured.
 - **One generation of search on the held-out run.** `2cc4` is the best of eight children of a
   hand-written seed, judged on 100 questions twice. A longer search and more repeats would
   tighten the error on the accuracy gap.

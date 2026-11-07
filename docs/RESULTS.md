@@ -9,8 +9,9 @@ and [DESIGN.md](DESIGN.md) how each part works.
 ## The held-out head-to-head
 
 On questions it was never chosen on, a **two-agent network, with the stronger model on
-the one agent that reads the documents, scored 94.5% against 84.0%** for the four-agent
-network neuro-san's designer would build, using 37% fewer tokens but costing more.
+the one agent that reads the documents, scored 94.5% against 84.0%** for a hand-written
+four-agent network in the shape neuro-san's designer builds, using 37% fewer tokens but costing
+more.
 
 | 100 judge questions × 2 repeats, search returns 10 documents | `2cc4`, Researcher on `gpt-5.4-mini` | Designer's shape, all `gpt-5.4-nano` |
 | --- | --- | --- |

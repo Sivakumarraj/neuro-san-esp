@@ -120,8 +120,8 @@ architectures, with agents where LEAF had layers.
 
 ## 5. The head-to-head
 
-The paid runs asked what a reviewer would ask first: does a searched network beat the one the
-designer builds, on questions it was not chosen on? Every decision was made on the 60 select
+The paid runs asked what a reviewer would ask first: does a searched network beat a network in
+the shape the designer builds, on questions it was not chosen on? Every decision was made on the 60 select
 questions; the winner and the designer's shape were then asked the first 100 judge questions,
 twice each, on OpenAI's `gpt-5.4-nano`, with search returning 10 documents.
 
