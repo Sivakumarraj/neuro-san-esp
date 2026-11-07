@@ -380,6 +380,11 @@ the web page, the accelerator UI, and running the optimizer as a service.
   `gpt-5.4-nano`, with `gpt-5.4-mini` or `gpt-4o-mini` only on the agents that read documents.
 - **One question world for the calculator too.** Its gain is on Meridian's totals and penalty
   sums; on questions with less arithmetic it would have less to fix.
+- **A free Gemini key cannot fund a search.** The free tier caps requests per day for each
+  model: 500 on the flash-lite models, and about 20 on `gemini-3.5-flash`. A candidate costs
+  about 165 requests, so a day buys three flash-lite candidates and not one on the stronger
+  model. That is why the Gemini search is one generation deep
+  ([FINDINGS.md](docs/FINDINGS.md)).
 - **Model calls are counted only in the replication.** Runs record neuro-san's count of model
   calls beside tokens, but every run before the replication predates that.
 - **40 fresh questions.** The replication beats the designer's shape significantly, but its
