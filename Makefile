@@ -1,4 +1,4 @@
-.PHONY: replicate same-model same-model-run install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool headtohead experiment guide check-key smoke measure figures ablation probe baseline search holdout route uncertainty autopsy trace offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
+.PHONY: replicate same-model same-model-run model-router install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool headtohead experiment guide check-key smoke measure figures ablation probe baseline search holdout route uncertainty autopsy trace offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -160,6 +160,12 @@ same-model-run:
 	          --out $$out --budget 0.40 $(if $(GO),--go,); }; \
 	run designer & a=$$!; run 2cc4 --label 2cc4-nano & b=$$!; \
 	status=0; for pid in $$a $$b; do wait $$pid || status=1; done; exit $$status
+
+# The second test, docs/MODEL-ROUTER.md: 2cc4 with the Researcher's model chosen
+# per question, nano or mini, under the designer's cost. Fitted on select, judged
+# on judge and fresh from the committed logs; costs nothing.
+model-router:
+	PYTHONPATH=$$PWD python scripts/model_router_report.py
 
 # Select a winner on half the tasks, then judge it on the half it was not
 # selected on. Costs nothing: every evaluation recorded the outcome of each

@@ -138,6 +138,24 @@ def _questions(name: str) -> dict[str, str]:
     return {t.task_id: t.question for t in tasks}
 
 
+def choose(gains: np.ndarray, cheap: np.ndarray, strong: np.ndarray, price_cheap: float,
+           price_strong: float, budget: float) -> tuple[float, float, float, float]:
+    """(threshold, accuracy, cost a question, share sent up): the most accurate
+    threshold whose cost stays within `budget`, a tie going to the one sending
+    fewer up. Infinity, sending nothing up, is always a candidate."""
+    best: tuple[float, float, float, float] | None = None
+    for threshold in [float("inf"), *sorted(set(gains.tolist()), reverse=True)]:
+        up = gains >= threshold
+        share = float(up.mean())
+        cost = share * price_strong + (1 - share) * price_cheap
+        accuracy = float(np.where(up, strong, cheap).mean())
+        if cost <= budget + 1e-12 and (best is None or accuracy > best[1] + 1e-12):
+            best = (threshold, accuracy, cost, share)
+    if best is None:
+        raise ValueError("the cheap action alone already costs more than the budget")
+    return best
+
+
 def fit(paths: dict[str, Path] | None = None) -> dict:
     """The Predictor and the threshold, from the select questions alone."""
     logs = {a: read(p, a) for a, p in (paths or SELECT).items()}
@@ -150,15 +168,8 @@ def fit(paths: dict[str, Path] | None = None) -> dict:
 
     price = {a: logs[a].dollars_per_question for a in ACTIONS}
     budget = price["baseline"]
-    best: tuple[float, float, float, float] | None = None
-    for threshold in [float("inf"), *sorted(set(gains.tolist()), reverse=True)]:
-        up = gains >= threshold
-        share = float(up.mean())
-        cost = share * price["strong"] + (1 - share) * price["cheap"]
-        accuracy = float(np.where(up, strong, cheap).mean())
-        if cost <= budget + 1e-12 and (best is None or accuracy > best[1] + 1e-12):
-            best = (threshold, accuracy, cost, share)
-    threshold, accuracy, cost, share = best
+    threshold, accuracy, cost, share = choose(gains, cheap, strong, price["cheap"],
+                                              price["strong"], budget)
     router = route.Router(threshold).fit(questions, cheap, strong)
     return {"router": router, "questions": len(ids), "threshold": threshold,
             "leave_one_out": {"accuracy": round(accuracy, 4), "dollars": round(cost, 6),
@@ -304,10 +315,18 @@ def analyse(select: dict[str, Path] | None = None,
                             "routes_nothing": bool(np.isinf(threshold))},
                  "sets": {}, "logs": {}}
     paths = list((select or SELECT).values())
+    out["incomplete"] = []
     for name, logs in (sets or SETS).items():
-        if all(path.exists() for path in logs.values()):
-            out["sets"][name] = judge(router, name, logs)
-            paths += list(logs.values())
+        if not all(path.exists() for path in logs.values()):
+            continue
+        # A run still being measured covers only some questions, and a set judged
+        # on part of itself is not the set the plan names.
+        questions = set(_questions(name))
+        if any(set(read(path, action).right) != questions for action, path in logs.items()):
+            out["incomplete"].append(name)
+            continue
+        out["sets"][name] = judge(router, name, logs)
+        paths += list(logs.values())
     for path in paths:
         shown = path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
         out["logs"][str(shown)] = sha256(path)
