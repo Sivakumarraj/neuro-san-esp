@@ -1,0 +1,15 @@
+{
+  "name": "neuro-san-esp-film",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The neuro-san-esp film at 4K: a three.js scene in headless Chromium, frames piped to ffmpeg.",
+  "license": "Apache-2.0",
+  "scripts": {
+    "render": "node render.js all 3",
+    "stills": "node render.js stills"
+  },
+  "dependencies": {
+    "playwright": "1.63.0",
+    "three": "0.169.0"
+  }
+}
