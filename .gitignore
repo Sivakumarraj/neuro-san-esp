@@ -47,6 +47,9 @@ results/*
 # The same-model test (docs/SAME-MODEL.md, `make same-model`), kept as measured.
 !results/structure/
 !results/structure/**
+# The Researcher-routing test (docs/MODEL-ROUTER.md, `make model-router`), kept as measured.
+!results/router/
+!results/router/**
 
 # The live cache is machine-local and quota-dependent. The committed
 # measurements live in tests/fixtures/cache instead, so CI can reproduce them.

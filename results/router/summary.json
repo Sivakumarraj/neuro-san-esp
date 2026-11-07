@@ -1,0 +1,308 @@
+{
+  "plan": "docs/MODEL-ROUTER.md",
+  "alpha": 0.05,
+  "select": {
+    "questions": 60,
+    "threshold": null,
+    "leave_one_out": {
+      "accuracy": 0.8667,
+      "dollars": 0.001263,
+      "share_to_strong": 0.0
+    },
+    "select": {
+      "cheap": {
+        "accuracy": 0.8667,
+        "dollars_per_question": 0.001263
+      },
+      "strong": {
+        "accuracy": 0.95,
+        "dollars_per_question": 0.00279
+      },
+      "baseline": {
+        "accuracy": 0.8,
+        "dollars_per_question": 0.001367
+      }
+    },
+    "budget": 0.001367,
+    "most_sent_up_within_budget": 4,
+    "routes_nothing": true
+  },
+  "sets": {
+    "judge": {
+      "questions": 100,
+      "sent_up": 0,
+      "share_to_strong": 0.0,
+      "accuracy": {
+        "routed": 0.82,
+        "baseline": 0.84,
+        "cheap": 0.82,
+        "strong": 0.955,
+        "routed_better_on": [
+          "J021",
+          "J039",
+          "J046",
+          "J068",
+          "J075",
+          "J076",
+          "J078",
+          "J088"
+        ],
+        "baseline_better_on": [
+          "J009",
+          "J028",
+          "J035",
+          "J048",
+          "J067",
+          "J084",
+          "J087",
+          "J090",
+          "J091",
+          "J092",
+          "J094",
+          "J098"
+        ],
+        "p": 0.5034,
+        "points": -2.0,
+        "ci95_points": [
+          -7.5,
+          3.5
+        ],
+        "random_same_share": 0.82,
+        "p_against_random": 1.0
+      },
+      "tokens": {
+        "routed": 4596.285,
+        "baseline": 5385.035,
+        "chunks": 25,
+        "routed_lower_in": 17,
+        "p": 0.027479,
+        "change": -0.1465
+      },
+      "dollars": {
+        "routed": 0.001189,
+        "baseline": 0.001393,
+        "chunks": 25,
+        "routed_lower_in": 18,
+        "p": 0.008702,
+        "change": -0.1462
+      },
+      "dollars_by_time": {
+        "routed": 0.001189,
+        "baseline": 0.001393
+      },
+      "fitness": {
+        "routed": {
+          "token": 0.7999,
+          "dollar": 0.8134
+        },
+        "baseline": {
+          "token": 0.8128,
+          "dollar": 0.8285
+        }
+      },
+      "holds": {
+        "accuracy": false,
+        "tokens": true,
+        "dollars": true,
+        "agents": true,
+        "fitness": false
+      },
+      "all_hold": false,
+      "oracle_within_budget": {
+        "accuracy": 0.945,
+        "sent_up": 17,
+        "dollars": 0.001384,
+        "better_on": 18,
+        "worse_on": 1,
+        "p": 0.0001
+      }
+    },
+    "fresh": {
+      "questions": 40,
+      "sent_up": 0,
+      "share_to_strong": 0.0,
+      "accuracy": {
+        "routed": 0.8,
+        "baseline": 0.7,
+        "cheap": 0.8,
+        "strong": 0.875,
+        "routed_better_on": [
+          "F04",
+          "F10",
+          "F11",
+          "F18",
+          "F20",
+          "F21",
+          "F25",
+          "F26",
+          "F28",
+          "F37",
+          "F40"
+        ],
+        "baseline_better_on": [
+          "F06",
+          "F14",
+          "F27",
+          "F30",
+          "F38"
+        ],
+        "p": 0.2101,
+        "points": 10.0,
+        "ci95_points": [
+          -3.8,
+          23.8
+        ],
+        "random_same_share": 0.8,
+        "p_against_random": 1.0
+      },
+      "tokens": {
+        "routed": 5560.45,
+        "baseline": 5700.45,
+        "chunks": 10,
+        "routed_lower_in": 5,
+        "p": 0.921875,
+        "change": -0.0246
+      },
+      "dollars": {
+        "routed": 0.001419,
+        "baseline": 0.001483,
+        "chunks": 10,
+        "routed_lower_in": 5,
+        "p": 0.845703,
+        "change": -0.0426
+      },
+      "dollars_by_time": {
+        "routed": 0.001419,
+        "baseline": 0.001483
+      },
+      "fitness": {
+        "routed": {
+          "token": 0.7766,
+          "dollar": 0.7929
+        },
+        "baseline": {
+          "token": 0.6717,
+          "dollar": 0.6884
+        }
+      },
+      "holds": {
+        "accuracy": false,
+        "tokens": false,
+        "dollars": false,
+        "agents": true,
+        "fitness": true
+      },
+      "all_hold": false,
+      "oracle_within_budget": {
+        "accuracy": 0.875,
+        "sent_up": 3,
+        "dollars": 0.001481,
+        "better_on": 12,
+        "worse_on": 2,
+        "p": 0.0129
+      }
+    },
+    "judge-october-strong": {
+      "questions": 100,
+      "sent_up": 0,
+      "share_to_strong": 0.0,
+      "accuracy": {
+        "routed": 0.82,
+        "baseline": 0.84,
+        "cheap": 0.82,
+        "strong": 0.945,
+        "routed_better_on": [
+          "J021",
+          "J039",
+          "J046",
+          "J068",
+          "J075",
+          "J076",
+          "J078",
+          "J088"
+        ],
+        "baseline_better_on": [
+          "J009",
+          "J028",
+          "J035",
+          "J048",
+          "J067",
+          "J084",
+          "J087",
+          "J090",
+          "J091",
+          "J092",
+          "J094",
+          "J098"
+        ],
+        "p": 0.5034,
+        "points": -2.0,
+        "ci95_points": [
+          -7.5,
+          3.5
+        ],
+        "random_same_share": 0.82,
+        "p_against_random": 1.0
+      },
+      "tokens": {
+        "routed": 4596.285,
+        "baseline": 5385.035,
+        "chunks": 25,
+        "routed_lower_in": 17,
+        "p": 0.027479,
+        "change": -0.1465
+      },
+      "dollars": {
+        "routed": 0.001189,
+        "baseline": 0.001393,
+        "chunks": 25,
+        "routed_lower_in": 18,
+        "p": 0.008702,
+        "change": -0.1462
+      },
+      "dollars_by_time": {
+        "routed": 0.001189,
+        "baseline": 0.001393
+      },
+      "fitness": {
+        "routed": {
+          "token": 0.7999,
+          "dollar": 0.8134
+        },
+        "baseline": {
+          "token": 0.8128,
+          "dollar": 0.8285
+        }
+      },
+      "holds": {
+        "accuracy": false,
+        "tokens": true,
+        "dollars": true,
+        "agents": true,
+        "fitness": false
+      },
+      "all_hold": false,
+      "oracle_within_budget": {
+        "accuracy": 0.93,
+        "sent_up": 15,
+        "dollars": 0.001387,
+        "better_on": 16,
+        "worse_on": 2,
+        "p": 0.0013
+      }
+    }
+  },
+  "logs": {
+    "results/headtohead/paid-2026-10/7-select-search10/2cc4.jsonl": "bc73352fc34c5a5c13cc01f52348514d9c4d3d10b94272987e86057c7701367c",
+    "results/headtohead/paid-2026-10/7-select-search10/2cc4-mini.jsonl": "15fd721309246d6d2c3824439bbdbbc089d6b378fbd0ddfee6ad3fe0f7dc4a61",
+    "results/headtohead/paid-2026-10/7-select-search10/designer.jsonl": "4fbe14b5a7979b95627311c5e5c773ebc9e511311627117245be71d53519e75f",
+    "results/structure/judge-nano-2026-11/2cc4-nano.jsonl": "e3d692115aed0d1f4ac1208e41253982d1116367d579b2f8456852896d4c54ed",
+    "results/router/judge-2026-11/2cc4-mini.jsonl": "97985491b46a3b882d23f7f5131bafcb50be72caef26c06a681b707297d780ca",
+    "results/structure/judge-nano-2026-11/designer.jsonl": "8c0ace5f25eb4c35f63256c6d70d2a69881a47dd734182f1b16168fc91c8eadf",
+    "results/structure/fresh-nano-2026-11/2cc4-nano.jsonl": "bc0bb108b9feccd3f86a6cdfb35bf2de814972675c1a27b212c7b97a0b48f386",
+    "results/structure/fresh-nano-2026-11/evolved.jsonl": "58e6095ef76f900d4f1eab647ea65c5c68e208bc42f01cb0af1837c0161caae3",
+    "results/structure/fresh-nano-2026-11/designer.jsonl": "98b4677799d5f6b167b3342594b49b31b88bdd3206624c4c4d3bface5dfb6c50",
+    "results/headtohead/paid-2026-10/8-judge-search10/evolved.jsonl": "a68abcc8e2440ce563f79ca924820c29f18468114078b648ce306ed6d8599904"
+  },
+  "incomplete": []
+}

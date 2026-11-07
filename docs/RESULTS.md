@@ -150,6 +150,42 @@ fewer agents and scores a higher fitness. It does not pass.
 `tests/test_same_model.py` holds this page to them, and `make same-model-run GO=1` repeats the
 run (about $0.60 for the pair on judge).
 
+## Choosing the Researcher's model per question
+
+The test [MODEL-ROUTER.md](MODEL-ROUTER.md) fixed: `2cc4` with its Researcher on `gpt-5.4-nano`
+(`2cc4231b7d3fb81d`) or on `gpt-5.4-mini` (`47322479eb9cba1e`), chosen per question by
+`esp.route.Router` fitted on select, at no more cost a question than the designer's shape
+there. The same five pass marks as the same-model test. It does not pass.
+
+| Select, 60 questions, stage 7 | `2cc4`, nano | `2cc4`, Researcher on mini | Designer's shape |
+| --- | --- | --- | --- |
+| Accuracy | 86.7% | 95.0% | 80.0% |
+| Cost per question | $0.001263 | $0.00279 | $0.001367 |
+
+- **The budget is 4 questions of 60.** Sending more than 4 up costs more a question than the
+  designer's shape. Mini beat nano on 6 select questions and lost on 1, and the Predictor's
+  single top-ranked question is one mini got wrong; its next group is 14 questions. No
+  threshold within budget scores better than sending nothing up, so the router sends nothing
+  up, and on judge it is `2cc4` on nano: 82.0% against 84.0%, tokens and dollars 14.6% lower.
+  Accuracy and fitness fail; tokens, cost and agents pass.
+- **The strong action, measured again on judge the same day** (`results/router/judge-2026-11/`),
+  scored 95.5% (191/200) at 3,020 tokens and $0.002431 a question, against 94.5% (189/200) at
+  3,250 tokens in October.
+
+Not a test: the routing that knows every answer, sending up the questions mini wins most while
+the cost a question stays at or below the designer's shape's. It is computed on the questions
+it is reported on, and bounds what any Predictor could do with these two networks.
+
+| Knowing every answer, within the designer's cost | Sent up | Accuracy | Cost per question | Against the designer's shape |
+| --- | --- | --- | --- | --- |
+| Judge, mini measured 7 November | 17 | 94.5% | $0.001384 | better on 18, worse on 1, p = 0.0001 |
+| Judge, mini measured in October | 15 | 93.0% | $0.001387 | better on 16, worse on 2, p = 0.0013 |
+| Fresh | 3 | 87.5% | $0.001481 | better on 12, worse on 2, p = 0.0129 |
+
+So the two networks leave room to beat the designer's shape on accuracy at no more cost a
+question, and the question-text Predictor does not find it. `make model-router` recomputes every
+figure here from the logs, and `tests/test_model_router.py` holds this page to them.
+
 ## Reproducing the head-to-head
 
 Put your key in `.env` (gitignored):

@@ -121,6 +121,28 @@ agent of both on `gpt-5.4-nano`, the 100 judge questions twice, both networks at
 `make same-model` recomputes this from the committed logs in `results/structure/` for $0;
 [docs/RESULTS.md](docs/RESULTS.md#same-model-half-the-agents) has both question sets.
 
+## Choosing the Researcher's model per question
+
+The second test, [docs/MODEL-ROUTER.md](docs/MODEL-ROUTER.md), pushed before its judge outcome
+was computed: `2cc4` with its Researcher on `gpt-5.4-nano` or `gpt-5.4-mini`, chosen question by
+question by the router's Predictor, at no more cost a question than the designer's shape.
+
+- **The router sends nothing up, so the test fails.** On select the budget allows 4 of the 60
+  questions on mini. Mini beat nano on 6 select questions, and the Predictor ranks none of them
+  first, so no threshold within budget beats sending nothing up. On judge the router is `2cc4`
+  on nano: 82.0% against 84.0%, 14.6% cheaper.
+- **The two networks could be more accurate at no more cost; the Predictor cannot find how.**
+  Knowing every answer, sending up the 17 judge questions mini wins most, at $0.001384 a
+  question against the designer's $0.001393, would score 94.5% against 84.0% (better on 18
+  questions against 1, p = 0.0001). That is a bound computed on the questions it is reported on,
+  not a result. What is missing is a signal, before a question is answered, of which questions
+  need the stronger Researcher.
+- **The headline held on the same day.** `2cc4` with its Researcher on mini scored 95.5%
+  (191/200) on judge on 7 November at 3,020 tokens a question, against 94.5% in October.
+
+`make model-router` recomputes this from the committed logs for $0;
+[docs/RESULTS.md](docs/RESULTS.md#choosing-the-researchers-model-per-question) has the detail.
+
 ## Routing each question: most of the accuracy for less money
 
 The stronger network costs 94% more per question, and the designer's shape already answers

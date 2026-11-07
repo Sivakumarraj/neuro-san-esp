@@ -117,3 +117,49 @@ def test_the_networks_the_plan_names_are_the_ones_read():
     for genome_hash in model_router.HASHES.values():
         assert genome_hash in PLAN
     assert "05:22 UTC on 7 November 2026" in PLAN
+
+
+SUMMARY = ROOT / "results" / "router" / "summary.json"
+PUBLISHED = ("\n".join((ROOT / name).read_text(encoding="utf-8")
+                       for name in ("README.md", "docs/RESULTS.md"))
+             .replace("\N{MINUS SIGN}", "-").replace("**", ""))
+
+
+def test_the_committed_summary_is_what_the_logs_say():
+    assert model_router.analyse() == json.loads(SUMMARY.read_text(encoding="utf-8"))
+
+
+def test_the_router_sent_nothing_up_and_failed_and_the_pages_say_so():
+    study = json.loads(SUMMARY.read_text(encoding="utf-8"))
+    assert study["select"]["routes_nothing"] and not study["incomplete"]
+    judge = study["sets"]["judge"]
+    assert judge["sent_up"] == 0 and not judge["all_hold"]
+    assert not judge["holds"]["accuracy"]
+    assert "The router sends nothing up, so the test fails." in PUBLISHED
+    assert "It does not pass." in (ROOT / "docs" / "RESULTS.md").read_text(encoding="utf-8")
+
+
+def test_every_figure_quoted_is_the_one_the_logs_give():
+    study = json.loads(SUMMARY.read_text(encoding="utf-8"))
+    select = study["select"]
+    for action in ("cheap", "strong", "baseline"):
+        assert f"${select['select'][action]['dollars_per_question']}" in PUBLISHED
+        assert f"{select['select'][action]['accuracy']:.1%}" in PUBLISHED
+    assert f"{select['most_sent_up_within_budget']} of the 60" in PUBLISHED
+    rows = {"judge": "Judge, mini measured 7 November", "judge-october-strong":
+            "Judge, mini measured in October", "fresh": "Fresh"}
+    for name, title in rows.items():
+        bound = study["sets"][name]["oracle_within_budget"]
+        row = (f"| {title} | {bound['sent_up']} | {bound['accuracy']:.1%} | "
+               f"${bound['dollars']} | better on {bound['better_on']}, worse on "
+               f"{bound['worse_on']}, p = {bound['p']} |")
+        assert row in PUBLISHED, row
+
+
+def test_the_strong_action_measured_again_is_quoted_as_measured():
+    log = model_router.read(model_router.SETS["judge"]["strong"], "strong")
+    right = round(sum(log.right.values()) * 2)
+    tokens = round(np.mean([log.tokens[log.chunk_of[t]] for t in log.right]))
+    assert log.runs == 200
+    assert (f"{right / 200:.1%} ({right}/200) at {tokens:,} tokens and "
+            f"${log.dollars_per_question:.6f} a question") in PUBLISHED
