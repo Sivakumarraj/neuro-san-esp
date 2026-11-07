@@ -1,0 +1,78 @@
+{
+  "plan": "docs/ALL-FOUR.md",
+  "alpha": 0.05,
+  "select": {
+    "complete": true,
+    "networks": {
+      "designer": {
+        "genome_hash": "0378ca26cd9fe977",
+        "agents": 4,
+        "question_runs": 60,
+        "correct": 45,
+        "unfinished": 0,
+        "accuracy": 0.75,
+        "tokens_per_question": 5681,
+        "dollars_per_question": 0.001474,
+        "dollars_per_correct": 0.001966,
+        "token_fitness": 0.7218,
+        "dollar_fitness": 0.7384,
+        "described": "the designer's shape, every agent on nano"
+      },
+      "c1": {
+        "genome_hash": "ae41fbfaa513ed47",
+        "agents": 2,
+        "question_runs": 60,
+        "correct": 55,
+        "unfinished": 0,
+        "accuracy": 0.9167,
+        "tokens_per_question": 5776,
+        "dollars_per_question": 0.001455,
+        "dollars_per_correct": 0.001587,
+        "token_fitness": 0.8926,
+        "dollar_fitness": 0.9095,
+        "described": "2cc4 on nano, the Calculator on the Coordinator"
+      },
+      "c2": {
+        "genome_hash": "e212a77c53bfa809",
+        "agents": 2,
+        "question_runs": 60,
+        "correct": 54,
+        "unfinished": 0,
+        "accuracy": 0.9,
+        "tokens_per_question": 2828,
+        "dollars_per_question": 0.000627,
+        "dollars_per_correct": 0.000697,
+        "token_fitness": 0.8859,
+        "dollar_fitness": 0.8944,
+        "described": "2cc4, the Researcher on gpt-4o-mini"
+      },
+      "c3": {
+        "genome_hash": "f4e9e494442f9888",
+        "agents": 2,
+        "question_runs": 60,
+        "correct": 56,
+        "unfinished": 0,
+        "accuracy": 0.9333,
+        "tokens_per_question": 4055,
+        "dollars_per_question": 0.000854,
+        "dollars_per_correct": 0.000915,
+        "token_fitness": 0.9151,
+        "dollar_fitness": 0.9273,
+        "described": "2cc4, the Researcher on gpt-4o-mini, the Calculator on the Coordinator"
+      }
+    },
+    "eligible": [
+      "c2",
+      "c3"
+    ],
+    "winner": "c3"
+  },
+  "sets": {},
+  "incomplete": [],
+  "logs": {
+    "results/all-four/select-2026-11/c1.jsonl": "45661d22e6c92716da90b8f9e807332d574458970b9d886db89ba67231bffb15",
+    "results/all-four/select-2026-11/c2.jsonl": "06e495fe5a43f13d4cb750ab2491685cee2c37b297c9f697a38a90ca7ec11c66",
+    "results/all-four/select-2026-11/c3.jsonl": "54dd99796feec7548c9c2b151cde34ae6d23295265bf2be7d31e102d4d305509",
+    "results/all-four/select-2026-11/designer.jsonl": "10686d1aee5e9b553960d348c4fc2f7139facb3bafa52d41cf006ae80c0ea9ac"
+  }
+}
