@@ -1,0 +1,2383 @@
+{
+  "plan": "docs/PRESCRIPTOR.md",
+  "alpha": 0.05,
+  "actions": {
+    "designer": {
+      "genome": "0378ca26cd9fe977",
+      "agents": 4
+    },
+    "2cc4-nano": {
+      "genome": "2cc4231b7d3fb81d",
+      "agents": 2
+    },
+    "2cc4-mini": {
+      "genome": "47322479eb9cba1e",
+      "agents": 2
+    },
+    "c3": {
+      "genome": "f4e9e494442f9888",
+      "agents": 2
+    }
+  },
+  "baseline": "designer",
+  "evolution": {
+    "hidden": 8,
+    "population": 100,
+    "generations": 100,
+    "seed": 20261110,
+    "seeds": 20
+  },
+  "turns": {
+    "first": {
+      "trained_on": [
+        "select"
+      ],
+      "questions": 60,
+      "budget": 0.001367,
+      "static": "c3",
+      "training": {
+        "designer": {
+          "accuracy": 0.8,
+          "predicted": 0.801,
+          "dollars": 0.001367
+        },
+        "2cc4-nano": {
+          "accuracy": 0.8667,
+          "predicted": 0.8661,
+          "dollars": 0.001263
+        },
+        "2cc4-mini": {
+          "accuracy": 0.95,
+          "predicted": 0.9498,
+          "dollars": 0.00279
+        },
+        "c3": {
+          "accuracy": 0.9333,
+          "predicted": 0.9331,
+          "dollars": 0.000854
+        }
+      },
+      "front": 36,
+      "chosen": {
+        "predicted": {
+          "accuracy": 0.9481,
+          "dollars": 0.001338
+        },
+        "shares": {
+          "designer": 0.0,
+          "2cc4-nano": 0.0,
+          "2cc4-mini": 0.25,
+          "c3": 0.75
+        },
+        "one_action_only": false
+      },
+      "sets": {
+        "judge": {
+          "questions": 100,
+          "shares": {
+            "designer": 0.0,
+            "2cc4-nano": 0.0,
+            "2cc4-mini": 0.34,
+            "c3": 0.66
+          },
+          "agents": 2,
+          "one_action_only": false,
+          "against_baseline": {
+            "accuracy": {
+              "prescribed": 0.96,
+              "other": 0.84,
+              "prescribed_better_on": [
+                "J004",
+                "J011",
+                "J013",
+                "J021",
+                "J028",
+                "J034",
+                "J035",
+                "J039",
+                "J046",
+                "J068",
+                "J072",
+                "J073",
+                "J076",
+                "J078",
+                "J079",
+                "J080",
+                "J087",
+                "J088",
+                "J091",
+                "J098"
+              ],
+              "other_better_on": [
+                "J081"
+              ],
+              "p": 0.0,
+              "points": 12.0,
+              "ci95_points": [
+                7.0,
+                17.5
+              ]
+            },
+            "tokens": {
+              "prescribed": 3220.07375,
+              "other": 5385.035,
+              "chunks": 25,
+              "prescribed_lower_in": 24,
+              "p": 0.0,
+              "change": -0.402
+            },
+            "dollars": {
+              "prescribed": 0.001285,
+              "other": 0.001393,
+              "chunks": 25,
+              "prescribed_lower_in": 13,
+              "p": 0.410765,
+              "change": -0.0771
+            },
+            "fitness": {
+              "prescribed": {
+                "token": 0.9446,
+                "dollar": 0.9532
+              },
+              "baseline": {
+                "token": 0.8128,
+                "dollar": 0.8285
+              }
+            },
+            "holds": {
+              "accuracy": true,
+              "tokens": true,
+              "dollars": false,
+              "agents": true,
+              "fitness": true
+            },
+            "all_hold": false
+          },
+          "against_static": {
+            "static": "c3",
+            "accuracy": {
+              "prescribed": 0.96,
+              "other": 0.935,
+              "prescribed_better_on": [
+                "J028",
+                "J072",
+                "J088",
+                "J098"
+              ],
+              "other_better_on": [
+                "J079"
+              ],
+              "p": 0.375,
+              "points": 2.5,
+              "ci95_points": [
+                -0.5,
+                6.0
+              ]
+            },
+            "dollars": {
+              "prescribed": 0.001285,
+              "other": 0.000724,
+              "chunks": 25,
+              "prescribed_lower_in": 0,
+              "p": 0.000132,
+              "change": 0.7759
+            },
+            "holds": false
+          },
+          "against_random": {
+            "same_shares_accuracy": 0.9419,
+            "p": 0.1235,
+            "holds": false
+          },
+          "passes": false,
+          "single_actions": {
+            "designer": {
+              "accuracy": 0.84,
+              "dollars": 0.001393
+            },
+            "2cc4-nano": {
+              "accuracy": 0.82,
+              "dollars": 0.001189
+            },
+            "2cc4-mini": {
+              "accuracy": 0.955,
+              "dollars": 0.002431
+            },
+            "c3": {
+              "accuracy": 0.935,
+              "dollars": 0.000724
+            }
+          },
+          "knowing_every_answer": {
+            "accuracy": 1.0,
+            "dollars": 0.00087,
+            "shares": {
+              "designer": 0.02,
+              "2cc4-nano": 0.05,
+              "2cc4-mini": 0.06,
+              "c3": 0.87
+            }
+          },
+          "front": [
+            {
+              "predicted": {
+                "accuracy": 0.9331,
+                "dollars": 0.000854
+              },
+              "accuracy": 0.935,
+              "dollars": 0.000724,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.0,
+                "c3": 1.0
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9357,
+                "dollars": 0.000868
+              },
+              "accuracy": 0.935,
+              "dollars": 0.00075,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.08,
+                "2cc4-mini": 0.0,
+                "c3": 0.92
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9377,
+                "dollars": 0.000895
+              },
+              "accuracy": 0.925,
+              "dollars": 0.000774,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.16,
+                "2cc4-mini": 0.0,
+                "c3": 0.84
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9379,
+                "dollars": 0.000927
+              },
+              "accuracy": 0.925,
+              "dollars": 0.000831,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.16,
+                "2cc4-mini": 0.04,
+                "c3": 0.8
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9379,
+                "dollars": 0.000929
+              },
+              "accuracy": 0.925,
+              "dollars": 0.000826,
+              "shares": {
+                "designer": 0.08,
+                "2cc4-nano": 0.16,
+                "2cc4-mini": 0.0,
+                "c3": 0.76
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9393,
+                "dollars": 0.000946
+              },
+              "accuracy": 0.925,
+              "dollars": 0.000874,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.08,
+                "2cc4-mini": 0.08,
+                "c3": 0.84
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9397,
+                "dollars": 0.000983
+              },
+              "accuracy": 0.94,
+              "dollars": 0.000895,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.01,
+                "2cc4-mini": 0.08,
+                "c3": 0.91
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9423,
+                "dollars": 0.000997
+              },
+              "accuracy": 0.94,
+              "dollars": 0.000917,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.08,
+                "2cc4-mini": 0.08,
+                "c3": 0.84
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9438,
+                "dollars": 0.001048
+              },
+              "accuracy": 0.94,
+              "dollars": 0.001017,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.16,
+                "c3": 0.84
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.944,
+                "dollars": 0.00108
+              },
+              "accuracy": 0.94,
+              "dollars": 0.001074,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.2,
+                "c3": 0.8
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.944,
+                "dollars": 0.001082
+              },
+              "accuracy": 0.94,
+              "dollars": 0.001074,
+              "shares": {
+                "designer": 0.09,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.16,
+                "c3": 0.75
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9461,
+                "dollars": 0.001158
+              },
+              "accuracy": 0.96,
+              "dollars": 0.001065,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.08,
+                "2cc4-mini": 0.17,
+                "c3": 0.75
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9476,
+                "dollars": 0.001209
+              },
+              "accuracy": 0.96,
+              "dollars": 0.001165,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.25,
+                "c3": 0.75
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9478,
+                "dollars": 0.001241
+              },
+              "accuracy": 0.96,
+              "dollars": 0.001222,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.29,
+                "c3": 0.71
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9478,
+                "dollars": 0.001243
+              },
+              "accuracy": 0.96,
+              "dollars": 0.001218,
+              "shares": {
+                "designer": 0.08,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.25,
+                "c3": 0.67
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9481,
+                "dollars": 0.001338
+              },
+              "accuracy": 0.96,
+              "dollars": 0.001285,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.34,
+                "c3": 0.66
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9482,
+                "dollars": 0.001403
+              },
+              "accuracy": 0.96,
+              "dollars": 0.001315,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.35,
+                "c3": 0.65
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9507,
+                "dollars": 0.001416
+              },
+              "accuracy": 0.97,
+              "dollars": 0.001149,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.08,
+                "2cc4-mini": 0.23,
+                "c3": 0.69
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9522,
+                "dollars": 0.001467
+              },
+              "accuracy": 0.97,
+              "dollars": 0.001249,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.31,
+                "c3": 0.69
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9523,
+                "dollars": 0.001499
+              },
+              "accuracy": 0.97,
+              "dollars": 0.001306,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.35,
+                "c3": 0.65
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9523,
+                "dollars": 0.001501
+              },
+              "accuracy": 0.97,
+              "dollars": 0.001301,
+              "shares": {
+                "designer": 0.08,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.31,
+                "c3": 0.61
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9545,
+                "dollars": 0.001578
+              },
+              "accuracy": 0.99,
+              "dollars": 0.001297,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.08,
+                "2cc4-mini": 0.32,
+                "c3": 0.6
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.956,
+                "dollars": 0.001628
+              },
+              "accuracy": 0.99,
+              "dollars": 0.001397,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.6
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9561,
+                "dollars": 0.001661
+              },
+              "accuracy": 0.99,
+              "dollars": 0.001454,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.44,
+                "c3": 0.56
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9561,
+                "dollars": 0.001663
+              },
+              "accuracy": 0.99,
+              "dollars": 0.001449,
+              "shares": {
+                "designer": 0.08,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.52
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9563,
+                "dollars": 0.001695
+              },
+              "accuracy": 0.99,
+              "dollars": 0.001506,
+              "shares": {
+                "designer": 0.08,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.44,
+                "c3": 0.48
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9564,
+                "dollars": 0.001758
+              },
+              "accuracy": 0.99,
+              "dollars": 0.001505,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.48,
+                "c3": 0.52
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9566,
+                "dollars": 0.00179
+              },
+              "accuracy": 0.99,
+              "dollars": 0.001561,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.52,
+                "c3": 0.48
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9571,
+                "dollars": 0.001854
+              },
+              "accuracy": 0.99,
+              "dollars": 0.001539,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.49,
+                "c3": 0.51
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9572,
+                "dollars": 0.001887
+              },
+              "accuracy": 0.99,
+              "dollars": 0.001596,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.53,
+                "c3": 0.47
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9573,
+                "dollars": 0.001889
+              },
+              "accuracy": 0.99,
+              "dollars": 0.001591,
+              "shares": {
+                "designer": 0.08,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.49,
+                "c3": 0.43
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9574,
+                "dollars": 0.001921
+              },
+              "accuracy": 0.99,
+              "dollars": 0.001648,
+              "shares": {
+                "designer": 0.08,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.53,
+                "c3": 0.39
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9576,
+                "dollars": 0.001983
+              },
+              "accuracy": 0.99,
+              "dollars": 0.001647,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.57,
+                "c3": 0.43
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9577,
+                "dollars": 0.002016
+              },
+              "accuracy": 0.99,
+              "dollars": 0.001703,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.61,
+                "c3": 0.39
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.958,
+                "dollars": 0.002145
+              },
+              "accuracy": 0.99,
+              "dollars": 0.00174,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.63,
+                "c3": 0.37
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9581,
+                "dollars": 0.002177
+              },
+              "accuracy": 0.99,
+              "dollars": 0.001809,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.68,
+                "c3": 0.32
+              },
+              "beaten_by_one_action": false
+            }
+          ],
+          "across_seeds": {
+            "seeds": 20,
+            "same_prescriptions_as_the_first": 3,
+            "accuracy": [
+              0.96,
+              0.96,
+              0.96
+            ],
+            "dollars": [
+              0.001273,
+              0.001273,
+              0.001285
+            ]
+          }
+        },
+        "fresh": {
+          "questions": 40,
+          "shares": {
+            "designer": 0.0,
+            "2cc4-nano": 0.0,
+            "2cc4-mini": 0.375,
+            "c3": 0.625
+          },
+          "agents": 2,
+          "one_action_only": false,
+          "against_baseline": {
+            "accuracy": {
+              "prescribed": 0.9125,
+              "other": 0.7,
+              "prescribed_better_on": [
+                "F04",
+                "F10",
+                "F11",
+                "F18",
+                "F20",
+                "F21",
+                "F25",
+                "F26",
+                "F28",
+                "F31",
+                "F39",
+                "F40"
+              ],
+              "other_better_on": [
+                "F14"
+              ],
+              "p": 0.0034,
+              "points": 21.3,
+              "ci95_points": [
+                10.0,
+                33.8
+              ]
+            },
+            "tokens": {
+              "prescribed": 3716.165625,
+              "other": 5700.45,
+              "chunks": 10,
+              "prescribed_lower_in": 9,
+              "p": 0.003906,
+              "change": -0.3481
+            },
+            "dollars": {
+              "prescribed": 0.001426,
+              "other": 0.001483,
+              "chunks": 10,
+              "prescribed_lower_in": 5,
+              "p": 0.695312,
+              "change": -0.0383
+            },
+            "fitness": {
+              "prescribed": {
+                "token": 0.8954,
+                "dollar": 0.9054
+              },
+              "baseline": {
+                "token": 0.6717,
+                "dollar": 0.6884
+              }
+            },
+            "holds": {
+              "accuracy": true,
+              "tokens": true,
+              "dollars": false,
+              "agents": true,
+              "fitness": true
+            },
+            "all_hold": false
+          },
+          "against_static": {
+            "static": "c3",
+            "accuracy": {
+              "prescribed": 0.9125,
+              "other": 0.8875,
+              "prescribed_better_on": [
+                "F28",
+                "F31"
+              ],
+              "other_better_on": [],
+              "p": 0.5,
+              "points": 2.5,
+              "ci95_points": [
+                0.0,
+                6.2
+              ]
+            },
+            "dollars": {
+              "prescribed": 0.001426,
+              "other": 0.000889,
+              "chunks": 10,
+              "prescribed_lower_in": 0,
+              "p": 0.003906,
+              "change": 0.6039
+            },
+            "holds": false
+          },
+          "against_random": {
+            "same_shares_accuracy": 0.8827,
+            "p": 0.1811,
+            "holds": false
+          },
+          "passes": false,
+          "single_actions": {
+            "designer": {
+              "accuracy": 0.7,
+              "dollars": 0.001483
+            },
+            "2cc4-nano": {
+              "accuracy": 0.8,
+              "dollars": 0.001419
+            },
+            "2cc4-mini": {
+              "accuracy": 0.875,
+              "dollars": 0.002601
+            },
+            "c3": {
+              "accuracy": 0.8875,
+              "dollars": 0.000889
+            }
+          },
+          "knowing_every_answer": {
+            "accuracy": 0.975,
+            "dollars": 0.001078,
+            "shares": {
+              "designer": 0.125,
+              "2cc4-nano": 0.05,
+              "2cc4-mini": 0.075,
+              "c3": 0.75
+            }
+          },
+          "front": [
+            {
+              "predicted": {
+                "accuracy": 0.9331,
+                "dollars": 0.000854
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000889,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.0,
+                "c3": 1.0
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9357,
+                "dollars": 0.000868
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000889,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.0,
+                "c3": 1.0
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9377,
+                "dollars": 0.000895
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000889,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.0,
+                "c3": 1.0
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9379,
+                "dollars": 0.000927
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000914,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.025,
+                "c3": 0.975
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9379,
+                "dollars": 0.000929
+              },
+              "accuracy": 0.875,
+              "dollars": 0.001048,
+              "shares": {
+                "designer": 0.2,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.0,
+                "c3": 0.8
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9393,
+                "dollars": 0.000946
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000889,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.0,
+                "c3": 1.0
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9397,
+                "dollars": 0.000983
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000889,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.0,
+                "c3": 1.0
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9423,
+                "dollars": 0.000997
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000889,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.0,
+                "c3": 1.0
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9438,
+                "dollars": 0.001048
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000889,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.0,
+                "c3": 1.0
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.944,
+                "dollars": 0.00108
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000914,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.025,
+                "c3": 0.975
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.944,
+                "dollars": 0.001082
+              },
+              "accuracy": 0.875,
+              "dollars": 0.001048,
+              "shares": {
+                "designer": 0.2,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.0,
+                "c3": 0.8
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9461,
+                "dollars": 0.001158
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001118,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.175,
+                "c3": 0.825
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9476,
+                "dollars": 0.001209
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001118,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.175,
+                "c3": 0.825
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9478,
+                "dollars": 0.001241
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001143,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.2,
+                "c3": 0.8
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9478,
+                "dollars": 0.001243
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001277,
+              "shares": {
+                "designer": 0.2,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.175,
+                "c3": 0.625
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9481,
+                "dollars": 0.001338
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001426,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.375,
+                "c3": 0.625
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9482,
+                "dollars": 0.001403
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001273,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.275,
+                "c3": 0.725
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9507,
+                "dollars": 0.001416
+              },
+              "accuracy": 0.875,
+              "dollars": 0.001368,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.225,
+                "c3": 0.775
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9522,
+                "dollars": 0.001467
+              },
+              "accuracy": 0.875,
+              "dollars": 0.001368,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.225,
+                "c3": 0.775
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9523,
+                "dollars": 0.001499
+              },
+              "accuracy": 0.875,
+              "dollars": 0.001393,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.25,
+                "c3": 0.75
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9523,
+                "dollars": 0.001501
+              },
+              "accuracy": 0.8625,
+              "dollars": 0.001527,
+              "shares": {
+                "designer": 0.2,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.225,
+                "c3": 0.575
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9545,
+                "dollars": 0.001578
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001597,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.6
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.956,
+                "dollars": 0.001628
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001597,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.6
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9561,
+                "dollars": 0.001661
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001622,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.425,
+                "c3": 0.575
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9561,
+                "dollars": 0.001663
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.001756,
+              "shares": {
+                "designer": 0.2,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.4
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9563,
+                "dollars": 0.001695
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.001781,
+              "shares": {
+                "designer": 0.2,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.425,
+                "c3": 0.375
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9564,
+                "dollars": 0.001758
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001905,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.6,
+                "c3": 0.4
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9566,
+                "dollars": 0.00179
+              },
+              "accuracy": 0.9,
+              "dollars": 0.00193,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.625,
+                "c3": 0.375
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9571,
+                "dollars": 0.001854
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001597,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.6
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9572,
+                "dollars": 0.001887
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001622,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.425,
+                "c3": 0.575
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9573,
+                "dollars": 0.001889
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.001756,
+              "shares": {
+                "designer": 0.2,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.4
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9574,
+                "dollars": 0.001921
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.001781,
+              "shares": {
+                "designer": 0.2,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.425,
+                "c3": 0.375
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9576,
+                "dollars": 0.001983
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001905,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.6,
+                "c3": 0.4
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9577,
+                "dollars": 0.002016
+              },
+              "accuracy": 0.9,
+              "dollars": 0.00193,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.625,
+                "c3": 0.375
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.958,
+                "dollars": 0.002145
+              },
+              "accuracy": 0.9,
+              "dollars": 0.002035,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.675,
+                "c3": 0.325
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9581,
+                "dollars": 0.002177
+              },
+              "accuracy": 0.9,
+              "dollars": 0.00206,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.7,
+                "c3": 0.3
+              },
+              "beaten_by_one_action": false
+            }
+          ],
+          "across_seeds": {
+            "seeds": 20,
+            "same_prescriptions_as_the_first": 20,
+            "accuracy": [
+              0.9125,
+              0.9125,
+              0.9125
+            ],
+            "dollars": [
+              0.001426,
+              0.001426,
+              0.001426
+            ]
+          }
+        }
+      }
+    },
+    "second": {
+      "trained_on": [
+        "select",
+        "judge"
+      ],
+      "questions": 160,
+      "budget": 0.001383,
+      "static": "c3",
+      "training": {
+        "designer": {
+          "accuracy": 0.825,
+          "predicted": 0.8695,
+          "dollars": 0.001383
+        },
+        "2cc4-nano": {
+          "accuracy": 0.8375,
+          "predicted": 0.8814,
+          "dollars": 0.001217
+        },
+        "2cc4-mini": {
+          "accuracy": 0.9531,
+          "predicted": 0.9689,
+          "dollars": 0.002565
+        },
+        "c3": {
+          "accuracy": 0.9344,
+          "predicted": 0.9499,
+          "dollars": 0.000773
+        }
+      },
+      "front": 46,
+      "chosen": {
+        "predicted": {
+          "accuracy": 0.9718,
+          "dollars": 0.001355
+        },
+        "shares": {
+          "designer": 0.0,
+          "2cc4-nano": 0.0,
+          "2cc4-mini": 0.325,
+          "c3": 0.675
+        },
+        "one_action_only": false
+      },
+      "sets": {
+        "fresh": {
+          "questions": 40,
+          "shares": {
+            "designer": 0.0,
+            "2cc4-nano": 0.0,
+            "2cc4-mini": 0.4,
+            "c3": 0.6
+          },
+          "agents": 2,
+          "one_action_only": false,
+          "against_baseline": {
+            "accuracy": {
+              "prescribed": 0.9,
+              "other": 0.7,
+              "prescribed_better_on": [
+                "F04",
+                "F10",
+                "F11",
+                "F18",
+                "F20",
+                "F21",
+                "F25",
+                "F26",
+                "F28",
+                "F30",
+                "F31",
+                "F37",
+                "F39"
+              ],
+              "other_better_on": [
+                "F36"
+              ],
+              "p": 0.0018,
+              "points": 20.0,
+              "ci95_points": [
+                7.5,
+                32.5
+              ]
+            },
+            "tokens": {
+              "prescribed": 3590.234375,
+              "other": 5700.45,
+              "chunks": 10,
+              "prescribed_lower_in": 10,
+              "p": 0.001953,
+              "change": -0.3702
+            },
+            "dollars": {
+              "prescribed": 0.001597,
+              "other": 0.001483,
+              "chunks": 10,
+              "prescribed_lower_in": 6,
+              "p": 0.845703,
+              "change": 0.0771
+            },
+            "fitness": {
+              "prescribed": {
+                "token": 0.8833,
+                "dollar": 0.8926
+              },
+              "baseline": {
+                "token": 0.6717,
+                "dollar": 0.6884
+              }
+            },
+            "holds": {
+              "accuracy": true,
+              "tokens": true,
+              "dollars": false,
+              "agents": true,
+              "fitness": true
+            },
+            "all_hold": false
+          },
+          "against_static": {
+            "static": "c3",
+            "accuracy": {
+              "prescribed": 0.9,
+              "other": 0.8875,
+              "prescribed_better_on": [
+                "F14",
+                "F28",
+                "F30",
+                "F31",
+                "F37"
+              ],
+              "other_better_on": [
+                "F21",
+                "F36",
+                "F39",
+                "F40"
+              ],
+              "p": 1.0,
+              "points": 1.3,
+              "ci95_points": [
+                -8.8,
+                11.2
+              ]
+            },
+            "dollars": {
+              "prescribed": 0.001597,
+              "other": 0.000889,
+              "chunks": 10,
+              "prescribed_lower_in": 0,
+              "p": 0.015625,
+              "change": 0.7964
+            },
+            "holds": false
+          },
+          "against_random": {
+            "same_shares_accuracy": 0.8824,
+            "p": 0.335,
+            "holds": false
+          },
+          "passes": false,
+          "single_actions": {
+            "designer": {
+              "accuracy": 0.7,
+              "dollars": 0.001483
+            },
+            "2cc4-nano": {
+              "accuracy": 0.8,
+              "dollars": 0.001419
+            },
+            "2cc4-mini": {
+              "accuracy": 0.875,
+              "dollars": 0.002601
+            },
+            "c3": {
+              "accuracy": 0.8875,
+              "dollars": 0.000889
+            }
+          },
+          "knowing_every_answer": {
+            "accuracy": 0.975,
+            "dollars": 0.001078,
+            "shares": {
+              "designer": 0.125,
+              "2cc4-nano": 0.05,
+              "2cc4-mini": 0.075,
+              "c3": 0.75
+            }
+          },
+          "front": [
+            {
+              "predicted": {
+                "accuracy": 0.9499,
+                "dollars": 0.000773
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000889,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.0,
+                "c3": 1.0
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9499,
+                "dollars": 0.000784
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000889,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.0,
+                "c3": 1.0
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9511,
+                "dollars": 0.0008
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000889,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.0,
+                "c3": 1.0
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9528,
+                "dollars": 0.000811
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000889,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.0,
+                "c3": 1.0
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9537,
+                "dollars": 0.000857
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000889,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.0,
+                "c3": 1.0
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9553,
+                "dollars": 0.000885
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000889,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.0,
+                "c3": 1.0
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9554,
+                "dollars": 0.000896
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000889,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.0,
+                "c3": 1.0
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9554,
+                "dollars": 0.000918
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000964,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.2,
+                "2cc4-mini": 0.0,
+                "c3": 0.8
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9554,
+                "dollars": 0.000929
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000964,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.2,
+                "2cc4-mini": 0.0,
+                "c3": 0.8
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9568,
+                "dollars": 0.00093
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001118,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.175,
+                "c3": 0.825
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9568,
+                "dollars": 0.000941
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001118,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.175,
+                "c3": 0.825
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9579,
+                "dollars": 0.000945
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.000889,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.0,
+                "c3": 1.0
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.958,
+                "dollars": 0.000957
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001118,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.175,
+                "c3": 0.825
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9597,
+                "dollars": 0.000968
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001118,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.175,
+                "c3": 0.825
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9597,
+                "dollars": 0.000979
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001118,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.175,
+                "c3": 0.825
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9606,
+                "dollars": 0.001013
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001118,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.175,
+                "c3": 0.825
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9606,
+                "dollars": 0.001025
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001118,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.175,
+                "c3": 0.825
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9623,
+                "dollars": 0.001042
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001118,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.175,
+                "c3": 0.825
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9623,
+                "dollars": 0.001053
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001118,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.175,
+                "c3": 0.825
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9623,
+                "dollars": 0.001075
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001193,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.2,
+                "2cc4-mini": 0.175,
+                "c3": 0.625
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9632,
+                "dollars": 0.001087
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001118,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.175,
+                "c3": 0.825
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9648,
+                "dollars": 0.001102
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001118,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.175,
+                "c3": 0.825
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9652,
+                "dollars": 0.001148
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001277,
+              "shares": {
+                "designer": 0.2,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.175,
+                "c3": 0.625
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9674,
+                "dollars": 0.001176
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001118,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.175,
+                "c3": 0.825
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9674,
+                "dollars": 0.001212
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001193,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.2,
+                "2cc4-mini": 0.175,
+                "c3": 0.625
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9677,
+                "dollars": 0.001222
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001277,
+              "shares": {
+                "designer": 0.2,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.175,
+                "c3": 0.625
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9678,
+                "dollars": 0.001237
+              },
+              "accuracy": 0.9125,
+              "dollars": 0.001118,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.175,
+                "c3": 0.825
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9693,
+                "dollars": 0.001281
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001597,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.6
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9702,
+                "dollars": 0.001327
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001597,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.6
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9718,
+                "dollars": 0.001355
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001597,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.6
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9728,
+                "dollars": 0.001401
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001597,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.6
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9744,
+                "dollars": 0.001416
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001597,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.6
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9747,
+                "dollars": 0.001462
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.001756,
+              "shares": {
+                "designer": 0.2,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.4
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9748,
+                "dollars": 0.001477
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001597,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.6
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9769,
+                "dollars": 0.00149
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001597,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.6
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9769,
+                "dollars": 0.001501
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001597,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.6
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.977,
+                "dollars": 0.001523
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001672,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.2,
+                "2cc4-mini": 0.4,
+                "c3": 0.4
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9773,
+                "dollars": 0.001536
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.001756,
+              "shares": {
+                "designer": 0.2,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.4
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9773,
+                "dollars": 0.001547
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.001756,
+              "shares": {
+                "designer": 0.2,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.4
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9774,
+                "dollars": 0.001551
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001597,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.6
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9774,
+                "dollars": 0.001562
+              },
+              "accuracy": 0.9,
+              "dollars": 0.001597,
+              "shares": {
+                "designer": 0.0,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.6
+              },
+              "beaten_by_one_action": false
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9777,
+                "dollars": 0.001597
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.001756,
+              "shares": {
+                "designer": 0.2,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.4
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9777,
+                "dollars": 0.001608
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.001756,
+              "shares": {
+                "designer": 0.2,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.4
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9777,
+                "dollars": 0.001653
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.001781,
+              "shares": {
+                "designer": 0.2,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.425,
+                "c3": 0.375
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9779,
+                "dollars": 0.001719
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.001756,
+              "shares": {
+                "designer": 0.2,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.4
+              },
+              "beaten_by_one_action": true
+            },
+            {
+              "predicted": {
+                "accuracy": 0.9779,
+                "dollars": 0.001726
+              },
+              "accuracy": 0.8875,
+              "dollars": 0.001756,
+              "shares": {
+                "designer": 0.2,
+                "2cc4-nano": 0.0,
+                "2cc4-mini": 0.4,
+                "c3": 0.4
+              },
+              "beaten_by_one_action": true
+            }
+          ],
+          "across_seeds": {
+            "seeds": 20,
+            "same_prescriptions_as_the_first": 20,
+            "accuracy": [
+              0.9,
+              0.9,
+              0.9
+            ],
+            "dollars": [
+              0.001597,
+              0.001597,
+              0.001597
+            ]
+          }
+        }
+      }
+    }
+  },
+  "logs": {
+    "results/headtohead/paid-2026-10/7-select-search10/designer.jsonl": "4fbe14b5a7979b95627311c5e5c773ebc9e511311627117245be71d53519e75f",
+    "results/headtohead/paid-2026-10/7-select-search10/2cc4.jsonl": "bc73352fc34c5a5c13cc01f52348514d9c4d3d10b94272987e86057c7701367c",
+    "results/headtohead/paid-2026-10/7-select-search10/2cc4-mini.jsonl": "15fd721309246d6d2c3824439bbdbbc089d6b378fbd0ddfee6ad3fe0f7dc4a61",
+    "results/all-four/select-2026-11/c3.jsonl": "54dd99796feec7548c9c2b151cde34ae6d23295265bf2be7d31e102d4d305509",
+    "results/structure/judge-nano-2026-11/designer.jsonl": "8c0ace5f25eb4c35f63256c6d70d2a69881a47dd734182f1b16168fc91c8eadf",
+    "results/structure/judge-nano-2026-11/2cc4-nano.jsonl": "e3d692115aed0d1f4ac1208e41253982d1116367d579b2f8456852896d4c54ed",
+    "results/router/judge-2026-11/2cc4-mini.jsonl": "97985491b46a3b882d23f7f5131bafcb50be72caef26c06a681b707297d780ca",
+    "results/all-four/judge-2026-11/c3.jsonl": "030a194e0f649266664f50064b6f2606cc29d0a9bf19fac219be9b74d996c282",
+    "results/structure/fresh-nano-2026-11/designer.jsonl": "98b4677799d5f6b167b3342594b49b31b88bdd3206624c4c4d3bface5dfb6c50",
+    "results/structure/fresh-nano-2026-11/2cc4-nano.jsonl": "bc0bb108b9feccd3f86a6cdfb35bf2de814972675c1a27b212c7b97a0b48f386",
+    "results/structure/fresh-nano-2026-11/evolved.jsonl": "58e6095ef76f900d4f1eab647ea65c5c68e208bc42f01cb0af1837c0161caae3",
+    "results/all-four/fresh-2026-11/c3.jsonl": "e3c3b5c4c368a3821e8aaab14bd2260633e4cd5e6068d668f7e834f17d60b66e"
+  }
+}

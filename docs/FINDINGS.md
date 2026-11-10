@@ -907,7 +907,8 @@ question as it arrives:
 | Prescription | Send a question to the strong network when the predicted gain is at least a threshold |
 
 The prescription is a threshold, not a learned Prescriptor: with two actions, the
-threshold is the whole decision.
+threshold is the whole decision. With four actions a Prescriptor was evolved against the
+Predictor ([PRESCRIPTOR.md](PRESCRIPTOR.md)); it did not pass its test.
 
 **Fitted and tuned on select, judged once on judge.** Both networks ran the 60 select
 questions in stage 7 and the 100 judge questions twice in stage 8, all with the search at 10

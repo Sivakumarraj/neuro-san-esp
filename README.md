@@ -22,9 +22,11 @@ This project adds that missing half:
 3. **Serve** the winner: a browser page, neuro-san's accelerator UI, or a plain neuro-san
    registry.
 
-There is no learned Prescriptor here, so this is not ESP in the paper's full sense. Prescription
-is seven mutation operators plus Pareto-front selection. In shape it is nearer to **LEAF**
+The search has no learned Prescriptor, so it is not ESP in the paper's full sense. It prescribes
+with seven mutation operators plus Pareto-front selection. In shape it is nearer to **LEAF**
 (*Evolutionary Neural AutoML for Deep Learning*, GECCO 2019), with agents where LEAF had layers.
+A learned Prescriptor is built for one decision, which of four measured networks answers each
+question, and [it did not pass its test](#a-learned-prescriptor-question-by-question).
 
 ## Headline: better on all four at once
 
@@ -181,6 +183,30 @@ question by the router's Predictor, at no more cost a question than the designer
 `make model-router` recomputes this from the committed logs for $0;
 [docs/RESULTS.md](docs/RESULTS.md#choosing-the-researchers-model-per-question) has the detail.
 
+## A learned Prescriptor, question by question
+
+The fourth test, [docs/PRESCRIPTOR.md](docs/PRESCRIPTOR.md), pushed before its judge outcome was
+computed. ESP as its paper describes it, with both learned models: a Predictor per network, and
+a neural Prescriptor evolved against it with NSGA-II to choose which of four measured networks
+answers each question, within the designer's shape's cost a question.
+
+- **The Prescriptor does not pass.** On judge it sends 34 questions to `2cc4` with its
+  Researcher on `gpt-5.4-mini` and 66 to `c3`, the headline network, and scores 96.0% against
+  93.5% for `c3` alone: right more often on 4 questions and less often on 1, p = 0.375, at
+  77.6% more a question.
+- **Its choice of questions cannot be told from chance.** The same shares handed out at random
+  score 94.2% (p = 0.1235).
+- **A second turn of the loop changed nothing.** With the judge outcomes added to the
+  Predictor's training data, 160 questions, it scores 90.0% on fresh against 88.8% (better on 5
+  questions, worse on 4, p = 1.0).
+- **What it means.** `c3` is the cheapest of the four networks and within two points of the
+  most accurate, so a choice per question has little to add, and five features of a question's
+  text do not say which questions need the dearer network. Knowing every answer, the four
+  networks answer every judge question at $0.00087 each. That is a bound, not a result.
+
+`make prescriptor` recomputes this from the committed logs for $0;
+[docs/RESULTS.md](docs/RESULTS.md#a-learned-prescriptor-question-by-question) has the detail.
+
 ## Routing each question: most of the accuracy for less money
 
 The stronger network costs 94% more per question, and the designer's shape already answers
@@ -200,7 +226,9 @@ select, and judges it once on judge. It runs on the committed logs, for $0.
   94.5% at $0.00226. The router saves more and gives up 3 answers in 200.
 - **This is ESP with a context.** The question is the context, the network is the action, and
   right answers and dollars are the outcomes. The prescription is a threshold, not a learned
-  Prescriptor. [What it does not show](docs/FINDINGS.md#routing-each-question-to-a-network).
+  Prescriptor; a learned one is tried
+  [above](#a-learned-prescriptor-question-by-question).
+  [What it does not show](docs/FINDINGS.md#routing-each-question-to-a-network).
 
 ## Is the network sure? Agreement between two runs
 
@@ -374,6 +402,10 @@ the web page, the accelerator UI, and running the optimizer as a service.
   none was ranked by the Predictor first. Offline it picks the best of three unseen networks
   62% of the time against 33% by chance, which is level with simply picking the network with
   the most agents.
+- **The learned Prescriptor did not earn its place.** Evolved against the Predictor to choose
+  among four measured networks per question, it was not significantly more accurate than the
+  best single network, and cost more ([docs/PRESCRIPTOR.md](docs/PRESCRIPTOR.md)). The networks
+  themselves are still found by mutation and selection.
 - **Shape is not the whole network.** Two children with the same shape scored 54 and 48 of 60
   on select because their instructions differ, and the Predictor sees only shape.
 - **Few models measured.** The search ran on `gemini-3.1-flash-lite` and the head-to-heads on
@@ -404,6 +436,8 @@ the web page, the accelerator UI, and running the optimizer as a service.
 | `esp/measure.py` | Measure any neuro-san network on any question file |
 | `esp/route.py` | Route each question to the cheap or the strong network |
 | `esp/all_four.py` | The all-four test of docs/ALL-FOUR.md: the choice on select, then the held-out verdict |
+| `esp/prescriptor.py`, `esp/nsga2.py` | The Prescriptor: a neural network from a question to a network, evolved with NSGA-II against the Predictor |
+| `esp/prescription.py` | The Prescriptor test of docs/PRESCRIPTOR.md: fitted on select, judged on judge and fresh |
 | `esp/eval/calculator_tool.py` | The calculator CodedTool: arithmetic parsed, never evaluated |
 | `esp/same_model.py` | The same-model test of docs/SAME-MODEL.md, checked against its plan |
 | `esp/uncertainty.py` | Whether two runs agree, as a gate in front of the strong network and as a flag |

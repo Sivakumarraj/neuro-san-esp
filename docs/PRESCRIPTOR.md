@@ -156,3 +156,77 @@ ESP, and the README will keep saying so.
 ```bash
 make prescriptor     # both turns, from the committed logs, for $0
 ```
+
+## The result
+
+Pushed as `ec1d00a` at 12:36 UTC on 10 November 2026, before anything below was computed.
+**The Prescriptor does not pass.** `make prescriptor` recomputes every figure here from the
+committed logs, and `tests/test_prescription.py` holds this page to them.
+
+### First turn, on judge
+
+The chosen prescriptor sends 34 of the 100 judge questions to `2cc4-mini` and 66 to `c3`.
+
+| Judge, 100 questions twice | Prescriptor | `c3` alone | Designer's shape |
+| --- | --- | --- | --- |
+| Accuracy | 96.0% | 93.5% | 84.0% |
+| Cost a question | $0.001285 | $0.000724 | $0.001393 |
+
+1. **Against the designer's shape, four of the five marks hold and dollars fail.** It is right
+   more often on 20 questions and less often on 1 (p < 0.0001), uses 3,220 tokens a question
+   against 5,385 (−40.2%, lower in 24 of 25 chunks), has 2 agents against 4, and scores higher
+   on both fitnesses. Its cost is 7.7% lower, but lower in only 13 of the 25 chunks: Wilcoxon
+   p = 0.4108. It was chosen to send a quarter of the select questions up, and on judge its
+   network sends a third.
+2. **It is not better than the static prescription.** Against `c3` alone it is right more
+   often on 4 questions (J028, J072, J088, J098) and less often on 1 (J079): p = 0.375, and the
+   95% interval on the difference runs from −0.5 to +6.0 points. It costs 77.6% more.
+3. **Its choice of questions cannot be told from chance.** Handing 34 questions to `2cc4-mini`
+   and 66 to `c3` at random scores 94.2% on average, and 12.35% of 10,000 such draws do at
+   least as well as the Prescriptor (p = 0.1235).
+
+### Fresh, and the second turn
+
+For the second turn the judge outcomes joined the training data: 160 questions, a budget of
+$0.001383 a question, `c3` again the static prescription, and a front of 46. Its chosen
+prescriptor sends 52 of the 160 training questions to `2cc4-mini`, and the Predictor expects
+97.2% of it at $0.001355.
+
+| | Sent to `2cc4-mini` | Prescriptor | `c3` alone | Better on, worse on, p | Same shares at random | Cost against `c3` |
+| --- | --- | --- | --- | --- | --- | --- |
+| First turn, judge | 34% | 96.0% | 93.5% | 4, 1, p = 0.375 | 94.2%, p = 0.1235 | +77.6% |
+| First turn, fresh | 38% | 91.2% | 88.8% | 2, 0, p = 0.5 | 88.3%, p = 0.1811 | +60.4% |
+| Second turn, fresh | 40% | 90.0% | 88.8% | 5, 4, p = 1.0 | 88.2%, p = 0.335 | +79.6% |
+
+On fresh the dollars mark against the designer's shape fails in both turns as well: 3.8% lower
+in the first (p = 0.6953), and 7.7% higher in the second. Every other mark against the
+designer's shape holds on fresh.
+
+### Reported beside it
+
+None of these is a result.
+
+- **Knowing every answer**, the four networks answer every judge question at $0.00087 each,
+  and 97.5% of the fresh questions at $0.001078. The answers are there to be had for less than
+  the designer's shape costs; nothing here finds them from a question's text.
+- **The front on judge.** 31 of its 36 prescriptors were not beaten by any one network, and
+  the dearer ones scored up to 99.0%. On fresh 24 of the 36 were not beaten, and none scored
+  above 91.2%. They are not the one the rule chose, and choosing among them now would be
+  choosing on the questions they are judged on.
+- **The seed.** All 20 seeds' chosen prescriptors score 96.0% on judge, at $0.001273 to
+  $0.001285 a question. They send the same 15 select questions up and are different networks:
+  3 of the 20 prescribe exactly as the first does on judge. On fresh all 20 prescribe alike,
+  in both turns.
+
+### What it means
+
+- **There was little to prescribe over.** `c3` is the cheapest of the four networks and
+  within two points of the most accurate, on judge and on fresh. A choice per question can add
+  only what `2cc4-mini` gets right and `c3` does not, and here that costs 60% to 80% more and
+  cannot be told from chance.
+- **The Predictor is the limit, not the Prescriptor.** The evolution found the prescription
+  the Predictor rewards, the same in every seed. What the Predictor has is five features of a
+  question's text, fitted on 60 and then 160 questions, and they do not say which questions
+  need the dearer network. Adding 100 questions of outcomes did not change that.
+- **ESP's two models are both here now, for this one decision.** The networks themselves were
+  still found by mutation, selection and a person adding a calculator.

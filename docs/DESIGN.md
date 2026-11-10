@@ -87,6 +87,8 @@ comes to optimise something nobody chose. In this repository they are three sepa
 the same fixed task set, so there is no context to map from — which is why mutation operators
 occupy the prescription slot rather than a learned model. Building a real Prescriptor starts
 with deciding what the context is; that decision is the research, not the network.
+[PRESCRIPTOR.md](PRESCRIPTOR.md) takes the question as the context and evolves one, to choose
+among four measured networks. It did not pass its test.
 
 Agent count is a fourth objective and has **no model at all**: it is an exact property of a
 genome, so it is counted rather than estimated. A regressor asked to guess a number already
@@ -171,7 +173,9 @@ model (`tests/test_context.py`).
 
 It is an argmax over networks someone else bred, and it learns nothing. A learned
 Prescriptor, a model from context to network evolved against the Predictor, is what would
-make this ESP in the paper's sense. That is future work, and nothing here claims it.
+make this ESP in the paper's sense. [PRESCRIPTOR.md](PRESCRIPTOR.md) evolves one over a
+question's text, for four measured networks, and it did not beat prescribing one network for
+every question. The search for networks still has none, and nothing here claims it.
 
 ## It runs as a service, not a batch job
 

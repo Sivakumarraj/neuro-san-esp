@@ -285,3 +285,171 @@ def test_every_seed_chooses_the_same_select_questions():
               for seed in prescription.SEEDS}
     assert len(chosen) == 1
     assert f"All {len(prescription.SEEDS)} seeds" in PLAN
+
+
+SUMMARY = ROOT / "results" / "prescriptor" / "summary.json"
+PUBLISHED = " ".join(
+    "\n".join((ROOT / name).read_text(encoding="utf-8") for name in ("README.md",
+                                                                      "docs/RESULTS.md"))
+    .replace("\N{MINUS SIGN}", "-").replace("**", "").split())
+ROWS = (("first", "judge", "First turn, judge"), ("first", "fresh", "First turn, fresh"),
+        ("second", "fresh", "Second turn, fresh"))
+
+
+def _study() -> dict:
+    return json.loads(SUMMARY.read_text(encoding="utf-8"))
+
+
+def test_the_committed_summary_is_what_the_logs_say():
+    assert prescription.analyse() == _study()
+
+
+def test_the_prescriptor_did_not_pass_and_the_pages_say_so():
+    study = _study()
+    for turn, name, _ in ROWS:
+        result = study["turns"][turn]["sets"][name]
+        assert not result["passes"]
+        assert not result["against_static"]["holds"] and not result["against_random"]["holds"]
+        assert result["against_baseline"]["holds"] == {
+            "accuracy": True, "tokens": True, "dollars": False, "agents": True, "fitness": True}
+    assert "The Prescriptor does not pass." in PLAN
+    assert "The Prescriptor does not pass." in PUBLISHED
+    assert "It does not pass." in (ROOT / "docs" / "RESULTS.md").read_text(encoding="utf-8")
+
+
+def test_every_row_of_the_result_table_is_what_the_logs_give():
+    study = _study()
+    for turn, name, title in ROWS:
+        result = study["turns"][turn]["sets"][name]
+        static, random = result["against_static"], result["against_random"]
+        accuracy = static["accuracy"]
+        row = (f"| {title} | {result['shares']['2cc4-mini']:.0%} | "
+               f"{accuracy['prescribed']:.1%} | {accuracy['other']:.1%} | "
+               f"{len(accuracy['prescribed_better_on'])}, {len(accuracy['other_better_on'])}, "
+               f"p = {accuracy['p']} | {random['same_shares_accuracy']:.1%}, "
+               f"p = {random['p']} | {static['dollars']['change']:+.1%} |")
+        assert row in PLAN, row
+        assert row in PUBLISHED, row
+
+
+def test_the_first_turn_on_judge_is_quoted_as_the_logs_give_it():
+    study = _study()
+    judge = study["turns"]["first"]["sets"]["judge"]
+    base, static, random = (judge["against_baseline"], judge["against_static"],
+                            judge["against_random"])
+    sent = round(judge["shares"]["2cc4-mini"] * judge["questions"])
+    kept = round(judge["shares"]["c3"] * judge["questions"])
+    assert f"sends {sent} of the 100 judge questions to `2cc4-mini` and {kept} to `c3`" in PLAN
+    assert f"it sends {sent} questions to `2cc4`" in PUBLISHED
+    assert f"and {kept} to `c3`" in PUBLISHED
+    singles = judge["single_actions"]
+    assert (f"| Accuracy | {static['accuracy']['prescribed']:.1%} | "
+            f"{singles['c3']['accuracy']:.1%} | {singles['designer']['accuracy']:.1%} |") in PLAN
+    assert (f"| Cost a question | ${base['dollars']['prescribed']} | ${singles['c3']['dollars']} "
+            f"| ${singles['designer']['dollars']} |") in PLAN
+
+    accuracy = base["accuracy"]
+    assert accuracy["p"] < 0.0001 and "(p < 0.0001)" in PLAN
+    assert (f"more often on {len(accuracy['prescribed_better_on'])} questions and less often "
+            f"on {len(accuracy['other_better_on'])}") in PLAN
+    tokens, dollars = base["tokens"], base["dollars"]
+    assert (f"uses {tokens['prescribed']:,.0f} tokens a question against "
+            f"{tokens['other']:,.0f} ({tokens['change']:+.1%}, lower in "
+            f"{tokens['prescribed_lower_in']} of {tokens['chunks']} chunks)") in PLAN
+    assert f"Its cost is {-dollars['change']:.1%} lower" in PLAN
+    assert (f"only {dollars['prescribed_lower_in']} of the {dollars['chunks']} chunks: "
+            f"Wilcoxon p = {dollars['p']:.4f}") in PLAN
+    for page in (PLAN, PUBLISHED):
+        assert f"{tokens['change']:+.1%}" in page
+        assert f"{-dollars['change']:.1%} lower" in page
+        assert f"p = {dollars['p']:.4f}" in page
+
+    better = static["accuracy"]["prescribed_better_on"]
+    worse = static["accuracy"]["other_better_on"]
+    assert (f"often on {len(better)} questions ({', '.join(better)}) and less often on "
+            f"{len(worse)} ({', '.join(worse)}): p = {static['accuracy']['p']}") in PLAN
+    low, high = static["accuracy"]["ci95_points"]
+    assert f"runs from {low:.1f} to {high:+.1f} points" in PLAN
+    assert f"It costs {static['dollars']['change']:.1%} more." in PLAN
+    assert (f"scores {random['same_shares_accuracy']:.1%} on average, and "
+            f"{random['p']:.2%} of 10,000 such draws") in PLAN
+    assert (f"at ${base['dollars']['prescribed']} a question against "
+            f"${singles['c3']['dollars']}") in PUBLISHED
+    assert f"at {static['dollars']['change']:.1%} more a question" in PUBLISHED
+    assert (f"score {random['same_shares_accuracy']:.1%} (p = {random['p']})") in PUBLISHED
+
+
+def test_the_second_turn_is_quoted_as_the_logs_give_it():
+    study = _study()
+    turn = study["turns"]["second"]
+    chosen = turn["chosen"]
+    sent = round(chosen["shares"]["2cc4-mini"] * turn["questions"])
+    assert turn["static"] == "c3" and turn["questions"] == 160
+    assert (f"160 questions, a budget of ${turn['budget']} a question, `c3` again the static "
+            f"prescription, and a front of {turn['front']}") in PLAN
+    assert (f"sends {sent} of the 160 training questions to `2cc4-mini`, and the Predictor "
+            f"expects {chosen['predicted']['accuracy']:.1%} of it at "
+            f"${chosen['predicted']['dollars']}") in PLAN
+    fresh = turn["sets"]["fresh"]["against_static"]["accuracy"]
+    assert (f"scores {fresh['prescribed']:.1%} on fresh against {fresh['other']:.1%} (better on "
+            f"{len(fresh['prescribed_better_on'])} questions, worse on "
+            f"{len(fresh['other_better_on'])}, p = {fresh['p']})") in PUBLISHED
+    first = study["turns"]["first"]["sets"]["fresh"]["against_baseline"]["dollars"]
+    second = turn["sets"]["fresh"]["against_baseline"]["dollars"]
+    assert (f"{-first['change']:.1%} lower in the first (p = {first['p']:.4f}), and "
+            f"{second['change']:.1%} higher in the second") in PLAN
+
+
+def test_what_is_reported_beside_the_result_is_what_the_logs_give():
+    study = _study()
+    first = study["turns"]["first"]["sets"]
+    for name, said in (("judge", "answer every judge question at"),
+                       ("fresh", "of the fresh questions at")):
+        bound = first[name]["knowing_every_answer"]
+        for page in (PLAN, PUBLISHED):
+            assert said in page and f"${bound['dollars']}" in page
+    assert first["judge"]["knowing_every_answer"]["accuracy"] == 1.0
+    assert f"{first['fresh']['knowing_every_answer']['accuracy']:.1%} of the fresh" in PLAN
+    for name in ("judge", "fresh"):
+        assert (first[name]["knowing_every_answer"]["dollars"]
+                < first[name]["single_actions"]["designer"]["dollars"])
+
+    def unbeaten(name: str) -> tuple[int, float]:
+        front = first[name]["front"]
+        return (sum(not member["beaten_by_one_action"] for member in front),
+                max(member["accuracy"] for member in front))
+
+    count, best = unbeaten("judge")
+    assert (f"{count} of its {len(first['judge']['front'])} prescriptors were not beaten by any "
+            f"one network, and the dearer ones scored up to {best:.1%}") in PLAN
+    count, best = unbeaten("fresh")
+    assert (f"On fresh {count} of the {len(first['fresh']['front'])} were not beaten, and none "
+            f"scored above {best:.1%}") in PLAN
+
+    seeds = first["judge"]["across_seeds"]
+    assert seeds["accuracy"][0] == seeds["accuracy"][2]
+    assert (f"All {seeds['seeds']} seeds' chosen prescriptors score {seeds['accuracy'][0]:.1%} "
+            f"on judge, at ${seeds['dollars'][0]} to ${seeds['dollars'][2]} a question") in PLAN
+    assert (f"{seeds['same_prescriptions_as_the_first']} of the {seeds['seeds']} prescribe "
+            f"exactly as the first does on judge") in PLAN
+    for turn, name in (("first", "fresh"), ("second", "fresh")):
+        across = study["turns"][turn]["sets"][name]["across_seeds"]
+        assert across["same_prescriptions_as_the_first"] == across["seeds"]
+
+
+def test_the_single_network_the_pages_call_cheapest_and_nearly_best_is():
+    study = _study()
+    for name in ("judge", "fresh"):
+        singles = study["turns"]["first"]["sets"][name]["single_actions"]
+        assert min(singles, key=lambda a: singles[a]["dollars"]) == "c3"
+        best = max(single["accuracy"] for single in singles.values())
+        assert best - singles["c3"]["accuracy"] <= 0.02 + 1e-9
+    changes = [study["turns"][turn]["sets"][name]["against_static"]["dollars"]["change"]
+               for turn, name, _ in ROWS]
+    assert all(0.60 <= change <= 0.80 for change in changes)
+    assert "costs 60% to 80% more" in PLAN
+
+
+def test_the_plan_was_pushed_before_the_result_and_says_which_commit():
+    assert "Pushed as `ec1d00a` at 12:36 UTC on 10 November 2026" in PLAN
+

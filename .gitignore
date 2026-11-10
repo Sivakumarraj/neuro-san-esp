@@ -53,6 +53,9 @@ results/*
 # The all-four test (docs/ALL-FOUR.md, `make all-four`), kept as measured.
 !results/all-four/
 !results/all-four/**
+# The Prescriptor test (docs/PRESCRIPTOR.md, `make prescriptor`): its summary of logs kept above.
+!results/prescriptor/
+!results/prescriptor/summary.json
 
 # The live cache is machine-local and quota-dependent. The committed
 # measurements live in tests/fixtures/cache instead, so CI can reproduce them.

@@ -245,6 +245,52 @@ So the two networks leave room to beat the designer's shape on accuracy at no mo
 question, and the question-text Predictor does not find it. `make model-router` recomputes every
 figure here from the logs, and `tests/test_model_router.py` holds this page to them.
 
+## A learned Prescriptor, question by question
+
+The test [PRESCRIPTOR.md](PRESCRIPTOR.md) fixed: ESP with both of its learned models. Per
+network, the Predictor is `esp.route`'s logistic regression from a question's text features to
+the chance of a right answer. The Prescriptor is a neural network from the same features to
+one of four networks, evolved against the Predictor with NSGA-II on accuracy and cost together
+(`esp/prescriptor.py`). The one judged is the most accurate on the front, by the Predictor,
+whose predicted cost a question is within the designer's shape's. It does not pass.
+
+| Action | Network | Genome |
+| --- | --- | --- |
+| `designer` | the designer's shape, every agent on `gpt-5.4-nano` | `0378ca26cd9fe977` |
+| `2cc4-nano` | `2cc4`, every agent on `gpt-5.4-nano` | `2cc4231b7d3fb81d` |
+| `2cc4-mini` | `2cc4` with its Researcher on `gpt-5.4-mini` | `47322479eb9cba1e` |
+| `c3` | `2cc4` with its Researcher on `gpt-4o-mini` and a calculator on its Coordinator | `f4e9e494442f9888` |
+
+On select the budget is the designer's shape's $0.001367 a question, and the static
+prescription, the most accurate single network within it, is `c3`. The chosen prescriptor
+sends 15 of the 60 select questions to `2cc4-mini` and 45 to `c3`, the same 15 in all 20 seeds.
+
+| | Sent to `2cc4-mini` | Prescriptor | `c3` alone | Better on, worse on, p | Same shares at random | Cost against `c3` |
+| --- | --- | --- | --- | --- | --- | --- |
+| First turn, judge | 34% | 96.0% | 93.5% | 4, 1, p = 0.375 | 94.2%, p = 0.1235 | +77.6% |
+| First turn, fresh | 38% | 91.2% | 88.8% | 2, 0, p = 0.5 | 88.3%, p = 0.1811 | +60.4% |
+| Second turn, fresh | 40% | 90.0% | 88.8% | 5, 4, p = 1.0 | 88.2%, p = 0.335 | +79.6% |
+
+- **It is not better than `c3` alone.** On judge it scores 96.0% against 93.5%: right more
+  often on 4 questions and less often on 1, p = 0.375, at $0.001285 a question against
+  $0.000724.
+- **Its choice of questions cannot be told from chance.** The same shares handed out at random
+  score 94.2% on judge (p = 0.1235).
+- **Against the designer's shape it holds four marks of five.** Accuracy (96.0% against 84.0%,
+  p < 0.0001), tokens (−40.2%), agents and fitness hold. Dollars do not: 7.7% lower, and lower
+  in only 13 of the 25 chunks (p = 0.4108).
+- **The second turn of the loop changed nothing.** With the judge outcomes added to the
+  training data, 160 questions, the prescriptor scores 90.0% on fresh against `c3`'s 88.8%:
+  better on 5 questions, worse on 4.
+
+Not a test: knowing every answer, the four networks answer every judge question at $0.00087
+each, and 97.5% of the fresh questions at $0.001078. That is a bound on any Predictor for these
+four networks, computed on the questions it is reported on.
+
+So the answers are there to be had for less than the designer's shape costs, and five features
+of a question's text do not say where. `make prescriptor` recomputes every figure here from the
+logs, and `tests/test_prescription.py` holds this page to them.
+
 ## Reproducing the head-to-head
 
 Put your key in `.env` (gitignored):
