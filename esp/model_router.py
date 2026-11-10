@@ -95,18 +95,24 @@ class Log:
 
 def read(path: Path, action: str) -> Log:
     """A log written by scripts/select_and_judge.py measure, checked against the plan."""
+    return read_log(path, HASHES[action], action)
+
+
+def read_log(path: Path, genome_hash: str, action: str) -> Log:
+    """A log of one named genome at 10 documents a search. Any other network, or
+    any other search width, is a different experiment and is refused."""
     from esp.evolve.headtohead import read_rows
 
     rows = [accounting.normalised(row) for row in read_rows(path)]
     hashes = {row["genome_hash"] for row in rows}
-    if hashes != {HASHES[action]}:
+    if hashes != {genome_hash}:
         raise ValueError(f"{path}: the {action} action ran as {sorted(hashes)}, "
-                         f"the plan names {HASHES[action]}")
+                         f"the plan names {genome_hash}")
     for row in rows:
         width = row.get("settings", {}).get("search_results", SEARCH_RESULTS)
         if width != SEARCH_RESULTS:
             raise ValueError(f"{path}: chunk {row['chunk']} searched {width} documents")
-    log = Log(HASHES[action])
+    log = Log(genome_hash)
     seen: dict[str, list[bool]] = defaultdict(list)
     usage: dict[int, list[tuple[float, float]]] = defaultdict(list)
     split: dict[str, list[float]] = defaultdict(list)

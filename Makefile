@@ -1,4 +1,4 @@
-.PHONY: replicate same-model same-model-run model-router all-four install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool headtohead experiment guide check-key smoke measure figures ablation probe baseline search holdout route uncertainty autopsy trace offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
+.PHONY: replicate same-model same-model-run model-router all-four prescriptor install test lint lint-docs check validate hocon offline-check bank bank-report cost-report pool headtohead experiment guide check-key smoke measure figures ablation probe baseline search holdout route uncertainty autopsy trace offline null-sweep report proofs dossier primer explainer verify service-report champion studio docker clean
 
 install:
 	pip install -e ".[dev]"
@@ -172,6 +172,13 @@ model-router:
 # five pass marks. Reads the committed logs in results/all-four/; costs nothing.
 all-four:
 	PYTHONPATH=$$PWD python scripts/all_four_report.py
+
+# The fourth test, docs/PRESCRIPTOR.md: ESP with both of its models. A neural
+# Prescriptor is evolved against the Predictor to choose which of four measured
+# networks answers each question, and is held against prescribing one network
+# for all of them. Reads the committed logs; costs nothing.
+prescriptor:
+	PYTHONPATH=$$PWD python scripts/prescriptor_report.py
 
 # Select a winner on half the tasks, then judge it on the half it was not
 # selected on. Costs nothing: every evaluation recorded the outcome of each
