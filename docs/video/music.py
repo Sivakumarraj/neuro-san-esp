@@ -4,8 +4,8 @@
 
 A slow pad over a four-chord loop (Dm9, Bbmaj7, Fadd9, C6), a sub bass, a plucked
 arpeggio that thickens while the results are on screen, a bell every other chord,
-and a soft swell and low hit at each scene cut. render.js passes the film's length
-and its scene starts, read from film.html, so the cuts land on the picture.
+and a soft swell and low hit at each cut it is given. render.js passes the film's
+length and its chapter starts, read from the page, so the hits land on the picture.
 """
 import sys
 import wave
@@ -31,11 +31,12 @@ def envelope(n, attack, release):
     return e
 
 
-def energy(t):
-    """How busy the music is at second t: quiet titles, fullest over the results."""
-    xs, ys = zip(*[(0, .35), (10, .5), (33, .6), (58, .75), (93, .95), (124, .9),
-                   (144, .85), (181, .6), (195, .75), (207, .55), (217, .3)], strict=True)
-    return float(np.interp(t, xs, ys))
+def energy(t, seconds):
+    """How busy the music is at second t of a film `seconds` long: quiet titles, fullest
+    over the results, settling for the close."""
+    xs, ys = zip(*[(0, .35), (.046, .5), (.152, .6), (.267, .75), (.429, .95), (.571, .9),
+                   (.664, .85), (.834, .6), (.899, .75), (.954, .55), (1, .3)], strict=True)
+    return float(np.interp(t / seconds, xs, ys))
 
 
 def compose(seconds, cuts):
@@ -59,7 +60,7 @@ def compose(seconds, cuts):
     beat = chord_seconds / 8
     t, k = 0.0, 0
     while t < seconds:
-        chord, e = chords[k % 4], energy(t)
+        chord, e = chords[k % 4], energy(t, seconds)
         n = int((chord_seconds + 2.5) * SR)
         tt = np.arange(n) / SR
         pad_env = envelope(n, 1.6, 2.6)
