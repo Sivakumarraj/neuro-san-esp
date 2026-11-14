@@ -130,7 +130,7 @@ async function chunks(first, step, scale, gl) {
 
 // x264 at 7680x4320 keeps its look-ahead short so one encoder fits beside the browsers.
 const encoder = scale => (scale > 1
-  ? ['-c:v', 'libx264', '-preset', 'fast', '-crf', '17', '-x264-params', 'rc-lookahead=20', '-pix_fmt', 'yuv420p', '-profile:v', 'high']
+  ? ['-c:v', 'libx264', '-preset', 'fast', '-crf', '17', '-threads', '2', '-x264-params', 'rc-lookahead=10', '-pix_fmt', 'yuv420p', '-profile:v', 'high']
   : ['-c:v', 'libx264', '-preset', 'medium', '-crf', '16', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-level', '5.1']);
 
 // Encode every chunk whose frames are complete; returns how many it encoded.
