@@ -35,7 +35,7 @@ const composer = new EffectComposer(renderer, rt);
 composer.addPass(new RenderPass(scene, camera));
 // addPass sizes a pass to the device pixels; the glow is set back to 3840x2160 so it looks,
 // and costs, the same at every scale.
-if (QP.get('bloom') !== '0') { const b = new UnrealBloomPass(new THREE.Vector2(W / 2, H / 2), 0.62, 0.5, 0.88); composer.addPass(b); b.setSize(W, H); }
+if (QP.get('bloom') !== '0') { const b = new UnrealBloomPass(new THREE.Vector2(W / 2, H / 2), 0.62, 0.5, 0.88); composer.addPass(b); const k = parseFloat(QP.get('glow') || '1'); b.setSize(W * k, H * k); }
 composer.addPass(new OutputPass());
 
 // ---------- helpers ----------
