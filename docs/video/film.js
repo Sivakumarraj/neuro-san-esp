@@ -19,7 +19,7 @@ await Promise.all(["600 128px Inter", "700 128px Inter", "400 80px Inter", "128p
 
 const QP = new URLSearchParams(location.search);
 // ?dpr=2 draws the same layout at twice the pixels: 7680x4320.
-const DPR = Math.max(1, parseFloat(QP.get('dpr') || '1'));
+const DPR = Math.max(0.5, parseFloat(QP.get('dpr') || '1'));
 const renderer = new THREE.WebGLRenderer({antialias: false, preserveDrawingBuffer: true});
 renderer.setPixelRatio(DPR); renderer.setSize(W, H);
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
