@@ -89,8 +89,9 @@ class Cli:
 
     def lint(self) -> int:
         """ruff over the code, pymarkdown over the docs."""
-        docs = ["README.md", *sorted(str(path.relative_to(self.root))
-                                     for path in (self.root / "docs").glob("*.md"))]
+        docs = sorted(str(path.relative_to(self.root))
+                      for folder in (self.root, self.root / "docs")
+                      for path in folder.glob("*.md"))
         return self.steps(("-m", "ruff", "check", "esp", "tests", "scripts", "apps"),
                           ("-m", "pymarkdown", "--config", ".pymarkdownlint.yaml", "scan", *docs))
 
@@ -162,6 +163,11 @@ class Cli:
 
     def main(self, argv: list[str] | None = None) -> int:
         """Dispatch one command line."""
+        argv = sys.argv[1:] if argv is None else argv
+        if argv[:1] == ["test"]:
+            return self.test(argv[1:])
+        if argv[:1] == ["loop"]:
+            return self.run("-m", "esp.loop", *argv[1:])
         args = self.parser().parse_args(argv)
         command: str = args.command
         if command == "validate":
@@ -170,8 +176,6 @@ class Cli:
             return self.lint()
         if command == "hocon":
             return self.hocon()
-        if command == "test":
-            return self.test(args.pytest_args)
         if command == "offline-check":
             return self.offline_check()
         if command == "offline":
@@ -183,8 +187,6 @@ class Cli:
             return self.run("scripts/smoke_live.py", *extra)
         if command == "measure":
             return self.run("-m", "esp.measure", args.network, "--tasks", args.tasks)
-        if command == "loop":
-            return self.run("-m", "esp.loop", *args.loop_args)
         if command == "studio":
             return self.studio()
         if command == "web":
