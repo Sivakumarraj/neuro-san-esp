@@ -19,20 +19,12 @@ import logging
 import os
 import time
 import uuid
-
-try:
-    import fcntl
-except ImportError as missing:      # pragma: no cover - POSIX-only deployment
-    # The service ships as a Linux container and CI is ubuntu. Refusing loudly
-    # beats degrading to the check-then-write this replaced, which looked like
-    # mutual exclusion and was not.
-    raise RuntimeError(
-        "esp.service.state needs POSIX file locking (fcntl) to make the "
-        "optimiser lease mutually exclusive") from missing
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+
+from esp.service.file_lock import FileLock
 
 logger = logging.getLogger(__name__)
 
@@ -266,22 +258,9 @@ class Lease:
         # one a later wake took after this one's expired.
         self.token: str | None = None
 
-    def _locked(self):
-        """An exclusive POSIX lock on the guard file, for one critical section."""
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        guard = self.path.with_name(self.path.name + ".guard")
-        handle = os.open(guard, os.O_CREAT | os.O_RDWR, 0o644)
-        try:
-            fcntl.flock(handle, fcntl.LOCK_EX)
-        except BaseException:
-            os.close(handle)
-            raise
-        return handle
-
-    @staticmethod
-    def _unlock(handle: int) -> None:
-        fcntl.flock(handle, fcntl.LOCK_UN)
-        os.close(handle)
+    def _guard(self) -> FileLock:
+        """An exclusive inter-process lock on the guard file, for one critical section."""
+        return FileLock(self.path.with_name(self.path.name + ".guard"))
 
     def acquire(self, owner: str) -> bool:
         """Take the lease, or report that somebody else holds it.
@@ -293,12 +272,12 @@ class Lease:
         spending the same daily budget several times over and overwriting each
         other's population -- the precise outcome this class exists to prevent.
 
-        POSIX file locking, so this holds between processes on a host and not
-        merely between threads. It does not coordinate across hosts; nothing in
-        this deployment runs the optimiser on two.
+        A file lock (flock on POSIX, msvcrt on Windows), so this holds between
+        processes on a host and not merely between threads. It does not
+        coordinate across hosts; nothing in this deployment runs the optimiser
+        on two.
         """
-        handle = self._locked()
-        try:
+        with self._guard():
             now = time.time()
             if self.path.exists():
                 try:
@@ -314,8 +293,6 @@ class Lease:
                 encoding="utf-8")
             self.token = token
             return True
-        finally:
-            self._unlock(handle)
 
     def release(self) -> None:
         """Give the lease back, if it is still this holder's.
@@ -328,17 +305,14 @@ class Lease:
         """
         if self.token is None:
             return
-        handle = self._locked()
-        try:
+        with self._guard():
             try:
                 held = json.loads(self.path.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
                 held = {}
             if held.get("token") == self.token:
                 self.path.unlink(missing_ok=True)
-        finally:
             self.token = None
-            self._unlock(handle)
 
     def holder(self) -> dict[str, Any] | None:
         if not self.path.exists():

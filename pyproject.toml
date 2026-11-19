@@ -81,6 +81,9 @@ studio = ["nsflow==0.7.3"]
 dev = ["pytest==9.1.1", "pytest-cov==7.1.0", "ruff==0.16.8", "pymarkdownlnt==0.9.40",
        "pypdf==6.19.0", "pyhocon==0.3.63", "nsflow==0.7.3"]
 
+[project.scripts]
+esp = "esp.cli:main"
+
 [tool.setuptools.packages.find]
 include = ["esp*"]
 
